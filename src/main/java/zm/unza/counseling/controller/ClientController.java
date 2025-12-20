@@ -60,7 +60,7 @@ public class ClientController {
     @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR') or #id == authentication.principal.id")
     @Operation(summary = "Get client by ID")
     public ResponseEntity<Client> getClientById(@PathVariable String id) {
-        return ResponseEntity.ok(clientService.getClientById(id));
+        return ResponseEntity.ok(clientService.getClientById(Long.parseLong(id)));
     }
     
     @GetMapping("/student/{studentId}")
@@ -77,7 +77,7 @@ public class ClientController {
             @PathVariable String id,
             @RequestBody Client updates
     ) {
-        return ResponseEntity.ok(clientService.updateClient(id, updates));
+        return ResponseEntity.ok(clientService.updateClient(Long.parseLong(id), updates));
     }
     
     @GetMapping("/stats")

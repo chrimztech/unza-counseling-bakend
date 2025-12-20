@@ -1,6 +1,7 @@
 package zm.unza.counseling.exception;
 
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -21,8 +22,9 @@ import java.util.Map;
  * Provides structured error responses with detailed information for debugging
  */
 @RestControllerAdvice
-@Slf4j
 public class EnhancedGlobalExceptionHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(EnhancedGlobalExceptionHandler.class);
 
     /**
      * Handle validation exceptions
@@ -31,7 +33,7 @@ public class EnhancedGlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleValidationExceptions(
             MethodArgumentNotValidException ex, WebRequest request) {
         
-        Map<String, String> errors = new HashMap<>();
+        Map<String, Object> errors = new HashMap<>();
         ex.getBindingResult().getAllErrors().forEach((error) -> {
             String fieldName = ((FieldError) error).getField();
             String errorMessage = error.getDefaultMessage();

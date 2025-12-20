@@ -33,7 +33,7 @@ public class ConfigManagementConfig {
      */
     @Bean
     @ConfigurationProperties(prefix = "unza.counseling.security")
-    public SecurityConfig securityConfig() {
+    public SecurityConfig securityPropertiesConfig() {
         return new SecurityConfig();
     }
 
@@ -51,7 +51,7 @@ public class ConfigManagementConfig {
      */
     @Bean
     @ConfigurationProperties(prefix = "unza.counseling.cache")
-    public CacheConfig cacheConfig() {
+    public CacheConfig cachePropertiesConfig() {
         return new CacheConfig();
     }
 

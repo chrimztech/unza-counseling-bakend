@@ -8,31 +8,59 @@ import java.util.List;
 
 public class AcademicPerformanceDtos {
     @Data
-    @Builder
     public static class AcademicPerformanceSummary {
         private Double currentGpa;
         private Double gpaChange;
         private String academicStatus;
+
+        public static Builder builder() { return new Builder(); }
+        public static class Builder {
+            private final AcademicPerformanceSummary object = new AcademicPerformanceSummary();
+            public Builder currentGpa(Double val) { object.setCurrentGpa(val); return this; }
+            public Builder gpaChange(Double val) { object.setGpaChange(val); return this; }
+            public Builder academicStatus(String val) { object.setAcademicStatus(val); return this; }
+            public AcademicPerformanceSummary build() { return object; }
+        }
     }
 
     @Data
-    @Builder
     public static class GpaTrendData {
         private List<Object> trendPoints;
+
+        public static Builder builder() { return new Builder(); }
+        public static class Builder {
+            private final GpaTrendData object = new GpaTrendData();
+            public Builder trendPoints(List<Object> val) { object.setTrendPoints(val); return this; }
+            public GpaTrendData build() { return object; }
+        }
     }
 
     @Data
-    @Builder
     public static class StudentAtRiskDto {
         private Long studentId;
         private String riskLevel;
+
+        public static Builder builder() { return new Builder(); }
+        public static class Builder {
+            private final StudentAtRiskDto object = new StudentAtRiskDto();
+            public Builder studentId(Long val) { object.setStudentId(val); return this; }
+            public Builder riskLevel(String val) { object.setRiskLevel(val); return this; }
+            public StudentAtRiskDto build() { return object; }
+        }
     }
 
     @Data
-    @Builder
     public static class AcademicStatistics {
         private Double averageGpa;
         private Integer totalStudents;
+
+        public static Builder builder() { return new Builder(); }
+        public static class Builder {
+            private final AcademicStatistics object = new AcademicStatistics();
+            public Builder averageGpa(Double val) { object.setAverageGpa(val); return this; }
+            public Builder totalStudents(Integer val) { object.setTotalStudents(val); return this; }
+            public AcademicStatistics build() { return object; }
+        }
     }
 
     @Data

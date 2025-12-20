@@ -41,6 +41,12 @@ public class Notification {
 
     @Column(nullable = false)
     private Boolean isRead = false;
+    
+    // Convenience methods for service compatibility
+    public Boolean getRead() { return isRead; }
+    public void setRead(Boolean read) { this.isRead = read; }
+    public Boolean getIsRead() { return isRead; }
+    public void setIsRead(Boolean isRead) { this.isRead = isRead; }
 
     @Column(name = "read_at")
     private LocalDateTime readAt;

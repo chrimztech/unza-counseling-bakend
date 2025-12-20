@@ -5,8 +5,9 @@ import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tag;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -19,11 +20,15 @@ import java.util.Map;
  * Provides comprehensive metrics collection for business intelligence
  */
 @Configuration
-@RequiredArgsConstructor
-@Slf4j
 public class BusinessMetricsConfig {
 
+    private static final Logger log = LoggerFactory.getLogger(BusinessMetricsConfig.class);
+
     private final MeterRegistry meterRegistry;
+
+    public BusinessMetricsConfig(MeterRegistry meterRegistry) {
+        this.meterRegistry = meterRegistry;
+    }
 
     /**
      * Authentication metrics
@@ -219,30 +224,30 @@ public class BusinessMetricsConfig {
      */
     @Bean
     public Gauge activeUsersGauge() {
-        return Gauge.builder("users.active")
+        return Gauge.builder("users.active", this, BusinessMetricsConfig::getActiveUsersCount)
                 .description("Number of active users")
-                .register(meterRegistry, 0L, value -> 0.0);
+                .register(meterRegistry);
     }
 
     @Bean
     public Gauge currentAppointmentsGauge() {
-        return Gauge.builder("appointments.current")
+        return Gauge.builder("appointments.current", this, obj -> (double) getCurrentAppointmentsCount())
                 .description("Number of current appointments")
-                .register(meterRegistry, 0L, value -> 0.0);
+                .register(meterRegistry);
     }
 
     @Bean
     public Gauge systemLoadGauge() {
-        return Gauge.builder("system.load")
+        return Gauge.builder("system.load", this, obj -> getSystemLoad())
                 .description("System load percentage")
-                .register(meterRegistry, 0L, value -> 0.0);
+                .register(meterRegistry);
     }
 
     @Bean
     public Gauge databaseConnectionsGauge() {
-        return Gauge.builder("database.connections")
+        return Gauge.builder("database.connections", this, obj -> (double) getDatabaseConnections())
                 .description("Number of active database connections")
-                .register(meterRegistry, 0L, value -> 0.0);
+                .register(meterRegistry);
     }
 
     /**
@@ -250,7 +255,7 @@ public class BusinessMetricsConfig {
      */
     @Bean
     public BusinessMetricsHelper businessMetricsHelper() {
-        return new BusinessMetricsHelper();
+        return new BusinessMetricsHelper(meterRegistry);
     }
 
     /**
@@ -258,6 +263,30 @@ public class BusinessMetricsConfig {
      */
     public static class BusinessMetricsHelper {
         private final Map<String, AtomicLong> customCounters = new ConcurrentHashMap<>();
+        private final MeterRegistry registry;
+
+        public BusinessMetricsHelper(MeterRegistry registry) {
+            this.registry = registry;
+        }
+
+        /**
+         * Simple value holder for gauges
+         */
+        private static class DoubleValueHolder {
+            private volatile double value;
+
+            public DoubleValueHolder(double value) {
+                this.value = value;
+            }
+
+            public double getValue() {
+                return value;
+            }
+
+            public void setValue(double value) {
+                this.value = value;
+            }
+        }
 
         /**
          * Increment custom counter
@@ -268,7 +297,7 @@ public class BusinessMetricsConfig {
             Counter.builder(name)
                     .description("Custom business metric")
                     .tags(tags)
-                    .register(MetricsConfigIntegration.meterRegistry)
+                    .register(registry)
                     .increment();
         }
 
@@ -278,7 +307,9 @@ public class BusinessMetricsConfig {
         @Timed(value = "business.events", description = "Time taken to process business events")
         public void recordBusinessEvent(String eventType, Map<String, Object> data) {
             // Implementation for recording business events
-            log.debug("Recording business event: {}", eventType);
+            if (log.isDebugEnabled()) {
+                log.debug("Recording business event: {}", eventType);
+            }
         }
 
         /**
@@ -289,7 +320,7 @@ public class BusinessMetricsConfig {
                     .description("User journey steps")
                     .tag("user_id", userId)
                     .tag("step", journeyStep)
-                    .register(MetricsConfigIntegration.meterRegistry)
+                    .register(registry)
                     .increment();
 
             // Record duration if needed
@@ -299,21 +330,21 @@ public class BusinessMetricsConfig {
          * Track counselor utilization
          */
         public void trackCounselorUtilization(String counselorId, double utilizationPercentage) {
-            Gauge.builder("counselor.utilization")
+            Gauge.builder("counselor.utilization", utilizationPercentage, Double::doubleValue)
                     .description("Counselor utilization percentage")
                     .tag("counselor_id", counselorId)
-                    .register(MetricsConfigIntegration.meterRegistry, utilizationPercentage, Double::doubleValue);
+                    .register(registry);
         }
 
         /**
          * Track client progress
          */
         public void trackClientProgress(String clientId, String progressMetric, double value) {
-            Gauge.builder("client.progress")
+            Gauge.builder("client.progress", value, Double::doubleValue)
                     .description("Client progress metrics")
                     .tag("client_id", clientId)
                     .tag("metric", progressMetric)
-                    .register(MetricsConfigIntegration.meterRegistry, value, Double::doubleValue);
+                    .register(registry);
         }
     }
 

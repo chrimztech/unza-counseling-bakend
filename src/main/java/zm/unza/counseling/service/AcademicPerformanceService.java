@@ -6,10 +6,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import zm.unza.counseling.dto.AcademicPerformanceDtos.*;
-import zm.unza.counseling.dto.AcademicPerformanceSummary;
-import zm.unza.counseling.dto.GpaTrendData;
-import zm.unza.counseling.dto.StudentAtRiskDto;
-import zm.unza.counseling.dto.AcademicStatistics;
+import zm.unza.counseling.dto.AcademicPerformanceDtos.*;
 import zm.unza.counseling.entity.AcademicPerformance;
 import zm.unza.counseling.repository.AcademicPerformanceRepository;
 import zm.unza.counseling.repository.ClientRepository;
@@ -57,7 +54,11 @@ public class AcademicPerformanceService {
 
     public AcademicPerformanceSummary getClientSummary(Long clientId) {
         // TODO: Implement this method
-        return new AcademicPerformanceSummary();
+        return AcademicPerformanceSummary.builder()
+                .currentGpa(0.0)
+                .gpaChange(0.0)
+                .academicStatus("GOOD")
+                .build();
     }
 
     public List<GpaTrendData> getGpaTrend(Long clientId) {
@@ -81,6 +82,19 @@ public class AcademicPerformanceService {
 
     public AcademicStatistics getStatistics() {
         // TODO: Implement this method
-        return new AcademicStatistics();
+        return AcademicStatistics.builder()
+                .averageGpa(0.0)
+                .totalStudents(0)
+                .build();
+    }
+
+    public List<AcademicPerformanceResponse> getStudentsWithLowGpa(java.math.BigDecimal threshold) {
+        // TODO: Implement this method
+        return List.of();
+    }
+
+    public List<AcademicPerformanceResponse> getByFaculty(String faculty) {
+        // TODO: Implement this method
+        return List.of();
     }
 }

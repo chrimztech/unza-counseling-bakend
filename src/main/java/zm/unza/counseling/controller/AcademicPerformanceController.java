@@ -32,7 +32,7 @@ public class AcademicPerformanceController {
             @Valid @RequestBody AcademicPerformanceRequest request) {
         AcademicPerformanceResponse response = academicPerformanceService.createAcademicPerformance(request);
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success("Academic performance record created successfully", response));
+                .body(ApiResponse.success(response, "Academic performance record created successfully"));
     }
 
     @GetMapping("/{id}")
@@ -40,7 +40,7 @@ public class AcademicPerformanceController {
     @Operation(summary = "Get academic performance by ID", description = "Retrieves a specific academic performance record")
     public ResponseEntity<ApiResponse<AcademicPerformanceResponse>> getById(@PathVariable Long id) {
         AcademicPerformanceResponse response = academicPerformanceService.getById(id);
-        return ResponseEntity.ok(ApiResponse.success("Academic performance retrieved successfully", response));
+        return ResponseEntity.ok(ApiResponse.success(response, "Academic performance retrieved successfully"));
     }
 
     @GetMapping("/client/{clientId}")
@@ -48,7 +48,7 @@ public class AcademicPerformanceController {
     @Operation(summary = "Get all records for a client", description = "Retrieves all academic performance records for a specific client")
     public ResponseEntity<ApiResponse<List<AcademicPerformanceResponse>>> getByClientId(@PathVariable Long clientId) {
         List<AcademicPerformanceResponse> response = academicPerformanceService.getByClientId(clientId);
-        return ResponseEntity.ok(ApiResponse.success("Academic performance records retrieved successfully", response));
+        return ResponseEntity.ok(ApiResponse.success(response, "Academic performance records retrieved successfully"));
     }
 
     @GetMapping("/client/{clientId}/paginated")
@@ -57,7 +57,7 @@ public class AcademicPerformanceController {
     public ResponseEntity<ApiResponse<Page<AcademicPerformanceResponse>>> getByClientIdPaginated(
             @PathVariable Long clientId, Pageable pageable) {
         Page<AcademicPerformanceResponse> response = academicPerformanceService.getByClientIdPaginated(clientId, pageable);
-        return ResponseEntity.ok(ApiResponse.success("Academic performance records retrieved successfully", response));
+        return ResponseEntity.ok(ApiResponse.success(response, "Academic performance records retrieved successfully"));
     }
 
     @GetMapping("/client/{clientId}/latest")
@@ -65,7 +65,7 @@ public class AcademicPerformanceController {
     @Operation(summary = "Get latest record for a client", description = "Retrieves the most recent academic performance record")
     public ResponseEntity<ApiResponse<AcademicPerformanceResponse>> getLatestForClient(@PathVariable Long clientId) {
         AcademicPerformanceResponse response = academicPerformanceService.getLatestForClient(clientId);
-        return ResponseEntity.ok(ApiResponse.success("Latest academic performance retrieved successfully", response));
+        return ResponseEntity.ok(ApiResponse.success(response, "Latest academic performance retrieved successfully"));
     }
 
     @GetMapping("/client/{clientId}/summary")
@@ -73,7 +73,7 @@ public class AcademicPerformanceController {
     @Operation(summary = "Get client summary", description = "Retrieves an academic performance summary for a client")
     public ResponseEntity<ApiResponse<AcademicPerformanceSummary>> getClientSummary(@PathVariable Long clientId) {
         AcademicPerformanceSummary response = academicPerformanceService.getClientSummary(clientId);
-        return ResponseEntity.ok(ApiResponse.success("Academic summary retrieved successfully", response));
+        return ResponseEntity.ok(ApiResponse.success(response, "Academic summary retrieved successfully"));
     }
 
     @GetMapping("/client/{clientId}/gpa-trend")
@@ -81,7 +81,7 @@ public class AcademicPerformanceController {
     @Operation(summary = "Get GPA trend", description = "Retrieves GPA trend data for a client")
     public ResponseEntity<ApiResponse<List<GpaTrendData>>> getGpaTrend(@PathVariable Long clientId) {
         List<GpaTrendData> response = academicPerformanceService.getGpaTrend(clientId);
-        return ResponseEntity.ok(ApiResponse.success("GPA trend retrieved successfully", response));
+        return ResponseEntity.ok(ApiResponse.success(response, "GPA trend retrieved successfully"));
     }
 
     @PutMapping("/{id}")
@@ -91,7 +91,7 @@ public class AcademicPerformanceController {
             @PathVariable Long id,
             @Valid @RequestBody AcademicPerformanceRequest request) {
         AcademicPerformanceResponse response = academicPerformanceService.updateAcademicPerformance(id, request);
-        return ResponseEntity.ok(ApiResponse.success("Academic performance updated successfully", response));
+        return ResponseEntity.ok(ApiResponse.success(response, "Academic performance updated successfully"));
     }
 
     @DeleteMapping("/{id}")
@@ -99,7 +99,7 @@ public class AcademicPerformanceController {
     @Operation(summary = "Delete academic performance", description = "Deletes an academic performance record")
     public ResponseEntity<ApiResponse<Void>> deleteAcademicPerformance(@PathVariable Long id) {
         academicPerformanceService.deleteAcademicPerformance(id);
-        return ResponseEntity.ok(ApiResponse.success("Academic performance deleted successfully", null));
+        return ResponseEntity.ok(ApiResponse.success(null, "Academic performance deleted successfully"));
     }
 
     @GetMapping("/at-risk")
@@ -107,7 +107,7 @@ public class AcademicPerformanceController {
     @Operation(summary = "Get students at risk", description = "Retrieves all students with at-risk academic standing")
     public ResponseEntity<ApiResponse<List<StudentAtRiskDto>>> getStudentsAtRisk() {
         List<StudentAtRiskDto> response = academicPerformanceService.getStudentsAtRisk();
-        return ResponseEntity.ok(ApiResponse.success("At-risk students retrieved successfully", response));
+        return ResponseEntity.ok(ApiResponse.success(response, "At-risk students retrieved successfully"));
     }
 
     @GetMapping("/low-gpa")
@@ -116,7 +116,7 @@ public class AcademicPerformanceController {
     public ResponseEntity<ApiResponse<List<AcademicPerformanceResponse>>> getStudentsWithLowGpa(
             @RequestParam(defaultValue = "2.0") BigDecimal threshold) {
         List<AcademicPerformanceResponse> response = academicPerformanceService.getStudentsWithLowGpa(threshold);
-        return ResponseEntity.ok(ApiResponse.success("Low GPA students retrieved successfully", response));
+        return ResponseEntity.ok(ApiResponse.success(response, "Low GPA students retrieved successfully"));
     }
 
     @GetMapping("/faculty/{faculty}")
@@ -124,7 +124,7 @@ public class AcademicPerformanceController {
     @Operation(summary = "Get by faculty", description = "Retrieves academic performance records by faculty")
     public ResponseEntity<ApiResponse<List<AcademicPerformanceResponse>>> getByFaculty(@PathVariable String faculty) {
         List<AcademicPerformanceResponse> response = academicPerformanceService.getByFaculty(faculty);
-        return ResponseEntity.ok(ApiResponse.success("Records retrieved successfully", response));
+        return ResponseEntity.ok(ApiResponse.success(response, "Records retrieved successfully"));
     }
 
     @GetMapping("/statistics")
@@ -132,6 +132,6 @@ public class AcademicPerformanceController {
     @Operation(summary = "Get statistics", description = "Retrieves overall academic performance statistics")
     public ResponseEntity<ApiResponse<AcademicStatistics>> getStatistics() {
         AcademicStatistics response = academicPerformanceService.getStatistics();
-        return ResponseEntity.ok(ApiResponse.success("Statistics retrieved successfully", response));
+        return ResponseEntity.ok(ApiResponse.success(response, "Statistics retrieved successfully"));
     }
 }

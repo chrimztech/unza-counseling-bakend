@@ -1,7 +1,8 @@
 package zm.unza.counseling.service;
 
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page; 
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -19,9 +20,10 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
-@Slf4j
 @Transactional
 public class ClientService {
+
+    private static final Logger log = LoggerFactory.getLogger(ClientService.class);
 
     private final ClientRepository clientRepository;
     private final PasswordEncoder passwordEncoder;
@@ -43,7 +45,7 @@ public class ClientService {
         return clientRepository.save(client);
     }
 
-    public Client getClientById(String id) {
+    public Client getClientById(Long id) {
         return clientRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Client not found with ID: " + id));
     }
@@ -69,7 +71,7 @@ public class ClientService {
         return clientRepository.findByRiskLevel(riskLevel, pageable);
     }
 
-    public Client updateClient(String id, Client updates) {
+    public Client updateClient(Long id, Client updates) {
         Client client = getClientById(id);
 
         if (updates.getFirstName() != null) client.setFirstName(updates.getFirstName());
@@ -83,7 +85,7 @@ public class ClientService {
         return clientRepository.save(client);
     }
 
-    public void updateRiskLevel(String clientId, Client.RiskLevel riskLevel, Integer riskScore) {
+    public void updateRiskLevel(Long clientId, Client.RiskLevel riskLevel, Integer riskScore) {
         Client client = getClientById(clientId);
         client.setRiskLevel(riskLevel);
         client.setRiskScore(riskScore);
@@ -92,7 +94,7 @@ public class ClientService {
         log.info("Updated risk level for client {} to {}", clientId, riskLevel);
     }
 
-    public void incrementSessionCount(String clientId) {
+    public void incrementSessionCount(Long clientId) {
         Client client = getClientById(clientId);
         client.setTotalSessions(client.getTotalSessions() + 1);
         client.setLastSessionDate(LocalDateTime.now());
@@ -100,7 +102,7 @@ public class ClientService {
     }
 
     public Long getActiveClientCount() {
-        return clientRepository.countByStatus(Client.ClientStatus.ACTIVE);
+        return clientRepository.countByClientStatus(Client.ClientStatus.ACTIVE);
     }
 
     public Long getHighRiskClientCount() {

@@ -8,6 +8,8 @@ import zm.unza.counseling.dto.request.RegisterRequest;
 import zm.unza.counseling.dto.response.AuthResponse;
 import zm.unza.counseling.service.AuthService;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/auth")
 @RequiredArgsConstructor
@@ -38,7 +40,7 @@ public class AuthController {
 
     @PostMapping("/logout")
     public ResponseEntity<Void> logout() {
-        authService.logout();
+        // For now, just return ok - logout logic can be implemented later
         return ResponseEntity.ok().build();
     }
 
@@ -49,9 +51,10 @@ public class AuthController {
     }
 
     @PostMapping("/refresh")
-    public ResponseEntity<AuthResponse> refreshToken() {
+    public ResponseEntity<AuthResponse> refreshToken(@RequestBody Map<String, String> request) {
         try {
-            AuthResponse response = authService.refreshToken();
+            String refreshToken = request.get("refreshToken");
+            AuthResponse response = authService.refreshToken(refreshToken);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();

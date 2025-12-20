@@ -28,8 +28,10 @@
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/service/MessageService.java
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/dto/response/AcademicPerformanceResponse.java
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/controller/CounselorController.java
+/home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/mapper/MentalHealthAcademicMapper.java
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/dto/SessionDto.java
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/config/metrics/BusinessMetricsConfig.java
+/home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/config/circuitbreaker/ResilienceCircuitBreakerConfig.java
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/controller/AppointmentController.java
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/config/api/OpenApiConfig.java
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/config/JwtConfig.java
@@ -58,7 +60,6 @@
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/config/centralized/ConfigManagementConfig.java
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/controller/AcademicPerformanceController.java
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/config/SecurityConfig.java
-/home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/config/circuitbreaker/CircuitBreakerConfig.java
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/entity/Appointment.java
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/repository/SessionRepository.java
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/config/security/EnhancedSecurityConfig.java

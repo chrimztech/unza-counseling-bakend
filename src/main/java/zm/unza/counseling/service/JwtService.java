@@ -48,6 +48,13 @@ public class JwtService {
     }
 
     /**
+     * Generate token for User entity (convenience method)
+     */
+    public String generateToken(zm.unza.counseling.entity.User user) {
+        return generateToken(createUserDetails(user));
+    }
+
+    /**
      * Generate token with extra claims
      */
     public String generateToken(Map<String, Object> extraClaims, UserDetails userDetails) {
@@ -59,6 +66,13 @@ public class JwtService {
      */
     public String generateRefreshToken(UserDetails userDetails) {
         return buildToken(new HashMap<>(), userDetails, jwtConfig.getRefreshExpiration());
+    }
+
+    /**
+     * Generate refresh token for User entity (convenience method)
+     */
+    public String generateRefreshToken(zm.unza.counseling.entity.User user) {
+        return generateRefreshToken(createUserDetails(user));
     }
 
     /**
@@ -117,5 +131,29 @@ public class JwtService {
     private Key getSignInKey() {
         byte[] keyBytes = Decoders.BASE64.decode(jwtConfig.getSecret());
         return Keys.hmacShaKeyFor(keyBytes);
+    }
+
+    /**
+     * Get expiration time in milliseconds
+     */
+    public long getExpirationTime() {
+        return jwtConfig.getExpiration();
+    }
+
+    /**
+     * Create UserDetails from User entity
+     */
+    private UserDetails createUserDetails(zm.unza.counseling.entity.User user) {
+        return org.springframework.security.core.userdetails.User.builder()
+                .username(user.getEmail())
+                .password(user.getPassword())
+                .authorities(user.getRoles().stream()
+                        .map(role -> "ROLE_" + role.getName().name())
+                        .toArray(String[]::new))
+                .accountExpired(!user.getActive())
+                .accountLocked(!user.getActive())
+                .credentialsExpired(false)
+                .disabled(!user.getActive())
+                .build();
     }
 }

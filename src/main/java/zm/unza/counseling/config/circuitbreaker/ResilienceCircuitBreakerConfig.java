@@ -21,7 +21,7 @@ import java.util.concurrent.ScheduledExecutorService;
  */
 @Configuration
 @RequiredArgsConstructor
-public class CircuitBreakerConfig {
+public class ResilienceCircuitBreakerConfig {
 
     /**
      * Circuit breaker configuration for different service types
@@ -222,17 +222,17 @@ public class CircuitBreakerConfig {
      * Circuit breaker monitoring and metrics
      */
     @Bean
-    public CircuitBreakerMetrics circuitBreakerMetrics(CircuitBreakerRegistry registry) {
-        return new CircuitBreakerMetrics(registry);
+    public ResilienceCircuitBreakerMetrics circuitBreakerMetrics(CircuitBreakerRegistry registry) {
+        return new ResilienceCircuitBreakerMetrics(registry);
     }
 
     /**
      * Helper class for circuit breaker metrics
      */
-    public static class CircuitBreakerMetrics {
+    public static class ResilienceCircuitBreakerMetrics {
         private final CircuitBreakerRegistry registry;
 
-        public CircuitBreakerMetrics(CircuitBreakerRegistry registry) {
+        public ResilienceCircuitBreakerMetrics(CircuitBreakerRegistry registry) {
             this.registry = registry;
         }
 
@@ -257,7 +257,7 @@ public class CircuitBreakerConfig {
          */
         public long getNumberOfCalls(String name) {
             CircuitBreaker cb = registry.circuitBreaker(name);
-            return cb.getMetrics().getNumberOfTotalCalls();
+            return cb.getMetrics().getNumberOfBufferedCalls();
         }
     }
 }

@@ -8,6 +8,8 @@ server:
     min-response-size: 1024
 
 spring:
+  main:
+    allow-bean-definition-overriding: true
   application:
     name: ${APP_NAME:unza-counseling-system}
   
@@ -86,6 +88,13 @@ spring:
         max-active: ${REDIS_POOL_MAX_ACTIVE:8}
         max-idle: ${REDIS_POOL_MAX_IDLE:8}
         min-idle: ${REDIS_POOL_MIN_IDLE:0}
+  
+  cache:
+    type: ${CACHE_TYPE:redis}
+    redis:
+      time-to-live: ${CACHE_TTL:3600000}
+      use-key-prefix: ${CACHE_USE_KEY_PREFIX:true}
+      cache-null-values: ${CACHE_NULL_VALUES:false}
 
 # JWT Configuration
 jwt:
@@ -97,7 +106,7 @@ jwt:
 cors:
   allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:8081,http://localhost:4200}
   allowed-methods: ${CORS_ALLOWED_METHODS:GET,POST,PUT,DELETE,PATCH,OPTIONS}
-  allowed-headers: ${CORS_ALLOWED_HEADERS:*}
+  allowed-headers: ${CORS_ALLOWED_HEADERS:'*'}
   allow-credentials: ${CORS_ALLOW_CREDENTIALS:true}
   max-age: ${CORS_MAX_AGE:3600}
 
@@ -185,11 +194,14 @@ flyway:
   validate-on-migrate: ${FLYWAY_VALIDATE_ON_MIGRATE:true}
   clean-disabled: ${FLYWAY_CLEAN_DISABLED:true}
 
-# Cache Configuration
+---
+
 spring:
-  cache:
-    type: ${CACHE_TYPE:redis}
-    redis:
-      time-to-live: ${CACHE_TTL:3600000}
-      use-key-prefix: ${CACHE_USE_KEY_PREFIX:true}
-      cache-null-values: ${CACHE_NULL_VALUES:false}
+  config:
+    activate:
+      on-profile: development
+  datasource:
+    url: jdbc:postgresql://localhost:5432/unza_counseling_db
+  flyway:
+    clean-disabled: false
+    clean-on-validation-error: true

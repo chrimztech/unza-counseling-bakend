@@ -8,10 +8,15 @@ import jakarta.validation.constraints.Size;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * User Entity - Represents all system users (counselors, admins, students)
@@ -24,7 +29,7 @@ import java.util.Set;
            @UniqueConstraint(columnNames = "studentId")
        })
 @EntityListeners(AuditingEntityListener.class)
-public class User {
+public class User implements UserDetails {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -263,6 +268,45 @@ public class User {
 
     public enum Gender {
         MALE, FEMALE, OTHER, PREFER_NOT_TO_SAY
+    }
+
+    // UserDetails implementation
+    @Override
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        return roles.stream()
+                .map(role -> new SimpleGrantedAuthority("ROLE_" + role.getName().name()))
+                .collect(Collectors.toSet());
+    }
+
+    @Override
+    public boolean isAccountNonExpired() {
+        return true;
+    }
+
+    @Override
+    public boolean isAccountNonLocked() {
+        return active;
+    }
+
+    @Override
+    public boolean isCredentialsNonExpired() {
+        return true;
+    }
+
+    @Override
+    public boolean isEnabled() {
+        return active;
+    }
+
+    // Convenience methods for AuthService
+    public void setEnabled(boolean enabled) {
+        setActive(enabled);
+    }
+
+    public void setRole(Role.ERole role) {
+        Set<Role> roles = new HashSet<>();
+        roles.add(Role.builder().name(role).build());
+        setRoles(roles);
     }
 
     // Builder pattern

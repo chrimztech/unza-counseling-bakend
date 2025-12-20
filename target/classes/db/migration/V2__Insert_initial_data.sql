@@ -23,27 +23,21 @@ INSERT INTO users (email, password, first_name, last_name, phone_number, role, i
 ('grace.chiluba@unza.zm', '$2a$10$rOzRkKp5n9vF3K4xH8W6TeO9xJ2M5N8P1Q4R7T2Y6U8I0O3P6Q9S2V5X8', 'Grace', 'Chiluba', '+260977654321', 'COUNSELOR', true, true),
 ('michael.simukoko@unza.zm', '$2a$10$rOzRkKp5n9vF3K4xH8W6TeO9xJ2M5N8P1Q4R7T2Y6U8I0O3P6Q9S2V5X8', 'Michael', 'Simukoko', '+260977987654', 'COUNSELOR', true, true);
 
--- Get counselor user IDs for counselor records
--- Note: In a real application, you would query the actual IDs
--- For now, we'll use placeholder IDs that would need to be updated
-
--- Insert sample counselor profiles (using placeholder user IDs)
+-- Insert sample counselor profiles using user IDs from the users table
 INSERT INTO counselors (user_id, employee_id, specialization, license_number, years_of_experience, bio, education, certifications, available_hours, max_clients_per_day, hourly_rate, is_available) VALUES
-(2, 'CNS001', ARRAY['Anxiety Disorders', 'Depression', 'Academic Stress'], 'LIC2023001', 8, 
+((SELECT id FROM users WHERE email = 'john.mwanza@unza.zm'), 'CNS001', ARRAY['Anxiety Disorders', 'Depression', 'Academic Stress'], 'LIC2023001', 8,
  'Experienced counselor specializing in anxiety and depression treatment with focus on academic stress management.',
- 'M.Sc. Psychology, University of Zambia', 
+ 'M.Sc. Psychology, University of Zambia',
  ARRAY['Certified Cognitive Behavioral Therapist', 'Academic Counseling Certification'],
  '{"monday": {"start": "08:00", "end": "17:00"}, "tuesday": {"start": "08:00", "end": "17:00"}, "wednesday": {"start": "08:00", "end": "17:00"}, "thursday": {"start": "08:00", "end": "17:00"}, "friday": {"start": "08:00", "end": "17:00"}}',
  8, 150.00, true),
- 
-(3, 'CNS002', ARRAY['Relationship Counseling', 'Family Therapy', 'Youth Counseling'], 'LIC2023002', 5,
+((SELECT id FROM users WHERE email = 'grace.chiluba@unza.zm'), 'CNS002', ARRAY['Relationship Counseling', 'Family Therapy', 'Youth Counseling'], 'LIC2023002', 5,
  'Specializes in relationship and family therapy with extensive experience in youth counseling.',
  'M.A. Clinical Psychology, University of Lusaka',
  ARRAY['Family Therapy Certification', 'Youth Mental Health First Aid'],
  '{"monday": {"start": "09:00", "end": "18:00"}, "tuesday": {"start": "09:00", "end": "18:00"}, "wednesday": {"start": "09:00", "end": "18:00"}, "thursday": {"start": "09:00", "end": "18:00"}, "friday": {"start": "09:00", "end": "18:00"}}',
  6, 120.00, true),
- 
-(4, 'CNS003', ARRAY['Addiction Counseling', 'Trauma Therapy', 'Crisis Intervention'], 'LIC2023003', 12,
+((SELECT id FROM users WHERE email = 'michael.simukoko@unza.zm'), 'CNS003', ARRAY['Addiction Counseling', 'Trauma Therapy', 'Crisis Intervention'], 'LIC2023003', 12,
  'Senior counselor with expertise in addiction and trauma therapy, providing crisis intervention services.',
  'Ph.D. Counseling Psychology, University of Cape Town',
  ARRAY['Addiction Counseling Certification', 'Trauma-Informed Care', 'Crisis Intervention Specialist'],
@@ -52,24 +46,23 @@ INSERT INTO counselors (user_id, employee_id, specialization, license_number, ye
 
 -- Insert sample admin profile
 INSERT INTO admins (user_id, admin_level, permissions) VALUES
-(1, 'SYSTEM_ADMIN', '{"system_config": true, "user_management": true, "backup_restore": true, "audit_logs": true}');
+((SELECT id FROM users WHERE email = 'admin@unza.zm'), 'SYSTEM_ADMIN', '{"system_config": true, "user_management": true, "backup_restore": true, "audit_logs": true}');
 
 -- Insert system resources
 INSERT INTO resources (title, description, content_type, category, tags, is_public, uploaded_by) VALUES
-('Mental Health Awareness Guide', 'Comprehensive guide to understanding mental health issues in university settings', 'PDF', 'Educational', 
- ARRAY['mental health', 'awareness', 'guide'], true, 1),
-('Stress Management Techniques', 'Practical techniques for managing academic and personal stress', 'PDF', 'Self-Help', 
- ARRAY['stress', 'management', 'techniques'], true, 1),
-('Crisis Intervention Protocol', 'Emergency response procedures for mental health crises', 'PDF', 'Protocol', 
- ARRAY['crisis', 'intervention', 'emergency'], false, 1),
-('Counseling Intake Form Template', 'Standard intake form for new counseling clients', 'DOC', 'Forms', 
- ARRAY['intake', 'form', 'template'], false, 1),
-('Academic Performance and Mental Health Correlation Study', 'Research findings on the relationship between academic performance and mental health', 'PDF', 'Research', 
- ARRAY['research', 'academic', 'performance', 'mental health'], true, 1);
+('Mental Health Awareness Guide', 'Comprehensive guide to understanding mental health issues in university settings', 'PDF', 'Educational',
+ ARRAY['mental health', 'awareness', 'guide'], true, (SELECT id FROM users WHERE email = 'admin@unza.zm')),
+('Stress Management Techniques', 'Practical techniques for managing academic and personal stress', 'PDF', 'Self-Help',
+ ARRAY['stress', 'management', 'techniques'], true, (SELECT id FROM users WHERE email = 'admin@unza.zm')),
+('Crisis Intervention Protocol', 'Emergency response procedures for mental health crises', 'PDF', 'Protocol',
+ ARRAY['crisis', 'intervention', 'emergency'], false, (SELECT id FROM users WHERE email = 'admin@unza.zm')),
+('Counseling Intake Form Template', 'Standard intake form for new counseling clients', 'DOC', 'Forms',
+ ARRAY['intake', 'form', 'template'], false, (SELECT id FROM users WHERE email = 'admin@unza.zm')),
+('Academic Performance and Mental Health Correlation Study', 'Research findings on the relationship between academic performance and mental health', 'PDF', 'Research',
+ ARRAY['research', 'academic', 'performance', 'mental health'], true, (SELECT id FROM users WHERE email = 'admin@unza.zm'));
 
 -- Insert sample self-assessment questions (for future use)
 -- This could be expanded to include a full assessment questionnaire
-INSERT INTO self_assessments (client_id, anxiety_level, depression_level, stress_level, sleep_quality, academic_pressure, social_relationships, overall_wellbeing, concerns, goals) VALUES
 -- Sample data would go here once client records exist
 -- For now, we'll leave this as a placeholder for future data
 
@@ -147,9 +140,9 @@ CREATE INDEX idx_sessions_date_status ON sessions(session_date, status);
 CREATE INDEX idx_risk_assessments_level_date ON risk_assessments(risk_level, assessment_date);
 CREATE INDEX idx_self_assessments_client_date ON self_assessments(client_id, assessment_date);
 
--- Insert audit log entries for initial setup
+-- Insert audit log entries for initial setup (will be added after user IDs are known)
 INSERT INTO audit_log (user_id, action, entity_type, entity_id, timestamp) VALUES
-(1, 'INITIAL_SETUP', 'SYSTEM', 1, CURRENT_TIMESTAMP),
-(1, 'CREATE', 'ROLES', 1, CURRENT_TIMESTAMP),
-(1, 'CREATE', 'USERS', 1, CURRENT_TIMESTAMP),
-(1, 'CREATE', 'COUNSELORS', 1, CURRENT_TIMESTAMP);
+((SELECT id FROM users WHERE email = 'admin@unza.zm'), 'INITIAL_SETUP', 'SYSTEM', 1, CURRENT_TIMESTAMP),
+((SELECT id FROM users WHERE email = 'admin@unza.zm'), 'CREATE', 'ROLES', 1, CURRENT_TIMESTAMP),
+((SELECT id FROM users WHERE email = 'admin@unza.zm'), 'CREATE', 'USERS', 1, CURRENT_TIMESTAMP),
+((SELECT id FROM users WHERE email = 'admin@unza.zm'), 'CREATE', 'COUNSELORS', 1, CURRENT_TIMESTAMP);
