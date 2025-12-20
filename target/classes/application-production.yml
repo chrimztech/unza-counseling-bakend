@@ -1,0 +1,333 @@
+# Production Environment Configuration
+# UNZA Counseling Management System
+
+spring:
+  profiles:
+    group:
+      production: production,security,monitoring,cache
+  
+  datasource:
+    url: ${DATABASE_URL}
+    username: ${DATABASE_USERNAME}
+    password: ${DATABASE_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: ${DB_POOL_SIZE:20}
+      minimum-idle: ${DB_MIN_IDLE:10}
+      connection-timeout: ${DB_CONNECTION_TIMEOUT:30000}
+      idle-timeout: ${DB_IDLE_TIMEOUT:600000}
+      max-lifetime: ${DB_MAX_LIFETIME:1800000}
+      leak-detection-threshold: ${DB_LEAK_THRESHOLD:60000}
+      validation-timeout: 5000
+  
+  jpa:
+    hibernate:
+      ddl-auto: ${JPA_DDL_AUTO:validate}
+    show-sql: ${JPA_SHOW_SQL:false}
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        jdbc:
+          time_zone: UTC
+        format_sql: ${HIBERNATE_FORMAT_SQL:false}
+        use_sql_comments: ${HIBERNATE_SQL_COMMENTS:false}
+        order_inserts: true
+        order_updates: true
+        generate_statistics: false
+    defer-datasource-initialization: false
+  
+  sql:
+    init:
+      mode: never
+  
+  mail:
+    host: ${MAIL_HOST}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: ${REDIS_TIMEOUT:2000}
+      ssl: ${REDIS_SSL:false}
+      jedis:
+        pool:
+          max-active: ${REDIS_POOL_MAX_ACTIVE:20}
+          max-idle: ${REDIS_POOL_MAX_IDLE:10}
+          min-idle: ${REDIS_POOL_MIN_IDLE:2}
+          max-wait: ${REDIS_POOL_MAX_WAIT:2000}
+
+# JWT Configuration
+jwt:
+  secret: ${JWT_SECRET}
+  expiration: ${JWT_EXPIRATION:3600000}
+  refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000}
+
+# CORS Configuration
+cors:
+  allowed-origins: ${CORS_ALLOWED_ORIGINS}
+  allowed-methods: ${CORS_ALLOWED_METHODS:GET,POST,PUT,DELETE,PATCH,OPTIONS}
+  allowed-headers: ${CORS_ALLOWED_HEADERS:*}
+  allow-credentials: ${CORS_ALLOW_CREDENTIALS:true}
+  max-age: ${CORS_MAX_AGE:3600}
+
+# Application Configuration
+app:
+  name: ${APP_DISPLAY_NAME:UNZA Counseling Management System}
+  version: ${APP_VERSION:1.0.0}
+  environment: ${APP_ENVIRONMENT:production}
+  timezone: ${APP_TIMEZONE:Africa/Lusaka}
+  upload-dir: ${UPLOAD_DIR:/app/uploads/}
+  max-session-duration: ${MAX_SESSION_DURATION:90}
+  appointment-reminder-hours: ${APPOINTMENT_REMINDER_HOURS:24}
+
+# Production-specific app configuration
+  rate-limiting:
+    enabled: true
+    default-limit: ${DEFAULT_RATE_LIMIT:100}
+    default-window: ${DEFAULT_RATE_WINDOW:3600}
+    burst-capacity: ${BURST_CAPACITY:200}
+  email:
+    enabled: true
+    test-mode: false
+    mock-send: false
+    retry-attempts: ${EMAIL_RETRY_ATTEMPTS:3}
+    retry-delay: ${EMAIL_RETRY_DELAY:5000}
+  monitoring:
+    enabled: true
+    metrics-enabled: true
+    health-checks-enabled: true
+    alerting:
+      enabled: true
+      email-alerts: ${ALERT_EMAIL:admin@unza.zm}
+      slack-webhook: ${SLACK_WEBHOOK:}
+  performance:
+    slow-query-threshold: ${SLOW_QUERY_THRESHOLD:2000}
+    memory-threshold: ${MEMORY_THRESHOLD:80}
+    cpu-threshold: ${CPU_THRESHOLD:80}
+  backup:
+    enabled: true
+    schedule: ${BACKUP_SCHEDULE:"0 2 * * *"}
+    retention-days: ${BACKUP_RETENTION_DAYS:30}
+    storage-path: ${BACKUP_STORAGE_PATH:/app/backups}
+
+# Logging Configuration
+logging:
+  level:
+    root: ${LOG_LEVEL_ROOT:WARN}
+    com:
+      unza:
+        counseling: ${LOG_LEVEL_APP:INFO}
+    org:
+      springframework:
+        web: ${LOG_LEVEL_SPRING_WEB:WARN}
+      hibernate:
+        SQL: ${LOG_LEVEL_SQL:WARN}
+        type:
+          descriptor:
+            sql:
+              BasicBinder: ${LOG_LEVEL_SQL_PARAM:WARN}
+  pattern:
+    console: ${LOG_PATTERN_CONSOLE:%d{yyyy-MM-dd HH:mm:ss} - %msg%n}
+    file: ${LOG_PATTERN_FILE:%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n}
+  file:
+    name: ${LOG_FILE_NAME:/app/logs/unza-counseling.log}
+    max-size: ${LOG_FILE_MAX_SIZE:100MB}
+    max-history: ${LOG_FILE_MAX_HISTORY:30}
+  logback:
+    rollingpolicy:
+      max-file-size: 100MB
+      max-history: 30
+      total-size-cap: 10GB
+
+# Management/Actuator Configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: ${ACTUATOR_ENDPOINTS:health,info,metrics,prometheus}
+      base-path: ${ACTUATOR_BASE_PATH:/actuator}
+  endpoint:
+    health:
+      show-details: ${ACTUATOR_HEALTH_DETAILS:when-authorized}
+      probes:
+        enabled: ${ACTUATOR_HEALTH_PROBES:true}
+      show-components: when-authorized
+  metrics:
+    export:
+      prometheus:
+        enabled: ${METRICS_PROMETHEUS_ENABLED:true}
+        step: ${METRICS_PROMETHEUS_STEP:10s}
+    distribution:
+      percentiles-histogram:
+        http:
+          server:
+            requests: ${METRICS_HTTP_DISTRIBUTION:true}
+    tags:
+      application: ${APP_NAME:unza-counseling-system}
+      environment: ${APP_ENVIRONMENT:production}
+  prometheus:
+    metrics:
+      export:
+        enabled: ${METRICS_PROMETHEUS_ENABLED:true}
+  jmx:
+    unique-names: true
+
+# OpenAPI Configuration
+springdoc:
+  api-docs:
+    path: ${OPENAPI_DOCS_PATH:/api-docs}
+  swagger-ui:
+    path: ${OPENAPI_SWAGGER_PATH:/swagger-ui.html}
+    operations-sorter: ${OPENAPI_OPERATIONS_SORTER:method}
+    tags-sorter: ${OPENAPI_TAGS_SORTER:alpha}
+    filter: ${OPENAPI_SWAGGER_FILTER:true}
+    tryItOutEnabled: ${OPENAPI_TRY_IT_OUT:false}
+  info:
+    title: ${OPENAPI_TITLE:UNZA Counseling Management System API}
+    description: ${OPENAPI_DESCRIPTION:Production API for UNZA Counseling Management System}
+    version: ${OPENAPI_VERSION:1.0.0}
+    contact:
+      name: ${OPENAPI_CONTACT_NAME:UNZA IT Department}
+      email: ${OPENAPI_CONTACT_EMAIL:it@unza.zm}
+    license:
+      name: ${OPENAPI_LICENSE_NAME:UNZA License}
+      url: ${OPENAPI_LICENSE_URL:https://unza.zm}
+
+# Flyway Configuration
+flyway:
+  enabled: ${FLYWAY_ENABLED:true}
+  locations: ${FLYWAY_LOCATIONS:classpath:db/migration}
+  baseline-on-migrate: ${FLYWAY_BASELINE_ON_MIGRATE:true}
+  validate-on-migrate: ${FLYWAY_VALIDATE_ON_MIGRATE:true}
+  clean-disabled: ${FLYWAY_CLEAN_DISABLED:true}
+  out-of-order: ${FLYWAY_OUT_OF_ORDER:false}
+  ignore-missing-migrations: ${FLYWAY_IGNORE_MISSING:false}
+
+# Cache Configuration
+spring:
+  cache:
+    type: ${CACHE_TYPE:redis}
+    redis:
+      time-to-live: ${CACHE_TTL:3600000}
+      use-key-prefix: ${CACHE_USE_KEY_PREFIX:true}
+      cache-null-values: ${CACHE_NULL_VALUES:false}
+      enable-statistics: ${CACHE_STATISTICS:true}
+
+# File Upload Configuration
+spring:
+  servlet:
+    multipart:
+      max-file-size: ${MAX_FILE_SIZE:50MB}
+      max-request-size: ${MAX_FILE_SIZE:50MB}
+      enabled: true
+      resolve-lazily: true
+
+# Async Configuration
+spring:
+  task:
+    execution:
+      pool:
+        core-size: ${ASYNC_CORE_SIZE:5}
+        max-size: ${ASYNC_MAX_SIZE:20}
+        queue-capacity: ${ASYNC_QUEUE_CAPACITY:200}
+        keep-alive: ${ASYNC_KEEP_ALIVE:60}
+        thread-name-prefix: "UnzaAsync-"
+    scheduling:
+      pool:
+        size: ${SCHEDULING_POOL_SIZE:3}
+
+# Security Configuration
+security:
+  headers:
+    frame-options: DENY
+    content-type-options: nosniff
+    xss-protection: 1; mode=block
+    referrer-policy: strict-origin-when-cross-origin
+  ssl:
+    enabled: true
+    redirect-to-https: true
+
+# Rate Limiting Configuration
+app:
+  rate-limiting:
+    enabled: true
+    default-limit: ${DEFAULT_RATE_LIMIT:100}
+    default-window: ${DEFAULT_RATE_WINDOW:3600}
+    burst-capacity: ${BURST_CAPACITY:200}
+
+# Email Configuration (Production)
+app:
+  email:
+    enabled: true
+    test-mode: false
+    mock-send: false
+    retry-attempts: ${EMAIL_RETRY_ATTEMPTS:3}
+    retry-delay: ${EMAIL_RETRY_DELAY:5000}
+
+# Monitoring and Alerting
+app:
+  monitoring:
+    enabled: true
+    metrics-enabled: true
+    health-checks-enabled: true
+    alerting:
+      enabled: true
+      email-alerts: ${ALERT_EMAIL:admin@unza.zm}
+      slack-webhook: ${SLACK_WEBHOOK:}
+  performance:
+    slow-query-threshold: ${SLOW_QUERY_THRESHOLD:2000}
+    memory-threshold: ${MEMORY_THRESHOLD:80}
+    cpu-threshold: ${CPU_THRESHOLD:80}
+
+# Backup Configuration
+app:
+  backup:
+    enabled: true
+    schedule: ${BACKUP_SCHEDULE:"0 2 * * *"}  # Daily at 2 AM
+    retention-days: ${BACKUP_RETENTION_DAYS:30}
+    storage-path: ${BACKUP_STORAGE_PATH:/app/backups}
+
+# SSL/TLS Configuration
+server:
+  ssl:
+    enabled: ${SSL_ENABLED:false}
+    key-store: ${SSL_KEYSTORE_PATH:}
+    key-store-password: ${SSL_KEYSTORE_PASSWORD:}
+    key-store-type: ${SSL_KEYSTORE_TYPE:PKCS12}
+    trust-store: ${SSL_TRUSTSTORE_PATH:}
+    trust-store-password: ${SSL_TRUSTSTORE_PASSWORD:}
+    protocol: ${SSL_PROTOCOL:TLS}
+    enabled-protocols: ${SSL_ENABLED_PROTOCOLS:TLSv1.2,TLSv1.3}
+
+# JVM Configuration for Production
+management:
+  jmx:
+    unique-names: true
+
+# Production-specific optimizations
+spring:
+  jpa:
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          batch_size: 25
+        cache:
+          use_second_level_cache: true
+          use_query_cache: true
+          region.factory_class: org.hibernate.cache.jcache.JCacheRegionFactory
+        generate_statistics: false

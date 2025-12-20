@@ -1,0 +1,311 @@
+package zm.unza.counseling.service;
+
+import zm.unza.counseling.entity.AcademicPerformance;
+import zm.unza.counseling.entity.Client;
+import zm.unza.counseling.repository.AcademicPerformanceRepository;
+import zm.unza.counseling.repository.ClientRepository;
+import zm.unza.counseling.dto.AcademicPerformanceDtos.*;
+import zm.unza.counseling.dto.AcademicPerformanceSummary;
+import zm.unza.counseling.dto.GpaTrendData;
+import zm.unza.counseling.dto.StudentAtRiskDto;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.stream.Collectors;
+
+/**
+ * Service for managing Academic Performance data
+ */
+@Service
+@Transactional
+public class AcademicPerformanceService {
+
+    private final AcademicPerformanceRepository academicPerformanceRepository;
+    private final ClientRepository clientRepository;
+
+    @Autowired
+    public AcademicPerformanceService(AcademicPerformanceRepository academicPerformanceRepository, 
+                                     ClientRepository clientRepository) {
+        this.academicPerformanceRepository = academicPerformanceRepository;
+        this.clientRepository = clientRepository;
+    }
+
+    /**
+     * Create new academic performance record
+     */
+    public AcademicPerformanceResponse createAcademicPerformance(AcademicPerformanceRequest request) {
+        Client client = clientRepository.findById(request.getClientId())
+                .orElseThrow(() -> new RuntimeException("Client not found with id: " + request.getClientId()));
+
+        AcademicPerformance academicPerformance = new AcademicPerformance();
+        academicPerformance.setClient(client);
+        academicPerformance.setAcademicYear(request.getAcademicYear());
+        academicPerformance.setSemester(request.getSemester());
+        academicPerformance.setGpa(request.getGpa());
+        academicPerformance.setTotalCredits(request.getTotalCredits());
+        academicPerformance.setCreditsCompleted(request.getCreditsCompleted());
+        academicPerformance.setCreditsFailed(request.getCreditsFailed());
+        academicPerformance.setAttendanceRate(request.getAttendanceRate());
+        academicPerformance.setAssignmentsCompleted(request.getAssignmentsCompleted());
+        academicPerformance.setAssignmentsTotal(request.getAssignmentsTotal());
+        academicPerformance.setAcademicStanding(request.getAcademicStanding());
+        academicPerformance.setCoursesDropped(request.getCoursesDropped());
+        academicPerformance.setCoursesWithdrawn(request.getCoursesWithdrawn());
+        academicPerformance.setStudyProgram(request.getStudyProgram());
+        academicPerformance.setYearOfStudy(request.getYearOfStudy());
+        academicPerformance.setFaculty(request.getFaculty());
+        academicPerformance.setDepartment(request.getDepartment());
+        academicPerformance.setRecordDate(request.getRecordDate());
+        academicPerformance.setNotes(request.getNotes());
+
+        AcademicPerformance saved = academicPerformanceRepository.save(academicPerformance);
+        return new AcademicPerformanceResponse(saved);
+    }
+
+    /**
+     * Get academic performance by ID
+     */
+    public AcademicPerformanceResponse getById(Long id) {
+        AcademicPerformance academicPerformance = academicPerformanceRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Academic performance not found with id: " + id));
+        return new AcademicPerformanceResponse(academicPerformance);
+    }
+
+    /**
+     * Get all academic performance records for a client
+     */
+    public List<AcademicPerformanceResponse> getByClientId(Long clientId) {
+        List<AcademicPerformance> performances = academicPerformanceRepository.findByClientIdOrderByRecordDateDesc(clientId);
+        return performances.stream()
+                .map(AcademicPerformanceResponse::new)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Get academic performance records for a client with pagination
+     */
+    public Page<AcademicPerformanceResponse> getByClientIdPaginated(Long clientId, Pageable pageable) {
+        Page<AcademicPerformance> performances = academicPerformanceRepository.findByClientIdOrderByRecordDateDesc(clientId, pageable);
+        return performances.map(AcademicPerformanceResponse::new);
+    }
+
+    /**
+     * Get latest academic performance for a client
+     */
+    public AcademicPerformanceResponse getLatestForClient(Long clientId) {
+        AcademicPerformance academicPerformance = academicPerformanceRepository.findTopByClientIdOrderByRecordDateDesc(clientId)
+                .orElseThrow(() -> new RuntimeException("No academic performance records found for client: " + clientId));
+        return new AcademicPerformanceResponse(academicPerformance);
+    }
+
+    /**
+     * Get client academic performance summary
+     */
+    public AcademicPerformanceSummary getClientSummary(Long clientId) {
+        List<AcademicPerformance> performances = academicPerformanceRepository.findByClientIdOrderByRecordDateDesc(clientId);
+        
+        if (performances.isEmpty()) {
+            return new AcademicPerformanceSummary();
+        }
+
+        AcademicPerformance latest = performances.get(0);
+        BigDecimal averageGpa = calculateAverageGpa(performances);
+        BigDecimal averageAttendance = calculateAverageAttendance(performances);
+        int totalSemesters = performances.size();
+        BigDecimal gpaTrend = calculateGpaTrend(performances);
+
+        return AcademicPerformanceSummary.builder()
+                .clientId(clientId)
+                .currentGpa(latest.getGpa())
+                .averageGpa(averageGpa)
+                .averageAttendanceRate(averageAttendance)
+                .totalSemesters(totalSemesters)
+                .gpaTrend(gpaTrend)
+                .academicStanding(latest.getAcademicStanding())
+                .creditsCompleted(latest.getCreditsCompleted())
+                .creditsFailed(latest.getCreditsFailed())
+                .build();
+    }
+
+    /**
+     * Get GPA trend data for a client
+     */
+    public List<GpaTrendData> getGpaTrend(Long clientId) {
+        List<AcademicPerformance> performances = academicPerformanceRepository.findByClientIdOrderByRecordDateAsc(clientId);
+        
+        return performances.stream()
+                .map(performance -> GpaTrendData.builder()
+                        .date(performance.getRecordDate())
+                        .gpa(performance.getGpa())
+                        .semester(performance.getSemester())
+                        .academicYear(performance.getAcademicYear())
+                        .build())
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Get students at academic risk
+     */
+    public List<StudentAtRiskDto> getStudentsAtRisk() {
+        List<AcademicPerformance> atRiskPerformances = academicPerformanceRepository.findByAcademicStandingIn(
+                List.of(AcademicPerformance.AcademicStanding.PROBATION,
+                        AcademicPerformance.AcademicStanding.ACADEMIC_WARNING,
+                        AcademicPerformance.AcademicStanding.DISMISSED));
+
+        return atRiskPerformances.stream()
+                .map(performance -> StudentAtRiskDto.builder()
+                        .clientId(performance.getClient().getId())
+                        .clientName(performance.getClient().getFullName())
+                        .studentId(performance.getClient().getStudentId())
+                        .currentGpa(performance.getGpa())
+                        .academicStanding(performance.getAcademicStanding())
+                        .attendanceRate(performance.getAttendanceRate())
+                        .riskLevel(determineRiskLevel(performance))
+                        .lastAssessmentDate(performance.getRecordDate())
+                        .build())
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Update academic performance record
+     */
+    public AcademicPerformanceResponse updateAcademicPerformance(Long id, AcademicPerformanceRequest request) {
+        AcademicPerformance academicPerformance = academicPerformanceRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Academic performance not found with id: " + id));
+
+        if (request.getClientId() != null && !request.getClientId().equals(academicPerformance.getClient().getId())) {
+            Client client = clientRepository.findById(request.getClientId())
+                    .orElseThrow(() -> new RuntimeException("Client not found with id: " + request.getClientId()));
+            academicPerformance.setClient(client);
+        }
+
+        academicPerformance.setAcademicYear(request.getAcademicYear());
+        academicPerformance.setSemester(request.getSemester());
+        academicPerformance.setGpa(request.getGpa());
+        academicPerformance.setTotalCredits(request.getTotalCredits());
+        academicPerformance.setCreditsCompleted(request.getCreditsCompleted());
+        academicPerformance.setCreditsFailed(request.getCreditsFailed());
+        academicPerformance.setAttendanceRate(request.getAttendanceRate());
+        academicPerformance.setAssignmentsCompleted(request.getAssignmentsCompleted());
+        academicPerformance.setAssignmentsTotal(request.getAssignmentsTotal());
+        academicPerformance.setAcademicStanding(request.getAcademicStanding());
+        academicPerformance.setCoursesDropped(request.getCoursesDropped());
+        academicPerformance.setCoursesWithdrawn(request.getCoursesWithdrawn());
+        academicPerformance.setStudyProgram(request.getStudyProgram());
+        academicPerformance.setYearOfStudy(request.getYearOfStudy());
+        academicPerformance.setFaculty(request.getFaculty());
+        academicPerformance.setDepartment(request.getDepartment());
+        academicPerformance.setRecordDate(request.getRecordDate());
+        academicPerformance.setNotes(request.getNotes());
+
+        AcademicPerformance updated = academicPerformanceRepository.save(academicPerformance);
+        return new AcademicPerformanceResponse(updated);
+    }
+
+    /**
+     * Delete academic performance record
+     */
+    public void deleteAcademicPerformance(Long id) {
+        if (!academicPerformanceRepository.existsById(id)) {
+            throw new RuntimeException("Academic performance not found with id: " + id);
+        }
+        academicPerformanceRepository.deleteById(id);
+    }
+
+    /**
+     * Get academic performance statistics
+     */
+    public AcademicStatistics getStatistics() {
+        List<AcademicPerformance> allPerformances = academicPerformanceRepository.findAll();
+        
+        if (allPerformances.isEmpty()) {
+            return new AcademicStatistics();
+        }
+
+        BigDecimal averageGpa = calculateOverallAverageGpa(allPerformances);
+        BigDecimal averageAttendance = calculateOverallAverageAttendance(allPerformances);
+        long totalStudents = allPerformances.stream()
+                .map(performance -> performance.getClient().getId())
+                .distinct()
+                .count();
+        long atRiskCount = allPerformances.stream()
+                .filter(performance -> isAtRisk(performance))
+                .map(performance -> performance.getClient().getId())
+                .distinct()
+                .count();
+
+        return AcademicStatistics.builder()
+                .averageGpa(averageGpa)
+                .averageAttendanceRate(averageAttendance)
+                .totalStudents(totalStudents)
+                .atRiskStudents(atRiskCount)
+                .build();
+    }
+
+    // Helper methods
+    private BigDecimal calculateAverageGpa(List<AcademicPerformance> performances) {
+        return performances.stream()
+                .map(AcademicPerformance::getGpa)
+                .filter(java.util.Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add)
+                .divide(BigDecimal.valueOf(performances.size()), 2, RoundingMode.HALF_UP);
+    }
+
+    private BigDecimal calculateAverageAttendance(List<AcademicPerformance> performances) {
+        return performances.stream()
+                .map(AcademicPerformance::getAttendanceRate)
+                .filter(java.util.Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add)
+                .divide(BigDecimal.valueOf(performances.size()), 2, RoundingMode.HALF_UP);
+    }
+
+    private BigDecimal calculateGpaTrend(List<AcademicPerformance> performances) {
+        if (performances.size() < 2) return BigDecimal.ZERO;
+        
+        AcademicPerformance latest = performances.get(0);
+        AcademicPerformance previous = performances.get(1);
+        
+        if (latest.getGpa() == null || previous.getGpa() == null) return BigDecimal.ZERO;
+        
+        return latest.getGpa().subtract(previous.getGpa());
+    }
+
+    private BigDecimal calculateOverallAverageGpa(List<AcademicPerformance> performances) {
+        return performances.stream()
+                .map(AcademicPerformance::getGpa)
+                .filter(java.util.Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add)
+                .divide(BigDecimal.valueOf(performances.size()), 2, RoundingMode.HALF_UP);
+    }
+
+    private BigDecimal calculateOverallAverageAttendance(List<AcademicPerformance> performances) {
+        return performances.stream()
+                .map(AcademicPerformance::getAttendanceRate)
+                .filter(java.util.Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add)
+                .divide(BigDecimal.valueOf(performances.size()), 2, RoundingMode.HALF_UP);
+    }
+
+    private String determineRiskLevel(AcademicPerformance performance) {
+        if (performance.getGpa() == null) return "UNKNOWN";
+        
+        if (performance.getGpa().compareTo(new BigDecimal("2.0")) < 0) return "HIGH";
+        if (performance.getGpa().compareTo(new BigDecimal("2.5")) < 0) return "MODERATE";
+        return "LOW";
+    }
+
+    private boolean isAtRisk(AcademicPerformance performance) {
+        return performance.getAcademicStanding() != null &&
+                (performance.getAcademicStanding() == AcademicPerformance.AcademicStanding.PROBATION ||
+                 performance.getAcademicStanding() == AcademicPerformance.AcademicStanding.ACADEMIC_WARNING ||
+                 performance.getAcademicStanding() == AcademicPerformance.AcademicStanding.DISMISSED);
+    }
+}

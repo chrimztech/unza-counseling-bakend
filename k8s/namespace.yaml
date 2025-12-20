@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: unza-counseling
+  labels:
+    name: unza-counseling
+    environment: production
+    app: counseling-system
