@@ -713,6 +713,7 @@ public class MentalHealthAcademicDtos {
      * Intervention Report DTO
      */
     public static class InterventionReport {
+        private long totalStudentsAnalyzed;
         private long totalInterventions;
         private long counselingRecommended;
         private long academicSupportRecommended;
@@ -723,6 +724,9 @@ public class MentalHealthAcademicDtos {
         private List<StudentAnalysisSummary> highPriorityStudents;
 
         public InterventionReport() {}
+
+        public long getTotalStudentsAnalyzed() { return totalStudentsAnalyzed; }
+        public void setTotalStudentsAnalyzed(long totalStudentsAnalyzed) { this.totalStudentsAnalyzed = totalStudentsAnalyzed; }
 
         public long getTotalInterventions() { return totalInterventions; }
         public void setTotalInterventions(long totalInterventions) { this.totalInterventions = totalInterventions; }
@@ -751,14 +755,14 @@ public class MentalHealthAcademicDtos {
         public static Builder builder() { return new Builder(); }
         public static class Builder {
             private InterventionReport r = new InterventionReport();
-            public Builder totalStudentsAnalyzed(long l) { /* r.setTotalStudentsAnalyzed(l); */ return this; } // Field missing
-            public Builder studentsNeedingIntervention(long l) { /* r.setStudentsNeedingIntervention(l); */ return this; } // Field missing
-            public Builder immediateInterventions(long l) { /* r.setImmediateInterventions(l); */ return this; } // Field missing
-            public Builder highPriorityInterventions(long l) { /* r.setHighPriorityInterventions(l); */ return this; } // Field missing
-            public Builder moderateInterventions(long l) { /* r.setModerateInterventions(l); */ return this; } // Field missing
+            public Builder totalStudentsAnalyzed(long l) { r.setTotalStudentsAnalyzed(l); return this; }
+            public Builder studentsNeedingIntervention(long l) { r.setTotalInterventions(l); return this; }
+            public Builder counselingRecommended(long l) { r.setCounselingRecommended(l); return this; }
+            public Builder academicSupportRecommended(long l) { r.setAcademicSupportRecommended(l); return this; }
+            public Builder peerSupportRecommended(long l) { r.setPeerSupportRecommended(l); return this; }
+            public Builder lifestyleChangesRecommended(long l) { r.setLifestyleChangesRecommended(l); return this; }
+            public Builder referralRecommended(long l) { r.setReferralRecommended(l); return this; }
             public Builder urgentCases(List<StudentAnalysisSummary> l) { r.setHighPriorityStudents(l); return this; }
-            public Builder commonRiskFactors(List<String> l) { /* r.setCommonRiskFactors(l); */ return this; } // Field missing
-            public Builder topRecommendations(List<String> l) { /* r.setTopRecommendations(l); */ return this; } // Field missing
             public InterventionReport build() { return r; }
         }
     }

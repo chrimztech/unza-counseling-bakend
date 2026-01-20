@@ -55,6 +55,12 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
     // Status-based queries
     List<Appointment> findByStatus(AppointmentStatus status);
     
+    Page<Appointment> findByStatus(AppointmentStatus status, Pageable pageable);
+    
+    Page<Appointment> findByAppointmentDateAfter(LocalDateTime start, Pageable pageable);
+    
+    Page<Appointment> findByAppointmentDateBefore(LocalDateTime end, Pageable pageable);
+    
     @Query("SELECT a FROM Appointment a WHERE a.status = :status " +
            "AND a.appointmentDate BETWEEN :start AND :end")
     List<Appointment> findByStatusAndDateRange(

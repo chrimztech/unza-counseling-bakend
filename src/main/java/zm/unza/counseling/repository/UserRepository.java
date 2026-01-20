@@ -23,6 +23,9 @@ public interface UserRepository extends JpaRepository<User, Long> {
     
     Optional<User> findByEmail(String email);
     
+    @Query("SELECT u FROM User u LEFT JOIN FETCH u.roles WHERE u.email = :email")
+    Optional<User> findByEmailWithRoles(@Param("email") String email);
+    
     Optional<User> findByStudentId(String studentId);
     
     Boolean existsByUsername(String username);
@@ -49,6 +52,24 @@ public interface UserRepository extends JpaRepository<User, Long> {
            "LOWER(u.username) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
            "LOWER(u.studentId) LIKE LOWER(CONCAT('%', :keyword, '%'))")
     Page<User> searchUsers(@Param("keyword") String keyword, Pageable pageable);
+
+    /**
+     * Search users by email, first name, or last name with pagination
+     * @param email the email to search for
+     * @param firstName the first name to search for
+     * @param lastName the last name to search for
+     * @param pageable pagination information
+     * @return paginated list of matching users
+     */
+    @Query("SELECT u FROM User u WHERE " +
+           "LOWER(u.email) LIKE LOWER(CONCAT('%', :email, '%')) OR " +
+           "LOWER(u.firstName) LIKE LOWER(CONCAT('%', :firstName, '%')) OR " +
+           "LOWER(u.lastName) LIKE LOWER(CONCAT('%', :lastName, '%'))")
+    Page<User> findByEmailContainingOrFirstNameContainingOrLastNameContaining(
+            @Param("email") String email,
+            @Param("firstName") String firstName,
+            @Param("lastName") String lastName,
+            Pageable pageable);
 
     // Active/Inactive users
     List<User> findByActive(Boolean active);
@@ -86,4 +107,20 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Query("SELECT u FROM User u JOIN u.roles r WHERE r.name = 'ROLE_COUNSELOR' " +
            "AND u.specialization = :specialization AND u.availableForAppointments = true")
     List<User> findAvailableCounselorsBySpecialization(@Param("specialization") String specialization);
+
+    // Additional methods for enhanced user management
+    @Query("SELECT u FROM User u JOIN u.roles r WHERE r.name = :roleName")
+    List<User> findByRolesName(@Param("roleName") String roleName);
+    
+    @Query("SELECT u FROM User u WHERE u.active = true")
+    Page<User> findByActiveTrue(Pageable pageable);
+    
+    @Query("SELECT u FROM User u WHERE u.active = false")
+    Page<User> findByActiveFalse(Pageable pageable);
+    
+    @Query("SELECT DISTINCT r.name FROM User u JOIN u.roles r")
+    List<String> findAllRoles();
+    
+    @Query("SELECT r.name, COUNT(u) FROM User u JOIN u.roles r GROUP BY r.name")
+    List<Object[]> countUsersByRole();
 }

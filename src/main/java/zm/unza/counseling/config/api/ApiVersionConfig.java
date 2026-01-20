@@ -21,16 +21,5 @@ public class ApiVersionConfig implements WebMvcConfigurer {
                 .addPathPatterns("/api/**");
     }
 
-    @Override
-    public void configurePathMatch(org.springframework.web.servlet.config.annotation.PathMatchConfigurer configurer) {
-        // Configure version-based API routing
-        RequestMappingHandlerMapping mapping = (RequestMappingHandlerMapping) getRequestMappingHandlerMapping();
-        mapping.setOrder(1);
-    }
 
-    private RequestMappingHandlerMapping getRequestMappingHandlerMapping() {
-        // This would be automatically injected by Spring
-        // For now, returning null as Spring will handle this internally
-        return null;
-    }
 }

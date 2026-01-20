@@ -18,6 +18,24 @@ CREATE TYPE notification_priority AS ENUM ('LOW', 'MEDIUM', 'HIGH', 'URGENT');
 DROP TYPE IF EXISTS intervention_urgency CASCADE;
 CREATE TYPE intervention_urgency AS ENUM ('IMMEDIATE', 'WITHIN_WEEK', 'WITHIN_MONTH', 'ROUTINE');
 
+-- Drop existing tables if they exist (for development/reset scenarios)
+DROP TABLE IF EXISTS audit_log CASCADE;
+DROP TABLE IF EXISTS session_notes CASCADE;
+DROP TABLE IF EXISTS admins CASCADE;
+DROP TABLE IF EXISTS resources CASCADE;
+DROP TABLE IF EXISTS notifications CASCADE;
+DROP TABLE IF EXISTS messages CASCADE;
+DROP TABLE IF EXISTS mental_health_academic_analysis CASCADE;
+DROP TABLE IF EXISTS academic_performance CASCADE;
+DROP TABLE IF EXISTS risk_assessments CASCADE;
+DROP TABLE IF EXISTS self_assessments CASCADE;
+DROP TABLE IF EXISTS sessions CASCADE;
+DROP TABLE IF EXISTS appointments CASCADE;
+DROP TABLE IF EXISTS clients CASCADE;
+DROP TABLE IF EXISTS counselors CASCADE;
+DROP TABLE IF EXISTS roles CASCADE;
+DROP TABLE IF EXISTS users CASCADE;
+
 -- Users table
 CREATE TABLE users (
     id BIGSERIAL PRIMARY KEY,
@@ -36,7 +54,44 @@ CREATE TABLE users (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     created_by BIGINT,
-    updated_by BIGINT
+    updated_by BIGINT,
+    -- Additional fields from User entity
+    username VARCHAR(50) UNIQUE,
+    student_id VARCHAR(50) UNIQUE,
+    bio TEXT,
+    profile_picture VARCHAR(500),
+    department VARCHAR(100),
+    program VARCHAR(100),
+    year_of_study INTEGER,
+    reset_password_token VARCHAR(255),
+    reset_password_expiry TIMESTAMP,
+    authentication_source VARCHAR(50) DEFAULT 'INTERNAL',
+    license_number VARCHAR(100),
+    specialization VARCHAR(255),
+    qualifications TEXT,
+    years_of_experience INTEGER,
+    available_for_appointments BOOLEAN DEFAULT true,
+    has_signed_consent BOOLEAN DEFAULT false,
+    -- Client-specific fields
+    client_status VARCHAR(50),
+    consent_to_treatment BOOLEAN DEFAULT false,
+    counseling_history TEXT,
+    emergency_contact_name VARCHAR(200),
+    emergency_contact_phone VARCHAR(20),
+    emergency_contact_relationship VARCHAR(100),
+    faculty VARCHAR(100),
+    gpa DECIMAL(4,2),
+    last_session_date DATE,
+    medical_history TEXT,
+    notes TEXT,
+    programme VARCHAR(100),
+    referral_source VARCHAR(100),
+    registration_date DATE,
+    risk_level VARCHAR(20),
+    risk_score INTEGER,
+    total_sessions INTEGER,
+    available BOOLEAN DEFAULT true,
+    office_location VARCHAR(200)
 );
 
 -- Create indexes for users table
@@ -382,28 +437,15 @@ CREATE TABLE admins (
 CREATE INDEX idx_admins_user_id ON admins(user_id);
 CREATE INDEX idx_admins_level ON admins(admin_level);
 
--- Create triggers for updated_at columns
-CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.updated_at = CURRENT_TIMESTAMP;
-    RETURN NEW;
-END;
-$$ language 'plpgsql';
+-- Create role_permissions table for Role entity @ElementCollection
+CREATE TABLE role_permissions (
+    role_id BIGINT NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
+    permission VARCHAR(100) NOT NULL,
+    PRIMARY KEY (role_id, permission)
+);
 
--- Apply triggers to all tables with updated_at column
-CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_roles_updated_at BEFORE UPDATE ON roles FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_counselors_updated_at BEFORE UPDATE ON counselors FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_clients_updated_at BEFORE UPDATE ON clients FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_appointments_updated_at BEFORE UPDATE ON appointments FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_sessions_updated_at BEFORE UPDATE ON sessions FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_self_assessments_updated_at BEFORE UPDATE ON self_assessments FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_risk_assessments_updated_at BEFORE UPDATE ON risk_assessments FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_academic_performance_updated_at BEFORE UPDATE ON academic_performance FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_mental_health_academic_analysis_updated_at BEFORE UPDATE ON mental_health_academic_analysis FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_messages_updated_at BEFORE UPDATE ON messages FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_notifications_updated_at BEFORE UPDATE ON notifications FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_resources_updated_at BEFORE UPDATE ON resources FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_session_notes_updated_at BEFORE UPDATE ON session_notes FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_admins_updated_at BEFORE UPDATE ON admins FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+-- Create indexes for role_permissions table
+CREATE INDEX idx_role_permissions_role_id ON role_permissions(role_id);
+
+-- NOTE: Triggers for updated_at columns have been temporarily removed due to Flyway dollar quote parsing issues.
+-- These will be added in a separate migration file once the syntax issue is resolved.

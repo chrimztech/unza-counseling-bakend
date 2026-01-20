@@ -9,7 +9,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-import zm.unza.counseling.dto.AcademicPerformanceDtos.*;
+import zm.unza.counseling.dto.AcademicPerformanceSummary;
+import zm.unza.counseling.dto.AcademicStatistics;
+import zm.unza.counseling.dto.GpaTrendData;
+import zm.unza.counseling.dto.StudentAtRiskDto;
+import zm.unza.counseling.dto.request.AcademicPerformanceRequest;
+import zm.unza.counseling.dto.response.AcademicPerformanceResponse;
 import zm.unza.counseling.dto.response.ApiResponse;
 import zm.unza.counseling.service.AcademicPerformanceService;
 

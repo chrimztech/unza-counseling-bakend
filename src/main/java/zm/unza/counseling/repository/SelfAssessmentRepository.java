@@ -5,5 +5,5 @@ import org.springframework.stereotype.Repository;
 import zm.unza.counseling.entity.SelfAssessment;
 
 @Repository
-public interface SelfAssessmentRepository extends JpaRepository<SelfAssessment, String> {
+public interface SelfAssessmentRepository extends JpaRepository<SelfAssessment, Long> {
 }

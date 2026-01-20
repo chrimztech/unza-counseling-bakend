@@ -1,12 +1,17 @@
 package zm.unza.counseling.entity;
 
+import jakarta.persistence.DiscriminatorValue;
 import jakarta.persistence.Entity;
-import jakarta.persistence.Table;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
 
+@Data
+@EqualsAndHashCode(callSuper = true)
 @Entity
-@Table(name = "counselors")
+@DiscriminatorValue("COUNSELOR")
 public class Counselor extends User {
-    public Counselor() {
-        super();
-    }
+    private String specialization;
+    private String bio;
+    private String officeLocation;
+    private boolean available = true;
 }

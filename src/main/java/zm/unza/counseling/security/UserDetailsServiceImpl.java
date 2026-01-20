@@ -13,6 +13,7 @@ import zm.unza.counseling.repository.UserRepository;
 
 import java.util.Collection;
 import java.util.stream.Collectors;
+import java.util.Set;
 
 /**
  * UserDetailsService Implementation - Loads user-specific data for authentication
@@ -26,11 +27,15 @@ public class UserDetailsServiceImpl implements UserDetailsService {
     @Override
     @Transactional(readOnly = true)
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found with username: " + username));
+        // The 'username' parameter for this method is the unique identifier used for login.
+        // In our system, the JWT subject is the user's email, so we receive an email here.
+        User user = userRepository.findByEmail(username)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + username));
 
         return org.springframework.security.core.userdetails.User.builder()
-                .username(user.getUsername())
+                // The username in the returned UserDetails must match the identifier used in the token.
+                // Since our token's subject is the email, we must use the email here.
+                .username(user.getEmail())
                 .password(user.getPassword())
                 .authorities(getAuthorities(user))
                 .accountExpired(false)
@@ -44,8 +49,15 @@ public class UserDetailsServiceImpl implements UserDetailsService {
      * Get user authorities from roles
      */
     private Collection<? extends GrantedAuthority> getAuthorities(User user) {
-        return user.getRoles().stream()
+        Set<SimpleGrantedAuthority> authorities = user.getRoles().stream()
                 .map(role -> new SimpleGrantedAuthority(role.getName().name()))
-                .collect(Collectors.toList());
+                .collect(Collectors.toSet());
+
+        user.getRoles().stream()
+                .flatMap(role -> role.getPermissions().stream())
+                .map(permission -> new SimpleGrantedAuthority(permission.getPermission()))
+                .forEach(authorities::add);
+
+        return authorities;
     }
 }

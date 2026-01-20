@@ -31,15 +31,16 @@ spring:
   
   jpa:
     hibernate:
-      ddl-auto: ${JPA_DDL_AUTO:update}
-    show-sql: ${JPA_SHOW_SQL:false}
+      ddl-auto: update
+    show-sql: true
+    open-in-view: false
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         jdbc:
           time_zone: UTC
-        format_sql: ${HIBERNATE_FORMAT_SQL:true}
-        use_sql_comments: ${HIBERNATE_SQL_COMMENTS:true}
+        format_sql: true
+        use_sql_comments: true
     defer-datasource-initialization: false
   
   sql:
@@ -98,7 +99,7 @@ spring:
 
 # JWT Configuration
 jwt:
-  secret: ${JWT_SECRET:UNZACounselingSystemSecretKey2024VerySecureAndLongEnough}
+  secret: ${JWT_SECRET:U0VDRVJFVEtFWV9UUkFOU0ZPUk1FRC1URVNUX0tleQ==}
   expiration: ${JWT_EXPIRATION:86400000}
   refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000}
 
@@ -119,6 +120,30 @@ app:
   max-session-duration: ${MAX_SESSION_DURATION:90}
   appointment-reminder-hours: ${APPOINTMENT_REMINDER_HOURS:24}
   environment: ${APP_ENVIRONMENT:development}
+  
+  # External Authentication System Configuration
+  sis:
+    api:
+      baseUrls:
+        undergraduate: ${SIS_UNDERGRADUATE_URL:https://sis.unza.zm}
+        postgraduate: ${SIS_POSTGRADUATE_URL:https://pgonline.unza.zm}
+        distance: ${SIS_DISTANCE_URL:https://online.unza.zm}
+        gsb: ${SIS_GSB_URL:https://gsbonline.unza.zm}
+        zou: ${SIS_ZOU_URL:https://zouonline.unza.zm}
+        ecampus: ${SIS_ECAMPUS_URL:https://ecampusonline.unza.zm}
+      loginEndpoint: ${SIS_LOGIN_ENDPOINT:/StudentApp/student_login.json}
+      tokenEndpoint: ${SIS_TOKEN_ENDPOINT:/StudentApp/get_student_token.json}
+      instanceKey: ${SIS_INSTANCE_KEY:undergraduate}
+  hr:
+    api:
+      url: ${HR_API_URL:https://hr.unza.zm}
+      loginEndpoint: ${HR_LOGIN_ENDPOINT:/api/auth-login2}
+      metaDataEndpoint: ${HR_METADATA_ENDPOINT:/api/get-meta-data-on-user}
+
+# External API Configuration
+  external-api:
+    connection-timeout: ${EXTERNAL_API_CONNECTION_TIMEOUT:10000}
+    read-timeout: ${EXTERNAL_API_READ_TIMEOUT:30000}
 
 # Logging Configuration
 logging:
@@ -188,11 +213,11 @@ springdoc:
 
 # Flyway Configuration
 flyway:
-  enabled: ${FLYWAY_ENABLED:true}
+  enabled: false
   locations: ${FLYWAY_LOCATIONS:classpath:db/migration}
   baseline-on-migrate: ${FLYWAY_BASELINE_ON_MIGRATE:true}
-  validate-on-migrate: ${FLYWAY_VALIDATE_ON_MIGRATE:true}
-  clean-disabled: ${FLYWAY_CLEAN_DISABLED:true}
+  validate-on-migrate: false
+  clean-disabled: false
 
 ---
 
@@ -202,6 +227,12 @@ spring:
       on-profile: development
   datasource:
     url: jdbc:postgresql://localhost:5432/unza_counseling_db
+  jpa:
+    show-sql: true
+    hibernate:
+      ddl-auto: create-drop
   flyway:
     clean-disabled: false
     clean-on-validation-error: true
+    baseline-on-migrate: true
+    validate-on-migrate: false

@@ -1,47 +1,61 @@
 package zm.unza.counseling.jobs;
 
 import lombok.RequiredArgsConstructor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.quartz.Job;
 import org.quartz.JobExecutionContext;
+import org.quartz.JobExecutionException;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import zm.unza.counseling.service.RiskAssessmentService;
-import zm.unza.counseling.service.NotificationService;
+import zm.unza.counseling.service.RiskAssessmentAlertService;
 
-import java.time.LocalDateTime;
-import java.util.List;
-
+/**
+ * Scheduled job for risk assessment alerts
+ */
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class RiskAssessmentAlertJob implements Job {
 
-    private static final Logger log = LoggerFactory.getLogger(RiskAssessmentAlertJob.class);
+    private final RiskAssessmentAlertService riskAssessmentAlertService;
 
-    private final RiskAssessmentService riskAssessmentService;
-    private final NotificationService notificationService;
+    /**
+     * Check for high-risk assessments every hour
+     */
+    @Scheduled(cron = "0 0 * * * *")
+    public void checkHighRiskAssessments() {
+        log.info("Starting high-risk assessment check");
+        try {
+            riskAssessmentAlertService.checkHighRiskAssessments();
+            log.info("High-risk assessment check completed");
+        } catch (Exception e) {
+            log.error("Failed to check high-risk assessments", e);
+        }
+    }
+
+    /**
+     * Send daily risk summary at 9:00 AM
+     */
+    @Scheduled(cron = "0 0 9 * * *")
+    public void sendDailyRiskSummary() {
+        log.info("Starting daily risk summary generation");
+        try {
+            riskAssessmentAlertService.sendDailyRiskSummary();
+            log.info("Daily risk summary sent successfully");
+        } catch (Exception e) {
+            log.error("Failed to send daily risk summary", e);
+        }
+    }
 
     @Override
-    public void execute(JobExecutionContext context) {
-        log.info("Starting risk assessment alert job at {}", LocalDateTime.now());
-        
+    public void execute(JobExecutionContext context) throws JobExecutionException {
+        // This method is called by Quartz scheduler
+        log.info("Executing RiskAssessmentAlertJob via Quartz");
         try {
-            // Get high-risk assessments from the last 24 hours
-            LocalDateTime yesterday = LocalDateTime.now().minusDays(1);
-            List<String> highRiskClients = riskAssessmentService.getHighRiskClientsSince(yesterday);
-            
-            for (String clientId : highRiskClients) {
-                notificationService.sendSystemNotification(
-                    clientId,
-                    "High Risk Alert",
-                    "Your recent assessment indicates high risk. Please contact your counselor immediately.",
-                    "HIGH"
-                );
-            }
-            
-            log.info("Risk assessment alert job completed. Notified {} high-risk clients", highRiskClients.size());
+            checkHighRiskAssessments();
         } catch (Exception e) {
-            log.error("Error in risk assessment alert job", e);
+            log.error("Error executing RiskAssessmentAlertJob", e);
+            throw new JobExecutionException(e);
         }
     }
 }

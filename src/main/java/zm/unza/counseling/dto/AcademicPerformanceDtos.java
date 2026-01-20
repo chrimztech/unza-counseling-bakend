@@ -2,6 +2,7 @@ package zm.unza.counseling.dto;
 
 import lombok.Data;
 import lombok.Builder;
+import lombok.EqualsAndHashCode;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
@@ -87,5 +88,6 @@ public class AcademicPerformanceDtos {
     }
 
     @Data
+    @EqualsAndHashCode(callSuper = false)
     public static class AcademicPerformanceResponse extends AcademicPerformanceRequest {}
 }

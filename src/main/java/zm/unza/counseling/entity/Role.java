@@ -1,19 +1,18 @@
 package zm.unza.counseling.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
+import lombok.EqualsAndHashCode;
+import zm.unza.counseling.security.UserPermission;
+
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * Role Entity - Defines user roles and permissions
  */
 @Entity
 @Table(name = "roles")
+@EqualsAndHashCode
 public class Role {
 
     @Id
@@ -26,6 +25,12 @@ public class Role {
 
     @Column(length = 500)
     private String description;
+
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "role_permissions", joinColumns = @JoinColumn(name = "role_id"))
+    @Column(name = "permission")
+    @Enumerated(EnumType.STRING)
+    private Set<UserPermission> permissions = new HashSet<>();
 
     // Default constructor
     public Role() {}
@@ -52,6 +57,9 @@ public class Role {
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
 
+    public Set<UserPermission> getPermissions() { return permissions; }
+    public void setPermissions(Set<UserPermission> permissions) { this.permissions = permissions; }
+
     // Builder pattern
     public static Builder builder() {
         return new Builder();
@@ -75,6 +83,11 @@ public class Role {
             return this;
         }
 
+        public Builder permissions(Set<UserPermission> permissions) {
+            role.setPermissions(permissions);
+            return this;
+        }
+
         public Role build() {
             return role;
         }
@@ -84,6 +97,7 @@ public class Role {
         ROLE_STUDENT,       // Students seeking counseling
         ROLE_COUNSELOR,     // Professional counselors
         ROLE_ADMIN,         // System administrators
-        ROLE_SUPER_ADMIN    // Super administrators with full access
+        ROLE_SUPER_ADMIN,
+        ROLE_CLIENT    // Super administrators with full access
     }
 }

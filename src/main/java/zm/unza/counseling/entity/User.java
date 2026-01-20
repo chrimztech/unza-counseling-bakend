@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import lombok.EqualsAndHashCode;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
@@ -17,10 +18,12 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
+import zm.unza.counseling.security.AuthenticationSource;
 
 /**
  * User Entity - Represents all system users (counselors, admins, students)
  */
+@EqualsAndHashCode
 @Entity
 @Table(name = "users", 
        uniqueConstraints = {
@@ -29,6 +32,9 @@ import java.util.stream.Collectors;
            @UniqueConstraint(columnNames = "studentId")
        })
 @EntityListeners(AuditingEntityListener.class)
+@Inheritance(strategy = InheritanceType.SINGLE_TABLE)
+@DiscriminatorColumn(name = "user_type", discriminatorType = DiscriminatorType.STRING)
+@DiscriminatorValue("USER")
 public class User implements UserDetails {
 
     @Id
@@ -85,17 +91,22 @@ public class User implements UserDetails {
 
     private Integer yearOfStudy;
 
-    @Column(nullable = false)
+    @Column(name = "is_active", nullable = false)
     private Boolean active = true;
 
-    @Column(nullable = false)
+    @Column(name = "email_verified", nullable = false)
     private Boolean emailVerified = false;
 
+    @Column(name = "last_login_at")
     private LocalDateTime lastLogin;
 
     private String resetPasswordToken;
 
     private LocalDateTime resetPasswordExpiry;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "authentication_source", nullable = false)
+    private AuthenticationSource authenticationSource = AuthenticationSource.INTERNAL;
 
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(name = "user_roles",
@@ -120,7 +131,11 @@ public class User implements UserDetails {
     
     private Integer yearsOfExperience;
     
+    @Column(name = "available_for_appointments", nullable = true, columnDefinition = "BOOLEAN DEFAULT true")
     private Boolean availableForAppointments = true;
+
+    @Column(name = "has_signed_consent", nullable = false)
+    private Boolean hasSignedConsent = false;
 
     // Default constructor
     public User() {}
@@ -224,6 +239,9 @@ public class User implements UserDetails {
     public LocalDateTime getResetPasswordExpiry() { return resetPasswordExpiry; }
     public void setResetPasswordExpiry(LocalDateTime resetPasswordExpiry) { this.resetPasswordExpiry = resetPasswordExpiry; }
 
+    public AuthenticationSource getAuthenticationSource() { return authenticationSource; }
+    public void setAuthenticationSource(AuthenticationSource authenticationSource) { this.authenticationSource = authenticationSource; }
+
     public Set<Role> getRoles() { return roles; }
     public void setRoles(Set<Role> roles) { this.roles = roles != null ? roles : new HashSet<>(); }
 
@@ -247,6 +265,9 @@ public class User implements UserDetails {
 
     public Boolean getAvailableForAppointments() { return availableForAppointments; }
     public void setAvailableForAppointments(Boolean availableForAppointments) { this.availableForAppointments = availableForAppointments; }
+
+    public Boolean getHasSignedConsent() { return hasSignedConsent; }
+    public void setHasSignedConsent(Boolean hasSignedConsent) { this.hasSignedConsent = hasSignedConsent; }
 
     // Helper methods
     public String getFullName() {
@@ -273,9 +294,16 @@ public class User implements UserDetails {
     // UserDetails implementation
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return roles.stream()
-                .map(role -> new SimpleGrantedAuthority("ROLE_" + role.getName().name()))
+        Set<SimpleGrantedAuthority> authorities = roles.stream()
+                .map(role -> new SimpleGrantedAuthority(role.getName().name()))
                 .collect(Collectors.toSet());
+
+        roles.stream()
+                .flatMap(role -> role.getPermissions().stream())
+                .map(permission -> new SimpleGrantedAuthority(permission.getPermission()))
+                .forEach(authorities::add);
+
+        return authorities;
     }
 
     @Override

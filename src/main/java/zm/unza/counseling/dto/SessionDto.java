@@ -1,10 +1,13 @@
 package zm.unza.counseling.dto;
 
+import lombok.Builder;
 import lombok.Data;
-import java.time.LocalDateTime;
 import zm.unza.counseling.entity.Session;
 
+import java.time.LocalDateTime;
+
 @Data
+@Builder
 public class SessionDto {
     private Long id;
     private Long appointmentId;
@@ -13,39 +16,28 @@ public class SessionDto {
     private Long counselorId;
     private String counselorName;
     private LocalDateTime sessionDate;
+    private Integer durationMinutes;
+    private Session.SessionType type;
+    private Session.SessionStatus status;
     private String title;
-    private String sessionNotes;
-
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-    public Long getAppointmentId() { return appointmentId; }
-    public void setAppointmentId(Long appointmentId) { this.appointmentId = appointmentId; }
-    public Long getStudentId() { return studentId; }
-    public void setStudentId(Long studentId) { this.studentId = studentId; }
-    public String getStudentName() { return studentName; }
-    public void setStudentName(String studentName) { this.studentName = studentName; }
-    public Long getCounselorId() { return counselorId; }
-    public void setCounselorId(Long counselorId) { this.counselorId = counselorId; }
-    public String getCounselorName() { return counselorName; }
-    public void setCounselorName(String counselorName) { this.counselorName = counselorName; }
-    public LocalDateTime getSessionDate() { return sessionDate; }
-    public void setSessionDate(LocalDateTime sessionDate) { this.sessionDate = sessionDate; }
-    public String getTitle() { return title; }
-    public void setTitle(String title) { this.title = title; }
-    public String getSessionNotes() { return sessionNotes; }
-    public void setSessionNotes(String sessionNotes) { this.sessionNotes = sessionNotes; }
+    private String presentingIssue;
+    private String outcome;
 
     public static SessionDto from(Session session) {
-        SessionDto dto = new SessionDto();
-        dto.setId(session.getId());
-        dto.setAppointmentId(session.getAppointment() != null ? session.getAppointment().getId() : null);
-        dto.setStudentId(session.getStudent().getId());
-        dto.setStudentName(session.getStudent().getFirstName() + " " + session.getStudent().getLastName());
-        dto.setCounselorId(session.getCounselor().getId());
-        dto.setCounselorName(session.getCounselor().getFirstName() + " " + session.getCounselor().getLastName());
-        dto.setSessionDate(session.getSessionDate());
-        dto.setTitle(session.getTitle());
-        dto.setSessionNotes(session.getSessionNotes());
-        return dto;
+        return SessionDto.builder()
+                .id(session.getId())
+                .appointmentId(session.getAppointment() != null ? session.getAppointment().getId() : null)
+                .studentId(session.getStudent().getId())
+                .studentName(session.getStudent().getFullName())
+                .counselorId(session.getCounselor().getId())
+                .counselorName(session.getCounselor().getFullName())
+                .sessionDate(session.getSessionDate())
+                .durationMinutes(session.getDurationMinutes())
+                .type(session.getType())
+                .status(session.getStatus())
+                .title(session.getTitle())
+                .presentingIssue(session.getPresentingIssue())
+                .outcome(session.getOutcome() != null ? session.getOutcome().name() : null)
+                .build();
     }
 }

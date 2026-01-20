@@ -9,30 +9,37 @@ server:
     enabled: true
 
 spring:
+  main:
+    allow-bean-definition-overriding: true
   datasource:
-    url: jdbc:postgresql://localhost:5432/unza_counseling_dev
+    url: jdbc:postgresql://localhost:5432/unza_counseling_db
     username: postgres
     password: 11111111
     driver-class-name: org.postgresql.Driver
     hikari:
-      maximum-pool-size: 5
-      minimum-idle: 2
-      connection-timeout: 20000
+      maximum-pool-size: 50
+      minimum-idle: 10
+      connection-timeout: 60000
+      idle-timeout: 300000
+      max-lifetime: 1800000
   
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: none
     show-sql: true
     properties:
       hibernate:
         format_sql: true
         use_sql_comments: true
         dialect: org.hibernate.dialect.PostgreSQLDialect
+        jdbc:
+          batch_size: 20
+        order_inserts: true
+        order_updates: true
   
   sql:
     init:
-      mode: always
-      schema-locations: classpath:db/migration/*.sql
+      mode: never
       encoding: utf-8
   
   mail:
@@ -111,6 +118,9 @@ app:
     mock-data: true
     debug-endpoints: true
     slow-query-threshold: 1000
+  external-api:
+    connection-timeout: 10000
+    read-timeout: 30000
 
 # Logging Configuration
 logging:

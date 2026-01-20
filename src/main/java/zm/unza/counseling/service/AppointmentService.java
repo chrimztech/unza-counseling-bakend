@@ -17,82 +17,141 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.NoSuchElementException;
 
-@Service
-@RequiredArgsConstructor
-public class AppointmentService {
+/**
+ * Service interface for appointment management
+ */
+public interface AppointmentService {
 
-    private final AppointmentRepository appointmentRepository;
-    private final UserRepository userRepository;
-    // private final NotificationService notificationService; // Assuming a NotificationService exists
+    /**
+     * Get all appointments with pagination
+     * @param pageable pagination information
+     * @return paginated list of appointments
+     */
+    Page<AppointmentDto> getAllAppointments(Pageable pageable);
 
-    public Page<AppointmentDto> getAllAppointments(Pageable pageable) {
-        return appointmentRepository.findAll(pageable).map(AppointmentDto::from);
-    }
+    /**
+     * Get appointment by ID
+     * @param id the appointment ID
+     * @return the appointment DTO
+     */
+    AppointmentDto getAppointmentById(Long id);
 
-    public AppointmentDto getAppointmentById(Long id) {
-        return appointmentRepository.findById(id)
-                .map(AppointmentDto::from)
-                .orElseThrow(() -> new NoSuchElementException("Appointment not found with id: " + id));
-    }
+    /**
+     * Get appointments by client ID
+     * @param clientId the client ID
+     * @param pageable pagination information
+     * @return paginated list of appointments
+     */
+    Page<AppointmentDto> getAppointmentsByClientId(Long clientId, Pageable pageable);
 
-    public Page<AppointmentDto> getAppointmentsByStudentId(Long studentId, Pageable pageable) {
-        User student = userRepository.findById(studentId)
-                .orElseThrow(() -> new NoSuchElementException("Student not found with id: " + studentId));
-        return appointmentRepository.findByStudent(student, pageable).map(AppointmentDto::from);
-    }
+    /**
+     * Get appointments by counselor ID
+     * @param counselorId the counselor ID
+     * @param pageable pagination information
+     * @return paginated list of appointments
+     */
+    Page<AppointmentDto> getAppointmentsByCounselorId(Long counselorId, Pageable pageable);
 
-    public Page<AppointmentDto> getAppointmentsByCounselorId(Long counselorId, Pageable pageable) {
-        User counselor = userRepository.findById(counselorId)
-                .orElseThrow(() -> new NoSuchElementException("Counselor not found with id: " + counselorId));
-        return appointmentRepository.findByCounselor(counselor, pageable).map(AppointmentDto::from);
-    }
+    /**
+     * Get appointments by student ID
+     * @param studentId the student ID
+     * @param pageable pagination information
+     * @return paginated list of appointments
+     */
+    Page<AppointmentDto> getAppointmentsByStudentId(Long studentId, Pageable pageable);
 
-    @Transactional
-    public AppointmentDto createAppointment(CreateAppointmentRequest request) {
-        User student = userRepository.findById(request.getStudentId())
-                .orElseThrow(() -> new NoSuchElementException("Student not found with id: " + request.getStudentId()));
-        User counselor = userRepository.findById(request.getCounselorId())
-                .orElseThrow(() -> new NoSuchElementException("Counselor not found with id: " + request.getCounselorId()));
+    /**
+     * Create appointment
+     * @param request the create appointment request
+     * @return the created appointment
+     */
+    AppointmentDto createAppointment(CreateAppointmentRequest request);
 
-        // Check for conflicting appointments
-        LocalDateTime start = request.getAppointmentDate();
-        LocalDateTime end = start.plusMinutes(60); // Assuming 60-minute duration
-        List<Appointment> conflicts = appointmentRepository.findConflictingAppointments(counselor, start, end);
-        if (!conflicts.isEmpty()) {
-            throw new IllegalStateException("Counselor has a conflicting appointment at the selected time.");
-        }
+    /**
+     * Update appointment status
+     * @param id the appointment ID
+     * @param request the update appointment request
+     * @return the updated appointment
+     */
+    AppointmentDto updateAppointmentStatus(Long id, UpdateAppointmentRequest request);
 
-        Appointment appointment = new Appointment();
-        appointment.setTitle(request.getTitle());
-        appointment.setStudent(student);
-        appointment.setCounselor(counselor);
-        appointment.setAppointmentDate(request.getAppointmentDate());
-        appointment.setType(request.getType());
-        appointment.setStatus(Appointment.AppointmentStatus.SCHEDULED);
+    /**
+     * Get upcoming appointments
+     * @param pageable pagination information
+     * @return paginated list of upcoming appointments
+     */
+    Page<AppointmentDto> getUpcomingAppointments(Pageable pageable);
 
-        Appointment savedAppointment = appointmentRepository.save(appointment);
+    /**
+     * Get past appointments
+     * @param pageable pagination information
+     * @return paginated list of past appointments
+     */
+    Page<AppointmentDto> getPastAppointments(Pageable pageable);
 
-        // notificationService.createNotification(student, "Your appointment has been scheduled.", "/appointments/" + savedAppointment.getId());
-        // notificationService.createNotification(counselor, "You have a new appointment.", "/appointments/" + savedAppointment.getId());
+    /**
+     * Get cancelled appointments
+     * @param pageable pagination information
+     * @return paginated list of cancelled appointments
+     */
+    Page<AppointmentDto> getCancelledAppointments(Pageable pageable);
 
-        return AppointmentDto.from(savedAppointment);
-    }
+    /**
+     * Get confirmed appointments
+     * @param pageable pagination information
+     * @return paginated list of confirmed appointments
+     */
+    Page<AppointmentDto> getConfirmedAppointments(Pageable pageable);
 
-    @Transactional
-    public AppointmentDto updateAppointmentStatus(Long id, UpdateAppointmentRequest request) {
-        Appointment appointment = appointmentRepository.findById(id)
-                .orElseThrow(() -> new NoSuchElementException("Appointment not found with id: " + id));
+    /**
+     * Get pending appointments
+     * @param pageable pagination information
+     * @return paginated list of pending appointments
+     */
+    Page<AppointmentDto> getPendingAppointments(Pageable pageable);
 
-        if (request.getStatus() != null) {
-            appointment.setStatus(request.getStatus());
-        }
-        if (request.getAppointmentDate() != null) {
-            appointment.setAppointmentDate(request.getAppointmentDate());
-        }
-        if (request.getCancellationReason() != null) {
-            appointment.setCancellationReason(request.getCancellationReason());
-        }
+    /**
+     * Cancel appointment
+     * @param id the appointment ID
+     * @return the cancelled appointment
+     */
+    AppointmentDto cancelAppointment(Long id);
 
-        return AppointmentDto.from(appointmentRepository.save(appointment));
-    }
+    /**
+     * Confirm appointment
+     * @param id the appointment ID
+     * @return the confirmed appointment
+     */
+    AppointmentDto confirmAppointment(Long id);
+
+    /**
+     * Reschedule appointment
+     * @param id the appointment ID
+     * @param request the reschedule request
+     * @return the rescheduled appointment
+     */
+    AppointmentDto rescheduleAppointment(Long id, UpdateAppointmentRequest request);
+
+    /**
+     * Check counselor availability
+     * @param counselorId the counselor ID
+     * @param dateTime the date and time to check
+     * @return true if available, false otherwise
+     */
+    boolean checkCounselorAvailability(Long counselorId, String dateTime);
+
+    /**
+     * Get appointment statistics
+     * @return appointment statistics
+     */
+    Object getAppointmentStatistics();
+
+    /**
+     * Export appointments
+     * @param format the export format
+     * @param startDate the start date
+     * @param endDate the end date
+     * @return the exported appointment data
+     */
+    byte[] exportAppointments(String format, String startDate, String endDate);
 }

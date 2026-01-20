@@ -24,6 +24,8 @@
         <!-- Development File Logging -->
         <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
             <file>logs/unza-counseling-dev.log</file>
+            <append>true</append>
+            <immediateFlush>true</immediateFlush>
             <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
                 <providers>
                     <timestamp/>
@@ -64,6 +66,8 @@
         <!-- Production File Logging -->
         <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
             <file>logs/unza-counseling.log</file>
+            <append>true</append>
+            <immediateFlush>true</immediateFlush>
             <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
                 <providers>
                     <timestamp/>
@@ -86,6 +90,8 @@
         <!-- Audit Log - Separate file for compliance -->
         <appender name="AUDIT_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
             <file>logs/audit/unza-counseling-audit.log</file>
+            <append>true</append>
+            <immediateFlush>true</immediateFlush>
             <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
                 <providers>
                     <timestamp/>
@@ -107,6 +113,8 @@
         <!-- Security Events Log -->
         <appender name="SECURITY_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
             <file>logs/security/unza-counseling-security.log</file>
+            <append>true</append>
+            <immediateFlush>true</immediateFlush>
             <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
                 <providers>
                     <timestamp/>
@@ -128,6 +136,8 @@
         <!-- Error Log -->
         <appender name="ERROR_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
             <file>logs/error/unza-counseling-error.log</file>
+            <append>true</append>
+            <immediateFlush>true</immediateFlush>
             <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
                 <providers>
                     <timestamp/>
@@ -217,7 +227,9 @@
     <!-- JMX Configuration for external monitoring -->
     <jmxConfigurator/>
 
-    <!-- Shutdown hook to flush log files -->
-    <shutdownHook class="ch.qos.logback.core.hook.DelayingShutdownHook"/>
+    <!-- Improved shutdown hook configuration with proper buffer flushing -->
+    <shutdownHook class="ch.qos.logback.core.hook.DefaultShutdownHook">
+        <delay>1000</delay>
+    </shutdownHook>
 
 </configuration>

@@ -1,55 +1,61 @@
 package zm.unza.counseling.jobs;
 
 import lombok.RequiredArgsConstructor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.quartz.Job;
 import org.quartz.JobExecutionContext;
-import org.springframework.beans.factory.annotation.Value;
+import org.quartz.JobExecutionException;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import zm.unza.counseling.service.BackupService;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-
+/**
+ * Scheduled job for automatic data backup
+ */
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class BackupJob implements Job {
 
-    private static final Logger log = LoggerFactory.getLogger(BackupJob.class);
+    private final BackupService backupService;
 
-    @Value("${app.backup.directory:/backups}")
-    private String backupDirectory;
+    /**
+     * Perform daily backup at 1:00 AM
+     */
+    @Scheduled(cron = "0 0 1 * * *")
+    public void performDailyBackup() {
+        log.info("Starting daily backup job");
+        try {
+            backupService.performBackup("daily");
+            log.info("Daily backup completed successfully");
+        } catch (Exception e) {
+            log.error("Failed to perform daily backup", e);
+        }
+    }
 
-    private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss");
+    /**
+     * Perform weekly backup on Sundays at 2:00 AM
+     */
+    @Scheduled(cron = "0 0 2 ? * SUN")
+    public void performWeeklyBackup() {
+        log.info("Starting weekly backup job");
+        try {
+            backupService.performBackup("weekly");
+            log.info("Weekly backup completed successfully");
+        } catch (Exception e) {
+            log.error("Failed to perform weekly backup", e);
+        }
+    }
 
     @Override
-    public void execute(JobExecutionContext context) {
-        log.info("Starting backup job at {}", LocalDateTime.now());
-        
+    public void execute(JobExecutionContext context) throws JobExecutionException {
+        // This method is called by Quartz scheduler
+        log.info("Executing BackupJob via Quartz");
         try {
-            String timestamp = LocalDateTime.now().format(formatter);
-            String backupFileName = String.format("unza-counseling-backup-%s.sql", timestamp);
-            Path backupPath = Paths.get(backupDirectory, backupFileName);
-            
-            // Create backup directory if it doesn't exist
-            Files.createDirectories(Paths.get(backupDirectory));
-            
-            // Here you would typically execute a database backup command
-            // For PostgreSQL: pg_dump -U username -h hostname -d database > backup.sql
-            // This is a simplified example - in production you'd use proper database backup tools
-            
-            log.info("Backup completed successfully: {}", backupPath);
-            
-            // Log backup completion
-            log.info("Backup job completed successfully at {}", LocalDateTime.now());
-        } catch (IOException e) {
-            log.error("Error creating backup directory or file", e);
+            performDailyBackup();
         } catch (Exception e) {
-            log.error("Error in backup job", e);
+            log.error("Error executing BackupJob", e);
+            throw new JobExecutionException(e);
         }
     }
 }

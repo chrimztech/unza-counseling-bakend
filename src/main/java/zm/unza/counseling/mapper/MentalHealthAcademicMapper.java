@@ -35,7 +35,7 @@ public class MentalHealthAcademicMapper {
                 .clientName(analysis.getClient().getFirstName() + " " + analysis.getClient().getLastName())
                 .studentNumber(analysis.getClient().getStudentId())
                 .academicPerformanceId(analysis.getAcademicPerformance() != null ? analysis.getAcademicPerformance().getId() : null)
-                .selfAssessmentId(analysis.getSelfAssessment() != null ? analysis.getSelfAssessment().getId() : null)
+                .selfAssessmentId(analysis.getSelfAssessment() != null ? String.valueOf(analysis.getSelfAssessment().getId()) : null)
                 .riskAssessmentId(analysis.getRiskAssessment() != null ? analysis.getRiskAssessment().getId() : null)
                 .analysisDate(analysis.getAnalysisDate())
                 .analysisPeriodStart(analysis.getAnalysisPeriodStart())
