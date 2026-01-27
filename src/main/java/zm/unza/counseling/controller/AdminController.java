@@ -13,7 +13,7 @@ import zm.unza.counseling.service.AdminService;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/admin")
+@RequestMapping("/api/v1/admin")
 @RequiredArgsConstructor
 public class AdminController {
     private final AdminService adminService;

@@ -33,6 +33,7 @@ public class ConsentForm {
     private String version;
 
     @Column(name = "is_active", nullable = false)
+    @Builder.Default
     private Boolean active = true;
 
     @Column(name = "effective_date", nullable = false)

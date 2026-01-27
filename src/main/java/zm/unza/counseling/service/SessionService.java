@@ -84,4 +84,65 @@ public class SessionService {
         Session savedSession = sessionRepository.save(session);
         return SessionDto.from(savedSession);
     }
+
+    public void assignCounselor(Long sessionId, Long counselorId) {
+        Session session = sessionRepository.findById(sessionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Session not found"));
+        User counselor = userRepository.findById(counselorId)
+                .orElseThrow(() -> new ResourceNotFoundException("Counselor not found"));
+        session.setCounselor(counselor);
+        sessionRepository.save(session);
+    }
+    
+    @Transactional
+    public SessionDto updateSession(Long id, SessionDto sessionDto) {
+        Session session = sessionRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Session not found"));
+        
+        if (sessionDto.getAppointmentId() != null) {
+            Appointment appointment = appointmentRepository.findById(sessionDto.getAppointmentId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Appointment not found"));
+            session.setAppointment(appointment);
+        }
+        
+        if (sessionDto.getStudentId() != null) {
+            User student = userRepository.findById(sessionDto.getStudentId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Student not found"));
+            session.setStudent(student);
+        }
+        
+        if (sessionDto.getCounselorId() != null) {
+            User counselor = userRepository.findById(sessionDto.getCounselorId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Counselor not found"));
+            session.setCounselor(counselor);
+        }
+        
+        session.setTitle(sessionDto.getTitle());
+        session.setSessionDate(sessionDto.getSessionDate() != null ? sessionDto.getSessionDate() : session.getSessionDate());
+        session.setDurationMinutes(sessionDto.getDurationMinutes() != null ? sessionDto.getDurationMinutes() : session.getDurationMinutes());
+        session.setType(sessionDto.getType() != null ? sessionDto.getType() : session.getType());
+        session.setStatus(sessionDto.getStatus() != null ? sessionDto.getStatus() : session.getStatus());
+        session.setPresentingIssue(sessionDto.getPresentingIssue() != null ? sessionDto.getPresentingIssue() : session.getPresentingIssue());
+        
+        if (sessionDto.getOutcome() != null) {
+            try {
+                session.setOutcome(Session.Outcome.valueOf(sessionDto.getOutcome()));
+            } catch (IllegalArgumentException e) {
+                // Handle invalid outcome
+            }
+        }
+        
+        Session updatedSession = sessionRepository.save(session);
+        return SessionDto.from(updatedSession);
+    }
+    
+    public void deleteSession(Long id) {
+        Session session = sessionRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Session not found"));
+        sessionRepository.delete(session);
+    }
+    
+    public Page<SessionDto> getSessionsByClient(Long clientId, Pageable pageable) {
+        return sessionRepository.findByStudentId(clientId, pageable).map(SessionDto::from);
+    }
 }

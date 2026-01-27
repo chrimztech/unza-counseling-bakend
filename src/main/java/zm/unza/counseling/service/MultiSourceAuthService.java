@@ -4,6 +4,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -50,38 +52,70 @@ public class MultiSourceAuthService {
     private final ExternalAuthenticationService hrAuthenticationService;
 
     public AuthResponse login(LoginRequest request) {
-        String authenticationSource = request.getAuthenticationSource();
-        
+        String identifier = request.getIdentifier();
+
         System.out.println("==========================================");
         System.out.println("Login Request Debug Info:");
-        System.out.println("Username: " + request.getUsername());
-        System.out.println("Authentication Source: " + authenticationSource);
+        System.out.println("Identifier: " + identifier);
         System.out.println("==========================================");
-        
-        if (authenticationSource == null || authenticationSource.isEmpty()) {
-            throw new ValidationException("Authentication source is required");
+
+        if (identifier == null || identifier.trim().isEmpty()) {
+            throw new ValidationException("Identifier is required");
+        }
+    
+        // Special handling for admin
+        if ("admin@unza.zm".equals(identifier)) {
+            System.out.println("Detected admin login - Taking INTERNAL authentication path");
+            return authenticateInternal(request);
+        }
+    
+        // Check if user exists locally and is explicitly INTERNAL
+        // This allows admins with @unza.zm emails to login internally
+        Optional<User> existingUser = userRepository.findByEmail(identifier);
+
+        System.out.println("Checking for existing user by email: " + identifier + " - Found: " + existingUser.isPresent());
+
+        // Fallback: Check by username if email lookup failed
+        if (existingUser.isEmpty()) {
+            existingUser = userRepository.findByUsername(identifier);
+            System.out.println("Checking for existing user by username: " + identifier + " - Found: " + existingUser.isPresent());
         }
 
-        try {
-            AuthenticationSource source = AuthenticationSource.fromValue(authenticationSource);
-            
-            System.out.println("Authentication Source Enum: " + source);
-            
-            switch (source) {
-                case SIS:
-                    System.out.println("Taking SIS authentication path");
-                    return authenticateStudent(request);
-                case HR:
-                    System.out.println("Taking HR authentication path");
-                    return authenticateStaff(request);
-                case INTERNAL:
-                    System.out.println("Taking INTERNAL authentication path");
-                    return authenticateInternal(request);
-                default:
-                    throw new ValidationException("Unsupported authentication source: " + authenticationSource);
+        if (existingUser.isPresent()) {
+            User user = existingUser.get();
+            System.out.println("User found - Email: " + user.getEmail() + ", Username: " + user.getUsername() + ", AuthSource: " + user.getAuthenticationSource() + ", Active: " + user.getActive());
+            if (user.getAuthenticationSource() == AuthenticationSource.INTERNAL) {
+                System.out.println("Detected existing INTERNAL user - Taking INTERNAL authentication path");
+                return authenticateInternal(request);
+            } else {
+                System.out.println("User exists but not INTERNAL - AuthSource: " + user.getAuthenticationSource());
             }
-        } catch (IllegalArgumentException e) {
-            throw new ValidationException("Invalid authentication source: " + authenticationSource);
+        } else {
+            System.out.println("No existing user found for identifier: " + identifier);
+        }
+
+        // Detect user type from identifier
+        if (isNumeric(identifier)) {
+            System.out.println("Detected numeric identifier - Taking SIS authentication path");
+            return authenticateStudent(request);
+        } else if (identifier.toLowerCase().contains("@unza.zm")) {
+            System.out.println("Detected @unza.zm email - Taking HR authentication path");
+            return authenticateStaff(request);
+        } else {
+            System.out.println("Defaulting to INTERNAL authentication path");
+            return authenticateInternal(request);
+        }
+    }
+
+    private boolean isNumeric(String str) {
+        if (str == null || str.isEmpty()) {
+            return false;
+        }
+        try {
+            Long.parseLong(str.trim());
+            return true;
+        } catch (NumberFormatException e) {
+            return false;
         }
     }
 
@@ -90,7 +124,25 @@ public class MultiSourceAuthService {
             throw new ValidationException("Email already in use");
         }
 
-        User user = new User();
+        User user;
+        Role.ERole roleEnum = null;
+
+        if (request.getRole() != null) {
+            try {
+                roleEnum = Role.ERole.valueOf(request.getRole());
+            } catch (IllegalArgumentException e) {
+                throw new ValidationException("Invalid role specified");
+            }
+        }
+
+        if (roleEnum == Role.ERole.ROLE_ADMIN) {
+            user = new zm.unza.counseling.entity.Admin();
+        } else if (roleEnum == Role.ERole.ROLE_COUNSELOR) {
+            user = new zm.unza.counseling.entity.Counselor();
+        } else {
+            user = new User();
+        }
+
         user.setEmail(request.getEmail());
         user.setUsername(request.getEmail()); // Use email as username for internal users
         user.setPassword(passwordEncoder.encode(request.getPassword()));
@@ -101,15 +153,10 @@ public class MultiSourceAuthService {
         user.setAuthenticationSource(AuthenticationSource.INTERNAL);
 
         Set<Role> roles = new HashSet<>();
-        if (request.getRole() != null) {
-            try {
-                Role.ERole roleEnum = Role.ERole.valueOf(request.getRole());
-                Role userRole = roleRepository.findByName(roleEnum)
-                        .orElseThrow(() -> new ValidationException("Invalid role specified"));
-                roles.add(userRole);
-            } catch (IllegalArgumentException e) {
-                throw new ValidationException("Invalid role specified");
-            }
+        if (roleEnum != null) {
+            Role userRole = roleRepository.findByName(roleEnum)
+                    .orElseThrow(() -> new ValidationException("Invalid role specified"));
+            roles.add(userRole);
         } else {
             // Default to STUDENT role if none is provided
             Role userRole = roleRepository.findByName(Role.ERole.ROLE_STUDENT)
@@ -189,7 +236,7 @@ public class MultiSourceAuthService {
 
     private AuthResponse authenticateStudent(LoginRequest request) {
         try {
-            ExternalAuthResponse externalResponse = sisAuthenticationService.authenticate(request.getUsername(), request.getPassword());
+            ExternalAuthResponse externalResponse = sisAuthenticationService.authenticate(request.getIdentifier(), request.getPassword());
 
             if (externalResponse.isAuthenticated()) {
                 User provisionedUser = provisionUser(externalResponse.getUser());
@@ -206,7 +253,7 @@ public class MultiSourceAuthService {
 
     private AuthResponse authenticateStaff(LoginRequest request) {
         try {
-            ExternalAuthResponse externalResponse = hrAuthenticationService.authenticate(request.getUsername(), request.getPassword());
+            ExternalAuthResponse externalResponse = hrAuthenticationService.authenticate(request.getIdentifier(), request.getPassword());
 
             if (externalResponse.isAuthenticated()) {
                 User provisionedUser = provisionUser(externalResponse.getUser());
@@ -240,16 +287,19 @@ public class MultiSourceAuthService {
     private AuthResponse authenticateAgainstDatabase(LoginRequest request, AuthenticationSource source) {
         try {
             Authentication authentication = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
+                    new UsernamePasswordAuthenticationToken(request.getIdentifier(), request.getPassword())
             );
 
             SecurityContextHolder.getContext().setAuthentication(authentication);
-            User user = userRepository.findByEmailWithRoles(request.getUsername())
+            
+            // Try finding by email first, then fallback to username
+            User user = userRepository.findByEmailWithRoles(request.getIdentifier())
+                    .or(() -> userRepository.findByUsername(request.getIdentifier()))
                     .orElseThrow(() -> new ValidationException("Invalid email or password"));
 
             System.out.println("==========================================");
-            System.out.println("Admin User Debug Info:");
-            System.out.println("Username: " + user.getUsername());
+            System.out.println("Internal User Debug Info:");
+            System.out.println("Identifier: " + request.getIdentifier());
             System.out.println("Email: " + user.getEmail());
             System.out.println("Authentication Source: " + user.getAuthenticationSource());
             System.out.println("Roles: " + user.getRoles());
@@ -262,6 +312,11 @@ public class MultiSourceAuthService {
             }
 
             return createAuthResponse(user);
+        } catch (BadCredentialsException e) {
+            throw e;
+        } catch (AuthenticationException e) {
+            // Catch other auth exceptions (like InternalAuthenticationServiceException) and treat as BadCredentials
+            throw new BadCredentialsException("Authentication failed: " + e.getMessage());
         } catch (Exception e) {
             // Catch specific Spring Security exceptions for better messages
             throw new ValidationException("Internal authentication failed: Invalid credentials.");
@@ -304,9 +359,11 @@ public class MultiSourceAuthService {
         } else {
             // New user, create a record
             Client client = new Client();
-            client.setClientStatus(Client.ClientStatus.ACTIVE);
             client.setRiskLevel(Client.RiskLevel.LOW);
             client.setRegistrationDate(LocalDateTime.now());
+            // Set initial status to indicate consent is needed.
+            // The frontend will check this status in the returned user object to show the consent form.
+            client.setClientStatus(Client.ClientStatus.ACTIVE);
             userToSave = client;
             userToSave.setUsername(externalUser.getUsername());
             userToSave.setFirstName(externalUser.getFirstName());
@@ -402,9 +459,9 @@ public class MultiSourceAuthService {
                     defaultRoleType = Role.ERole.ROLE_COUNSELOR;
                     roleDescription = "Counselor role for HR staff based on position";
                 } else {
-                    // Default to client role for general staff (including developers, IT, etc.)
-                    defaultRoleType = Role.ERole.ROLE_CLIENT;
-                    roleDescription = "General staff role for HR users";
+                    // Default to counselor role for HR staff (since they're logging in as staff/counselors)
+                    defaultRoleType = Role.ERole.ROLE_COUNSELOR;
+                    roleDescription = "Counselor role for HR staff members";
                 }
             } else if (userToSave.getAuthenticationSource() == AuthenticationSource.INTERNAL) {
                 // For internal users, determine role based on their entity type
@@ -456,6 +513,7 @@ public class MultiSourceAuthService {
     private AuthResponse createAuthResponse(User user) {
         // Ensure roles are loaded before creating the token and response
         User userWithRoles = userRepository.findByEmailWithRoles(user.getEmail())
+                .or(() -> userRepository.findByUsername(user.getUsername()))
                 .orElseThrow(() -> new ValidationException("User not found when creating auth response"));
 
         String token = jwtService.generateToken(userWithRoles);

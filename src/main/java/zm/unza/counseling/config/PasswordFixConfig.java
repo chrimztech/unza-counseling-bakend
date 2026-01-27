@@ -32,7 +32,7 @@ public class PasswordFixConfig implements CommandLineRunner {
 
     private void fixAdminUserPassword() {
         String adminEmail = "admin@unza.zm";
-        String adminUsername = "admin";
+        String adminUsername = "admin@unza.zm"; // Use email as username for consistency
         String adminPassword = "Admin@123";
         
         // Find the existing admin user
@@ -59,6 +59,10 @@ public class PasswordFixConfig implements CommandLineRunner {
                 if (adminUser.getUsername() == null || adminUser.getUsername().trim().isEmpty()) {
                     adminUser.setUsername(adminUsername);
                 }
+                // Ensure email is correct
+                if (!adminEmail.equals(adminUser.getEmail())) {
+                    adminUser.setEmail(adminEmail);
+                }
                 adminUser.setUpdatedAt(LocalDateTime.now());
                 
                 userRepository.save(adminUser);
@@ -80,7 +84,7 @@ public class PasswordFixConfig implements CommandLineRunner {
 
     private void createAdminUser() {
         String adminEmail = "admin@unza.zm";
-        String adminUsername = "admin";
+        String adminUsername = "admin@unza.zm"; // Use email as username for consistency
         String adminPassword = "Admin@123";
         
         // Create admin role if it doesn't exist

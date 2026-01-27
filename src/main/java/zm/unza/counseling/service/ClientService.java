@@ -110,4 +110,10 @@ public class ClientService {
                 List.of(Client.RiskLevel.HIGH, Client.RiskLevel.CRITICAL)
         );
     }
+
+    public Client updateClientRiskLevel(Long clientId, Client.RiskLevel riskLevel) {
+        Client client = getClientById(clientId);
+        client.setRiskLevel(riskLevel);
+        return clientRepository.save(client);
+    }
 }

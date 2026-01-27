@@ -34,17 +34,50 @@ public class InitialAdminConfig implements CommandLineRunner {
 
     private void createOrUpdateInitialAdminUser() {
         String adminEmail = "admin@unza.zm";
-        String adminUsername = "admin";
+        String adminUsername = "admin@unza.zm"; // Use email as username for consistency
         String adminPassword = "Admin@123";
 
         Role adminRole = getOrCreateRole(Role.ERole.ROLE_ADMIN, "System Administrator with full access");
         Role superAdminRole = getOrCreateRole(Role.ERole.ROLE_SUPER_ADMIN, "Super Administrator with complete system control");
 
         Optional<User> existingAdminOpt = userRepository.findByEmail(adminEmail);
+        
+        // Fallback: try to find by old username "admin" if email lookup failed
+        if (existingAdminOpt.isEmpty()) {
+            existingAdminOpt = userRepository.findByUsername("admin");
+        }
 
         if (existingAdminOpt.isPresent()) {
             User adminUser = existingAdminOpt.get();
             boolean needsUpdate = false;
+
+            // Ensure username matches email (Critical for login)
+            if (!adminUsername.equals(adminUser.getUsername())) {
+                adminUser.setUsername(adminUsername);
+                needsUpdate = true;
+                System.out.println("Correcting admin username to: " + adminUsername);
+            }
+
+            // Ensure email matches adminEmail (Critical for lookup)
+            if (!adminEmail.equals(adminUser.getEmail())) {
+                adminUser.setEmail(adminEmail);
+                needsUpdate = true;
+                System.out.println("Correcting admin email to: " + adminEmail);
+            }
+
+            // Ensure password is correct (Force reset to Admin@123)
+            if (!passwordEncoder.matches(adminPassword, adminUser.getPassword())) {
+                adminUser.setPassword(passwordEncoder.encode(adminPassword));
+                needsUpdate = true;
+                System.out.println("Resetting admin password to default.");
+            }
+
+            // Ensure admin is active
+            if (!Boolean.TRUE.equals(adminUser.getActive())) {
+                adminUser.setActive(true);
+                needsUpdate = true;
+                System.out.println("Activating admin user.");
+            }
 
             Set<Role.ERole> currentRoles = adminUser.getRoles().stream()
                     .map(Role::getName)

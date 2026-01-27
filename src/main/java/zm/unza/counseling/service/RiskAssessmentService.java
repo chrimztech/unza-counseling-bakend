@@ -94,4 +94,43 @@ public interface RiskAssessmentService {
      * @return the exported risk assessment data
      */
     byte[] exportRiskAssessmentData(String format);
+
+    /**
+     * Get latest risk assessment for client
+     * @param clientId the client ID
+     * @return the latest risk assessment
+     */
+    RiskAssessment getLatestRiskAssessmentForClient(Long clientId);
+
+    /**
+     * Get risk assessment trend for client
+     * @param clientId the client ID
+     * @return the risk assessment trend data
+     */
+    Object getRiskAssessmentTrend(Long clientId);
+
+    /**
+     * Get risk assessment summary
+     * @return the risk assessment summary
+     */
+    Object getRiskAssessmentSummary();
+
+    /**
+     * Get assessments requiring follow-up
+     * @return list of assessments requiring follow-up
+     */
+    List<RiskAssessment> getAssessmentsRequiringFollowUp();
+
+    /**
+     * Get risk assessments by assessor
+     * @param assessorId the assessor ID
+     * @return list of risk assessments by assessor
+     */
+    Object getRiskAssessmentsByAssessor(Long assessorId);
+
+    /**
+     * Get risk assessment analytics
+     * @return the risk assessment analytics
+     */
+    Object getRiskAssessmentAnalytics();
 }

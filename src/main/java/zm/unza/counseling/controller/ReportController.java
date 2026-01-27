@@ -15,7 +15,7 @@ import zm.unza.counseling.service.ReportService;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/reports")
+@RequestMapping("/api/v1/reports")
 @RequiredArgsConstructor
 @Tag(name = "Reports", description = "Report generation and management endpoints")
 public class ReportController {
@@ -97,5 +97,122 @@ public class ReportController {
     @Operation(summary = "Get report history", description = "Get history of generated reports")
     public ResponseEntity<ApiResponse<Page<Report>>> getReportHistory(Pageable pageable) {
         return ResponseEntity.ok(ApiResponse.success(reportService.getReportHistory(pageable)));
+    }
+
+    @GetMapping("/scheduled")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
+    @Operation(summary = "Get scheduled reports", description = "Get all scheduled reports")
+    public ResponseEntity<ApiResponse<List<Report>>> getScheduledReports() {
+        return ResponseEntity.ok(ApiResponse.success(reportService.getScheduledReports()));
+    }
+
+    @PutMapping("/schedule/{scheduleId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Update report schedule", description = "Update an existing report schedule")
+    public ResponseEntity<ApiResponse<String>> updateReportSchedule(
+            @PathVariable Long scheduleId,
+            @RequestParam String schedule,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate) {
+        reportService.updateReportSchedule(scheduleId, schedule, startDate, endDate);
+        return ResponseEntity.ok(ApiResponse.success("Report schedule updated successfully"));
+    }
+
+    @DeleteMapping("/schedule/{scheduleId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Delete report schedule", description = "Delete a report schedule")
+    public ResponseEntity<ApiResponse<String>> deleteReportSchedule(@PathVariable Long scheduleId) {
+        reportService.deleteReportSchedule(scheduleId);
+        return ResponseEntity.ok(ApiResponse.success("Report schedule deleted successfully"));
+    }
+
+    @GetMapping("/statistics")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
+    @Operation(summary = "Get report statistics", description = "Get statistics about reports")
+    public ResponseEntity<ApiResponse<?>> getReportStatistics() {
+        return ResponseEntity.ok(ApiResponse.success(reportService.getReportStatistics()));
+    }
+
+    @GetMapping("/analytics")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
+    @Operation(summary = "Get report analytics", description = "Get analytics about reports")
+    public ResponseEntity<ApiResponse<?>> getReportAnalytics() {
+        return ResponseEntity.ok(ApiResponse.success(reportService.getReportAnalytics()));
+    }
+
+    @PostMapping("/{id}/duplicate")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
+    @Operation(summary = "Duplicate report", description = "Duplicate an existing report")
+    public ResponseEntity<ApiResponse<Report>> duplicateReport(@PathVariable Long id) {
+        Report duplicatedReport = reportService.duplicateReport(id);
+        return ResponseEntity.ok(ApiResponse.success(duplicatedReport, "Report duplicated successfully"));
+    }
+
+    @PostMapping("/{id}/archive")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Archive report", description = "Archive a report")
+    public ResponseEntity<ApiResponse<String>> archiveReport(@PathVariable Long id) {
+        reportService.archiveReport(id);
+        return ResponseEntity.ok(ApiResponse.success("Report archived successfully"));
+    }
+
+    @PostMapping("/{id}/restore")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Restore archived report", description = "Restore an archived report")
+    public ResponseEntity<ApiResponse<String>> restoreReport(@PathVariable Long id) {
+        reportService.restoreReport(id);
+        return ResponseEntity.ok(ApiResponse.success("Report restored successfully"));
+    }
+
+    @GetMapping("/archived")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
+    @Operation(summary = "Get archived reports", description = "Get all archived reports")
+    public ResponseEntity<ApiResponse<List<Report>>> getArchivedReports() {
+        return ResponseEntity.ok(ApiResponse.success(reportService.getArchivedReports()));
+    }
+
+    @GetMapping("/summary")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
+    @Operation(summary = "Get report summary", description = "Get a summary of reports")
+    public ResponseEntity<ApiResponse<?>> getReportSummary() {
+        return ResponseEntity.ok(ApiResponse.success(reportService.getReportSummary()));
+    }
+
+    @GetMapping("/appointment-trends")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
+    @Operation(summary = "Get appointment trends", description = "Get trends in appointments")
+    public ResponseEntity<ApiResponse<?>> getAppointmentTrends() {
+        return ResponseEntity.ok(ApiResponse.success(reportService.getAppointmentTrends()));
+    }
+
+    @GetMapping("/presenting-concerns")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
+    @Operation(summary = "Get presenting concerns", description = "Get presenting concerns from reports")
+    public ResponseEntity<ApiResponse<?>> getPresentingConcerns() {
+        return ResponseEntity.ok(ApiResponse.success(reportService.getPresentingConcerns()));
+    }
+
+    @GetMapping("/recent-sessions")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
+    @Operation(summary = "Get recent sessions", description = "Get recent sessions from reports")
+    public ResponseEntity<ApiResponse<?>> getRecentSessions() {
+        return ResponseEntity.ok(ApiResponse.success(reportService.getRecentSessions()));
+    }
+
+    @GetMapping("/all")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
+    @Operation(summary = "Get all report data", description = "Get all report data")
+    public ResponseEntity<ApiResponse<?>> getAllReportData() {
+        return ResponseEntity.ok(ApiResponse.success(reportService.getAllReportData()));
+    }
+
+    @GetMapping("/export")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Export report (legacy)", description = "Export report data in legacy format")
+    public ResponseEntity<byte[]> exportReportLegacy(@RequestParam(defaultValue = "csv") String format) {
+        byte[] data = reportService.exportReportLegacy(format);
+        return ResponseEntity.ok()
+                .header("Content-Disposition", "attachment; filename=reports." + format)
+                .body(data);
     }
 }

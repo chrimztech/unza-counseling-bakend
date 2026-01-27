@@ -16,7 +16,7 @@ import zm.unza.counseling.service.RiskAssessmentService;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/risk-assessments")
+@RequestMapping("/api/v1/risk-assessments")
 @RequiredArgsConstructor
 @Tag(name = "Risk Assessments", description = "Risk assessment management endpoints")
 public class RiskAssessmentController {
@@ -103,5 +103,49 @@ public class RiskAssessmentController {
         return ResponseEntity.ok()
                 .header("Content-Disposition", "attachment; filename=risk-assessments." + format)
                 .body(data);
+    }
+
+    @GetMapping("/client/{clientId}/latest")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
+    @Operation(summary = "Get latest risk assessment for client", description = "Retrieves the most recent risk assessment for a client")
+    public ResponseEntity<ApiResponse<RiskAssessment>> getLatestRiskAssessmentForClient(@PathVariable Long clientId) {
+        RiskAssessment assessment = riskAssessmentService.getLatestRiskAssessmentForClient(clientId);
+        return ResponseEntity.ok(ApiResponse.success(assessment));
+    }
+
+    @GetMapping("/client/{clientId}/trend")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
+    @Operation(summary = "Get risk assessment trend", description = "Retrieves risk assessment trend data for a client")
+    public ResponseEntity<ApiResponse<?>> getRiskAssessmentTrend(@PathVariable Long clientId) {
+        return ResponseEntity.ok(ApiResponse.success(riskAssessmentService.getRiskAssessmentTrend(clientId)));
+    }
+
+    @GetMapping("/summary")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
+    @Operation(summary = "Get risk assessment summary", description = "Retrieves a summary of risk assessments")
+    public ResponseEntity<ApiResponse<?>> getRiskAssessmentSummary() {
+        return ResponseEntity.ok(ApiResponse.success(riskAssessmentService.getRiskAssessmentSummary()));
+    }
+
+    @GetMapping("/follow-up-required")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
+    @Operation(summary = "Get assessments requiring follow-up", description = "Retrieves risk assessments that require follow-up")
+    public ResponseEntity<ApiResponse<List<RiskAssessment>>> getAssessmentsRequiringFollowUp() {
+        List<RiskAssessment> assessments = riskAssessmentService.getAssessmentsRequiringFollowUp();
+        return ResponseEntity.ok(ApiResponse.success(assessments));
+    }
+
+    @GetMapping("/assessor")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
+    @Operation(summary = "Get risk assessments by assessor", description = "Retrieves risk assessments by assessor")
+    public ResponseEntity<ApiResponse<?>> getRiskAssessmentsByAssessor(@RequestParam Long assessorId) {
+        return ResponseEntity.ok(ApiResponse.success(riskAssessmentService.getRiskAssessmentsByAssessor(assessorId)));
+    }
+
+    @GetMapping("/analytics")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
+    @Operation(summary = "Get risk assessment analytics", description = "Retrieves analytics about risk assessments")
+    public ResponseEntity<ApiResponse<?>> getRiskAssessmentAnalytics() {
+        return ResponseEntity.ok(ApiResponse.success(riskAssessmentService.getRiskAssessmentAnalytics()));
     }
 }

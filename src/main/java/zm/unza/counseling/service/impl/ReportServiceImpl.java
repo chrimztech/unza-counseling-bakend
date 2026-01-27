@@ -132,4 +132,76 @@ public class ReportServiceImpl implements ReportService {
     public void generateScheduledReports(String type) {
         // Implementation for generating scheduled reports
     }
+
+    @Override
+    public List<Report> getScheduledReports() {
+        return null;
+    }
+
+    @Override
+    public Report updateReportSchedule(Long id, String type, String format, String schedule) {
+        return null;
+    }
+
+    @Override
+    public void deleteReportSchedule(Long id) {
+    }
+
+    @Override
+    public Object getReportStatistics() {
+        return null;
+    }
+
+    @Override
+    public Object getReportAnalytics() {
+        return null;
+    }
+
+    @Override
+    public Report duplicateReport(Long id) {
+        return null;
+    }
+
+    @Override
+    public void archiveReport(Long id) {
+    }
+
+    @Override
+    public void restoreReport(Long id) {
+    }
+
+    @Override
+    public List<Report> getArchivedReports() {
+        return null;
+    }
+
+    @Override
+    public Object getReportSummary() {
+        return null;
+    }
+
+    @Override
+    public Object getAppointmentTrends() {
+        return null;
+    }
+
+    @Override
+    public Object getPresentingConcerns() {
+        return null;
+    }
+
+    @Override
+    public Object getRecentSessions() {
+        return null;
+    }
+
+    @Override
+    public Object getAllReportData() {
+        return null;
+    }
+
+    @Override
+    public byte[] exportReportLegacy(String format) {
+        return new byte[0];
+    }
 }

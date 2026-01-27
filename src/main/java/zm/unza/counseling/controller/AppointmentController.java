@@ -14,7 +14,7 @@ import zm.unza.counseling.dto.UpdateAppointmentRequest;
 import zm.unza.counseling.service.AppointmentService;
 
 @RestController
-@RequestMapping("/api/appointments")
+@RequestMapping("/api/v1/appointments")
 @RequiredArgsConstructor
 public class AppointmentController {
 
@@ -126,6 +126,12 @@ public class AppointmentController {
     @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
     public ResponseEntity<ApiResponse<?>> getAppointmentStatistics() {
         return ResponseEntity.ok(ApiResponse.success(appointmentService.getAppointmentStatistics()));
+    }
+
+    @GetMapping("/today")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'STUDENT', 'CLIENT')")
+    public ResponseEntity<ApiResponse<Page<AppointmentDto>>> getTodaysAppointments(Pageable pageable) {
+        return ResponseEntity.ok(ApiResponse.success(appointmentService.getTodaysAppointments(pageable)));
     }
 
     @GetMapping("/export")

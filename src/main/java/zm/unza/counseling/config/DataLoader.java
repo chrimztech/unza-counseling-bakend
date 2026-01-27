@@ -51,15 +51,15 @@ public class DataLoader {
             roleRepository.saveAll(Set.of(superAdminRole, adminRole, counselorRole, studentRole, clientRole));
 
             // Create users
-            User superAdmin = createUser("superadmin", "superadmin@unza.zm", "System", "Administrator", "+260971234567", 
+            User superAdmin = createUser("superadmin@unza.zm", "superadmin@unza.zm", "System", "Administrator", "+260971234567", 
                 User.Gender.MALE, LocalDateTime.of(1980, 1, 1, 0, 0), "IT", "Computer Science", 5, 
                 true, true, Set.of(superAdminRole));
                 
-            User admin = createUser("admin", "admin@unza.zm", "John", "Mwanza", "+260972345678", 
+            User admin = createUser("admin@unza.zm", "admin@unza.zm", "John", "Mwanza", "+260972345678", 
                 User.Gender.MALE, LocalDateTime.of(1985, 3, 15, 0, 0), "Psychology", "Counseling Psychology", 3, 
                 true, true, Set.of(adminRole));
 
-            User counselor1 = createUser("counselor1", "grace.chiluba@unza.zm", "Grace", "Chiluba", "+260973456789", 
+            User counselor1 = createUser("grace.chiluba@unza.zm", "grace.chiluba@unza.zm", "Grace", "Chiluba", "+260973456789", 
                 User.Gender.FEMALE, LocalDateTime.of(1982, 7, 22, 0, 0), "Psychology", "Clinical Psychology", 5, 
                 true, true, Set.of(counselorRole));
             counselor1.setLicenseNumber("LIC2023002");
@@ -69,7 +69,7 @@ public class DataLoader {
             counselor1.setAvailableForAppointments(true);
             counselor1.setHasSignedConsent(true);
 
-            User counselor2 = createUser("counselor2", "michael.simukoko@unza.zm", "Michael", "Simukoko", "+260974567890", 
+            User counselor2 = createUser("michael.simukoko@unza.zm", "michael.simukoko@unza.zm", "Michael", "Simukoko", "+260974567890", 
                 User.Gender.MALE, LocalDateTime.of(1978, 11, 5, 0, 0), "Psychology", "Counseling Psychology", 12, 
                 true, true, Set.of(counselorRole));
             counselor2.setLicenseNumber("LIC2023003");
@@ -79,7 +79,7 @@ public class DataLoader {
             counselor2.setAvailableForAppointments(true);
             counselor2.setHasSignedConsent(true);
 
-            User counselor3 = createUser("counselor3", "sarah.banda@unza.zm", "Sarah", "Banda", "+260975678901", 
+            User counselor3 = createUser("sarah.banda@unza.zm", "sarah.banda@unza.zm", "Sarah", "Banda", "+260975678901", 
                 User.Gender.FEMALE, LocalDateTime.of(1988, 4, 18, 0, 0), "Psychology", "Educational Psychology", 3, 
                 true, true, Set.of(counselorRole));
             counselor3.setLicenseNumber("LIC2023004");
@@ -89,23 +89,23 @@ public class DataLoader {
             counselor3.setAvailableForAppointments(true);
             counselor3.setHasSignedConsent(true);
 
-            User student1 = createUser("student1", "student1@unza.zm", "David", "Phiri", "+260976789012", 
+            User student1 = createUser("student1@unza.zm", "student1@unza.zm", "David", "Phiri", "+260976789012", 
                 User.Gender.MALE, LocalDateTime.of(2000, 9, 12, 0, 0), "Computer Science", "Bachelor of Science", 2, 
                 true, true, Set.of(studentRole));
 
-            User student2 = createUser("student2", "student2@unza.zm", "Emily", "Kabwe", "+260977890123", 
+            User student2 = createUser("student2@unza.zm", "student2@unza.zm", "Emily", "Kabwe", "+260977890123", 
                 User.Gender.FEMALE, LocalDateTime.of(2001, 2, 25, 0, 0), "Psychology", "Bachelor of Arts", 3, 
                 true, true, Set.of(studentRole));
 
-            User student3 = createUser("student3", "student3@unza.zm", "James", "Mwamba", "+260978901234", 
+            User student3 = createUser("student3@unza.zm", "student3@unza.zm", "James", "Mwamba", "+260978901234", 
                 User.Gender.MALE, LocalDateTime.of(1999, 11, 30, 0, 0), "Engineering", "Bachelor of Engineering", 4, 
                 true, true, Set.of(studentRole));
 
-            User student4 = createUser("student4", "student4@unza.zm", "Sophia", "Lungu", "+260979012345", 
+            User student4 = createUser("student4@unza.zm", "student4@unza.zm", "Sophia", "Lungu", "+260979012345", 
                 User.Gender.FEMALE, LocalDateTime.of(2002, 5, 14, 0, 0), "Medicine", "Bachelor of Medicine", 1, 
                 true, true, Set.of(studentRole));
 
-            User student5 = createUser("student5", "student5@unza.zm", "Peter", "Chanda", "+260970123456", 
+            User student5 = createUser("student5@unza.zm", "student5@unza.zm", "Peter", "Chanda", "+260970123456", 
                 User.Gender.MALE, LocalDateTime.of(2000, 8, 19, 0, 0), "Business", "Bachelor of Business Administration", 3, 
                 true, true, Set.of(studentRole));
 

@@ -162,4 +162,10 @@ public class AppointmentServiceImpl implements AppointmentService {
         // Implementation would export appointments
         return new byte[0];
     }
+
+    public Page<AppointmentDto> getTodaysAppointments(Pageable pageable) {
+        LocalDateTime startOfDay = LocalDateTime.now().withHour(0).withMinute(0).withSecond(0).withNano(0);
+        LocalDateTime endOfDay = LocalDateTime.now().withHour(23).withMinute(59).withSecond(59).withNano(999999999);
+        return appointmentRepository.findByAppointmentDateBetween(startOfDay, endOfDay, pageable).map(AppointmentDto::from);
+    }
 }

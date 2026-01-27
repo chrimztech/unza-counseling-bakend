@@ -9,6 +9,7 @@ import zm.unza.counseling.dto.request.SignConsentRequest;
 import zm.unza.counseling.dto.response.ConsentFormResponse;
 import zm.unza.counseling.dto.response.UserConsentResponse;
 import zm.unza.counseling.entity.User;
+import zm.unza.counseling.repository.UserRepository;
 import zm.unza.counseling.service.ConsentFormService;
 
 import java.security.Principal;
@@ -18,12 +19,13 @@ import java.util.List;
  * Controller for consent form management
  */
 @RestController
-@RequestMapping("/api/consent")
+@RequestMapping("/api/v1/consent")
 @RequiredArgsConstructor
 @CrossOrigin(origins = "*")
 public class ConsentFormController {
 
     private final ConsentFormService consentFormService;
+    private final UserRepository userRepository;
 
     /**
      * Create a new consent form
@@ -84,10 +86,11 @@ public class ConsentFormController {
      */
     @PostMapping("/sign")
     public ResponseEntity<UserConsentResponse> signConsentForm(@RequestBody SignConsentRequest request, Principal principal) {
-        // In a real implementation, you would get the user ID from the authenticated principal
-        // For now, we'll use a placeholder
-        Long userId = 1L; // This should be extracted from the authenticated user
-        
+        String email = principal.getName();
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        Long userId = user.getId();
+
         UserConsentResponse response = consentFormService.signConsentForm(userId, request);
         return ResponseEntity.ok(response);
     }
@@ -97,10 +100,11 @@ public class ConsentFormController {
      */
     @GetMapping("/check-signed")
     public ResponseEntity<Boolean> hasUserSignedLatestConsent(Principal principal) {
-        // In a real implementation, you would get the user ID from the authenticated principal
-        // For now, we'll use a placeholder
-        Long userId = 1L; // This should be extracted from the authenticated user
-        
+        String email = principal.getName();
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        Long userId = user.getId();
+
         boolean hasSigned = consentFormService.hasUserSignedLatestConsent(userId);
         return ResponseEntity.ok(hasSigned);
     }
@@ -110,10 +114,11 @@ public class ConsentFormController {
      */
     @GetMapping("/history")
     public ResponseEntity<List<UserConsentResponse>> getUserConsentHistory(Principal principal) {
-        // In a real implementation, you would get the user ID from the authenticated principal
-        // For now, we'll use a placeholder
-        Long userId = 1L; // This should be extracted from the authenticated user
-        
+        String email = principal.getName();
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        Long userId = user.getId();
+
         List<UserConsentResponse> responses = consentFormService.getUserConsentHistory(userId);
         return ResponseEntity.ok(responses);
     }

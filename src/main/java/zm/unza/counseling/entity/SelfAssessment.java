@@ -19,4 +19,8 @@ public class SelfAssessment {
     private String questionsJson;
 
     private LocalDateTime createdAt;
+
+    @ManyToOne
+    @JoinColumn(name = "client_id")
+    private Client client;
 }

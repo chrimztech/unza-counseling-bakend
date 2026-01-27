@@ -19,7 +19,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @RestController
-@RequestMapping({"/api/auth", "/auth"})
+@RequestMapping({"/api/v1/auth", "/auth"})
 @RequiredArgsConstructor
 @CrossOrigin(origins = "*")
 public class AuthController {
@@ -65,10 +65,10 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<Void> logout() {
+    public ResponseEntity<?> logout() {
         // Client-side token removal is sufficient for JWT.
         // Server-side logout (e.g., blacklist token) can be added later.
-        return ResponseEntity.ok().build();
+        return ResponseEntity.ok().body(Map.of("message", "Logout successful"));
     }
 
     @PostMapping("/anonymous-login")

@@ -19,7 +19,7 @@ import zm.unza.counseling.service.ClientService;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/clients")
+@RequestMapping("/api/v1/clients")
 @RequiredArgsConstructor
 @Tag(name = "Clients", description = "Client management endpoints")
 @SecurityRequirement(name = "bearer-jwt")
@@ -93,5 +93,15 @@ public class ClientController {
                         "highRiskClients", highRiskCount
                 )
         ));
+    }
+
+    @PutMapping("/{id}/risk-level")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
+    @Operation(summary = "Update client risk level")
+    public ResponseEntity<Client> updateClientRiskLevel(
+            @PathVariable String id,
+            @RequestParam Client.RiskLevel riskLevel
+    ) {
+        return ResponseEntity.ok(clientService.updateClientRiskLevel(Long.parseLong(id), riskLevel));
     }
 }

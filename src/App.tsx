@@ -46,8 +46,8 @@ function App() {
     try {
       // Demo login with test credentials
       const loginData = {
-        email: 'admin@unza.zm',
-        password: 'admin123'
+        identifier: 'admin@unza.zm',
+        password: 'Admin@123'
       };
       
       const response = await authService.login(loginData);

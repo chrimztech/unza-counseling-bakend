@@ -9,7 +9,7 @@ import zm.unza.counseling.service.CounselorService;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/counselors")
+@RequestMapping("/api/v1/counselors")
 @RequiredArgsConstructor
 public class CounselorController {
     

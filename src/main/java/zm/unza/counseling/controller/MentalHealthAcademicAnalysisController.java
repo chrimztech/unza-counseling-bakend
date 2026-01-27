@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import zm.unza.counseling.dto.MentalHealthAcademicDtos.MentalHealthAcademicAnalysisResponse;
@@ -15,7 +16,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/api/analysis")
+@RequestMapping("/api/v1/analysis")
 @RequiredArgsConstructor
 public class MentalHealthAcademicAnalysisController {
 
@@ -39,4 +40,27 @@ public class MentalHealthAcademicAnalysisController {
                 .collect(Collectors.toList());
         return ResponseEntity.ok(ApiResponse.success(response));
     }
+
+    @GetMapping("/client/{clientId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
+    public ResponseEntity<ApiResponse<List<MentalHealthAcademicAnalysisResponse>>> getAnalysesByClient(@PathVariable Long clientId) {
+        List<MentalHealthAcademicAnalysisResponse> response = service.getAnalysesByClient(clientId).stream()
+                .map(mapper::toResponse)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @GetMapping("/client/{clientId}/latest")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
+    public ResponseEntity<ApiResponse<MentalHealthAcademicAnalysisResponse>> getLatestAnalysisForClient(@PathVariable Long clientId) {
+        MentalHealthAcademicAnalysisResponse response = mapper.toResponse(service.getLatestAnalysisForClient(clientId));
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @GetMapping("/client/{clientId}/trend")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
+    public ResponseEntity<ApiResponse<?>> getAnalysisTrendForClient(@PathVariable Long clientId) {
+        return ResponseEntity.ok(ApiResponse.success(service.getAnalysisTrendForClient(clientId)));
+    }
+
 }

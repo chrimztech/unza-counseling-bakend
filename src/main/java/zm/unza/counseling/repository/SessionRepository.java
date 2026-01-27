@@ -38,4 +38,6 @@ public interface SessionRepository extends JpaRepository<Session, Long> {
             "LOWER(s.title) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
             "LOWER(s.presentingIssue) LIKE LOWER(CONCAT('%', :keyword, '%'))")
     Page<Session> searchSessions(@Param("keyword") String keyword, Pageable pageable);
+
+    Page<Session> findByStudentId(Long studentId, Pageable pageable);
 }

@@ -17,7 +17,7 @@ import java.util.Set;
 /**
  * Fix configuration to create an admin user with proper password encoding
  */
-@Component
+//@Component
 @RequiredArgsConstructor
 public class FixPasswordConfig implements CommandLineRunner {
 

@@ -10,4 +10,10 @@ import java.util.List;
 public interface MessageRepository extends JpaRepository<Message, Long> {
     List<Message> findByRecipientOrderBySentAtDesc(User recipient);
     List<Message> findBySenderOrderBySentAtDesc(User sender);
+    
+    List<Message> findByConversationIdOrderBySentAtDesc(Long conversationId);
+    
+    List<Message> findBySenderIdOrRecipientId(Long senderId, Long recipientId);
+    
+    List<Message> findByContentContaining(String content);
 }

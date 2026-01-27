@@ -15,6 +15,8 @@ public class Resource {
     private String title;
     private String description;
     private String type; // ARTICLE, VIDEO, DOCUMENT
+    private String category;
+    private boolean featured;
     private String url;
     private LocalDateTime createdAt;
 

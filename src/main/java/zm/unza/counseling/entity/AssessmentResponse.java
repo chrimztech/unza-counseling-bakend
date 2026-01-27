@@ -28,6 +28,10 @@ public class AssessmentResponse {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "self_assessment_id", nullable = false)
     private SelfAssessment assessment;
+    
+    public void setAssessment(SelfAssessment assessment) { this.assessment = assessment; }
+    public void setQuestion(String question) { this.question = question; }
+    public void setAnswer(String answer) { this.answer = answer; }
 
     @CreatedDate
     @Column(nullable = false, updatable = false)

@@ -118,7 +118,6 @@ zm/unza/counseling/repository/MessageRepository.class
 zm/unza/counseling/controller/SessionController.class
 zm/unza/counseling/dto/GpaTrendData.class
 zm/unza/counseling/entity/AuditLog.class
-zm/unza/counseling/service/MultiSourceAuthService$1.class
 zm/unza/counseling/entity/Settings$SettingType.class
 zm/unza/counseling/controller/SettingsController.class
 zm/unza/counseling/controller/HealthController.class

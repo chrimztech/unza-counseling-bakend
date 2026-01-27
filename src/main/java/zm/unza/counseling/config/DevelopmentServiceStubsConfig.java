@@ -10,10 +10,16 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import zm.unza.counseling.security.external.ExternalAuthenticationService;
+import zm.unza.counseling.security.external.ExternalAuthResponse;
+import zm.unza.counseling.security.AuthenticationSource;
+import zm.unza.counseling.entity.User;
 import zm.unza.counseling.service.RiskAssessmentService;
 import zm.unza.counseling.service.NotificationService;
 
 import java.lang.reflect.Proxy;
+import java.time.LocalDateTime;
+import java.util.HashSet;
 
 @Configuration
 @Profile("development")

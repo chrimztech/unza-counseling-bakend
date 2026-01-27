@@ -23,7 +23,7 @@ import java.math.BigDecimal;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/academic-performance")
+@RequestMapping("/api/v1/academic-performance")
 @RequiredArgsConstructor
 @Tag(name = "Academic Performance", description = "APIs for managing student academic performance records")
 public class AcademicPerformanceController {
@@ -138,5 +138,12 @@ public class AcademicPerformanceController {
     public ResponseEntity<ApiResponse<AcademicStatistics>> getStatistics() {
         AcademicStatistics response = academicPerformanceService.getStatistics();
         return ResponseEntity.ok(ApiResponse.success(response, "Statistics retrieved successfully"));
+    }
+
+    @GetMapping("/analytics")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
+    @Operation(summary = "Get academic performance analytics", description = "Retrieves analytics about academic performance")
+    public ResponseEntity<ApiResponse<?>> getAcademicPerformanceAnalytics() {
+        return ResponseEntity.ok(ApiResponse.success(academicPerformanceService.getAcademicPerformanceAnalytics()));
     }
 }

@@ -167,6 +167,10 @@ public class AcademicPerformanceService {
                 .collect(Collectors.toList());
     }
 
+    public Object getAcademicPerformanceAnalytics() {
+        return null;
+    }
+
     private void mapRequestToEntity(AcademicPerformanceRequest req, AcademicPerformance entity) {
         entity.setAcademicYear(req.getAcademicYear());
         entity.setSemester(req.getSemester());

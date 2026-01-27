@@ -154,4 +154,11 @@ public interface AppointmentService {
      * @return the exported appointment data
      */
     byte[] exportAppointments(String format, String startDate, String endDate);
+    
+    /**
+     * Get today's appointments
+     * @param pageable pagination information
+     * @return paginated list of today's appointments
+     */
+    Page<AppointmentDto> getTodaysAppointments(Pageable pageable);
 }

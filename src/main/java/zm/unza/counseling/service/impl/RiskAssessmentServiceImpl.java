@@ -90,4 +90,29 @@ public class RiskAssessmentServiceImpl implements RiskAssessmentService {
         // Implementation would export risk assessment data
         return new byte[0];
     }
+
+    public RiskAssessment getLatestRiskAssessmentForClient(Long clientId) {
+        return riskAssessmentRepository.findTopByClientIdOrderByAssessmentDateDesc(clientId)
+                .orElseThrow(() -> new RuntimeException("No risk assessments found for client"));
+    }
+
+    public Object getRiskAssessmentTrend(Long clientId) {
+        return riskAssessmentRepository.findByClientIdOrderByAssessmentDateDesc(clientId);
+    }
+
+    public Object getRiskAssessmentSummary() {
+        return null;
+    }
+
+    public List<RiskAssessment> getAssessmentsRequiringFollowUp() {
+        return riskAssessmentRepository.findByFollowUpRequiredTrue();
+    }
+
+    public Object getRiskAssessmentsByAssessor(Long assessorId) {
+        return riskAssessmentRepository.findByAssessorIdOrderByAssessmentDateDesc(assessorId);
+    }
+
+    public Object getRiskAssessmentAnalytics() {
+        return null;
+    }
 }

@@ -47,6 +47,12 @@ public class Notification {
     public void setRead(Boolean read) { this.isRead = read; }
     public Boolean getIsRead() { return isRead; }
     public void setIsRead(Boolean isRead) { this.isRead = isRead; }
+    
+    public void setRecipientId(String recipientId) { this.recipientId = recipientId; }
+    public void setTitle(String title) { this.title = title; }
+    public void setMessage(String message) { this.message = message; }
+    public void setType(String type) { this.type = type; }
+    public void setPriority(String priority) { this.priority = priority; }
 
     @Column(name = "read_at")
     private LocalDateTime readAt;

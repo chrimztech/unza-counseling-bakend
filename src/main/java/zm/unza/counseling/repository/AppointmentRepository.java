@@ -10,6 +10,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import org.springframework.data.domain.Pageable;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -140,7 +141,9 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
 
     // Search
     @Query("SELECT a FROM Appointment a WHERE " +
-           "LOWER(a.title) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
-           "LOWER(a.description) LIKE LOWER(CONCAT('%', :keyword, '%'))")
+            "LOWER(a.title) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+            "LOWER(a.description) LIKE LOWER(CONCAT('%', :keyword, '%'))")
     Page<Appointment> searchAppointments(@Param("keyword") String keyword, Pageable pageable);
+
+    Page<Appointment> findByAppointmentDateBetween(LocalDateTime start, LocalDateTime end, Pageable pageable);
 }

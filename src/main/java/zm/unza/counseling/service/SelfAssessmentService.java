@@ -47,4 +47,17 @@ public class SelfAssessmentService {
             }
         }
     }
+    
+    public List<SelfAssessment> getSelfAssessmentsByClient(Long clientId) {
+        return selfAssessmentRepository.findByClientId(clientId);
+    }
+    
+    public SelfAssessment getLatestSelfAssessmentForClient(Long clientId) {
+        return selfAssessmentRepository.findTopByClientIdOrderByCreatedAtDesc(clientId)
+                .orElseThrow(() -> new ResourceNotFoundException("No self-assessments found for client"));
+    }
+    
+    public Object getSelfAssessmentTrend(Long clientId) {
+        return selfAssessmentRepository.findByClientIdOrderByCreatedAtDesc(clientId);
+    }
 }

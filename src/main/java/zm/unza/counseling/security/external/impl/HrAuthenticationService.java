@@ -12,6 +12,7 @@ import zm.unza.counseling.entity.User;
 import zm.unza.counseling.security.external.ExternalAuthenticationException;
 import zm.unza.counseling.security.external.ExternalAuthenticationService;
 import zm.unza.counseling.security.external.ExternalAuthResponse;
+import org.springframework.context.annotation.Profile;
 
 import java.time.LocalDateTime;
 import java.util.HashSet;
@@ -22,6 +23,7 @@ import java.util.Map;
  * Handles authentication for staff against the university's HR system
  */
 @Service("hrAuthenticationService")
+@Profile("!development")
 public class HrAuthenticationService implements ExternalAuthenticationService {
 
     @Value("${app.hr.api.url:https://hr.unza.zm}")

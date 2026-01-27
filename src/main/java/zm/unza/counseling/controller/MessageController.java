@@ -14,7 +14,7 @@ import zm.unza.counseling.service.UserService;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/messages")
+@RequestMapping("/api/v1/messages")
 @RequiredArgsConstructor
 public class MessageController {
     
@@ -31,5 +31,56 @@ public class MessageController {
     public ResponseEntity<List<Message>> getMessages(@AuthenticationPrincipal UserDetails userDetails) {
         User user = userService.getUserByEmail(userDetails.getUsername());
         return ResponseEntity.ok(messageService.getReceivedMessages(user.getId()));
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<Message> getMessageById(@PathVariable Long id, @AuthenticationPrincipal UserDetails userDetails) {
+        User user = userService.getUserByEmail(userDetails.getUsername());
+        return ResponseEntity.ok(messageService.getMessageById(id, user.getId()));
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<Message> updateMessage(@PathVariable Long id, @RequestBody MessageRequest request, @AuthenticationPrincipal UserDetails userDetails) {
+        User user = userService.getUserByEmail(userDetails.getUsername());
+        return ResponseEntity.ok(messageService.updateMessage(id, request, user.getId()));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteMessage(@PathVariable Long id, @AuthenticationPrincipal UserDetails userDetails) {
+        User user = userService.getUserByEmail(userDetails.getUsername());
+        messageService.deleteMessage(id, user.getId());
+        return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/conversation/{conversationId}")
+    public ResponseEntity<List<Message>> getMessagesByConversation(@PathVariable Long conversationId, @AuthenticationPrincipal UserDetails userDetails) {
+        User user = userService.getUserByEmail(userDetails.getUsername());
+        return ResponseEntity.ok(messageService.getMessagesByConversation(conversationId, user.getId()));
+    }
+
+    @GetMapping("/user/{userId}")
+    public ResponseEntity<List<Message>> getMessagesByUser(@PathVariable Long userId, @AuthenticationPrincipal UserDetails userDetails) {
+        User user = userService.getUserByEmail(userDetails.getUsername());
+        return ResponseEntity.ok(messageService.getMessagesByUser(userId, user.getId()));
+    }
+
+    @GetMapping("/search")
+    public ResponseEntity<List<Message>> searchMessages(@RequestParam String query, @AuthenticationPrincipal UserDetails userDetails) {
+        User user = userService.getUserByEmail(userDetails.getUsername());
+        return ResponseEntity.ok(messageService.searchMessages(query, user.getId()));
+    }
+
+    @PutMapping("/{messageId}/read")
+    public ResponseEntity<Void> markMessageAsRead(@PathVariable Long messageId, @AuthenticationPrincipal UserDetails userDetails) {
+        User user = userService.getUserByEmail(userDetails.getUsername());
+        messageService.markMessageAsRead(messageId, user.getId());
+        return ResponseEntity.ok().build();
+    }
+
+    @PutMapping("/{messageId}/delivered")
+    public ResponseEntity<Void> markMessageAsDelivered(@PathVariable Long messageId, @AuthenticationPrincipal UserDetails userDetails) {
+        User user = userService.getUserByEmail(userDetails.getUsername());
+        messageService.markMessageAsDelivered(messageId, user.getId());
+        return ResponseEntity.ok().build();
     }
 }

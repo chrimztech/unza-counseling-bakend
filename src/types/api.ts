@@ -4,14 +4,14 @@ export interface User {
   email: string;
   firstName: string;
   lastName: string;
-  role: string;
+  roles: { name: string }[];
   enabled: boolean;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface LoginRequest {
-  email: string;
+  identifier: string;
   password: string;
 }
 

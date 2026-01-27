@@ -17,7 +17,7 @@ import java.util.Set;
 /**
  * Debug configuration to create an admin user and test password encoding
  */
-@Component
+//@Component
 @RequiredArgsConstructor
 public class DebugAdminConfig implements CommandLineRunner {
 

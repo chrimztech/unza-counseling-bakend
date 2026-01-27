@@ -6,6 +6,7 @@ import org.springframework.stereotype.Repository;
 import zm.unza.counseling.entity.MentalHealthAcademicAnalysis;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface MentalHealthAcademicAnalysisRepository extends JpaRepository<MentalHealthAcademicAnalysis, Long> {
@@ -22,4 +23,10 @@ public interface MentalHealthAcademicAnalysisRepository extends JpaRepository<Me
     long countByPeerSupportRecommended(boolean recommended);
     long countByLifestyleChangesRecommended(boolean recommended);
     long countByReferralRecommended(boolean recommended);
+
+    List<MentalHealthAcademicAnalysis> findByClientId(Long clientId);
+
+    Optional<MentalHealthAcademicAnalysis> findTopByClientIdOrderByCreatedAtDesc(Long clientId);
+
+    List<MentalHealthAcademicAnalysis> findByClientIdOrderByCreatedAtDesc(Long clientId);
 }

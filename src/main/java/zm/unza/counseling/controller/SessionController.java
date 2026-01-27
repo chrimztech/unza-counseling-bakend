@@ -11,7 +11,7 @@ import zm.unza.counseling.dto.response.ApiResponse;
 import zm.unza.counseling.service.SessionService;
 
 @RestController
-@RequestMapping("/api/sessions")
+@RequestMapping("/api/v1/sessions")
 @RequiredArgsConstructor
 public class SessionController {
 
@@ -33,5 +33,24 @@ public class SessionController {
     @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
     public ResponseEntity<ApiResponse<SessionDto>> createSession(@RequestBody SessionDto sessionDto) {
         return ResponseEntity.ok(ApiResponse.success(sessionService.createSession(sessionDto), "Session created successfully"));
+    }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
+    public ResponseEntity<ApiResponse<SessionDto>> updateSession(@PathVariable Long id, @RequestBody SessionDto sessionDto) {
+        return ResponseEntity.ok(ApiResponse.success(sessionService.updateSession(id, sessionDto), "Session updated successfully"));
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> deleteSession(@PathVariable Long id) {
+        sessionService.deleteSession(id);
+        return ResponseEntity.ok(ApiResponse.success(null, "Session deleted successfully"));
+    }
+
+    @GetMapping("/client/{clientId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'CLIENT')")
+    public ResponseEntity<ApiResponse<Page<SessionDto>>> getSessionsByClient(@PathVariable Long clientId, Pageable pageable) {
+        return ResponseEntity.ok(ApiResponse.success(sessionService.getSessionsByClient(clientId, pageable)));
     }
 }

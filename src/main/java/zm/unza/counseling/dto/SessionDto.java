@@ -40,4 +40,15 @@ public class SessionDto {
                 .outcome(session.getOutcome() != null ? session.getOutcome().name() : null)
                 .build();
     }
+    
+    public Long getAppointmentId() { return appointmentId; }
+    public Long getStudentId() { return studentId; }
+    public Long getCounselorId() { return counselorId; }
+    public LocalDateTime getSessionDate() { return sessionDate; }
+    public Integer getDurationMinutes() { return durationMinutes; }
+    public Session.SessionType getType() { return type; }
+    public Session.SessionStatus getStatus() { return status; }
+    public String getTitle() { return title; }
+    public String getPresentingIssue() { return presentingIssue; }
+    public String getOutcome() { return outcome; }
 }

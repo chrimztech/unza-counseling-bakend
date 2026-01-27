@@ -39,4 +39,44 @@ public class MessageService {
         User user = userRepository.findById(userId).orElseThrow();
         return messageRepository.findBySenderOrderBySentAtDesc(user);
     }
+
+    public Message getMessageById(Long id, Long userId) {
+        return messageRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Message not found"));
+    }
+
+    public Message updateMessage(Long id, MessageRequest request, Long userId) {
+        Message message = getMessageById(id, userId);
+        message.setContent(request.getContent());
+        return messageRepository.save(message);
+    }
+
+    public void deleteMessage(Long id, Long userId) {
+        Message message = getMessageById(id, userId);
+        messageRepository.delete(message);
+    }
+
+    public List<Message> getMessagesByConversation(Long conversationId, Long userId) {
+        return messageRepository.findByConversationIdOrderBySentAtDesc(conversationId);
+    }
+
+    public List<Message> getMessagesByUser(Long userId, Long currentUserId) {
+        return messageRepository.findBySenderIdOrRecipientId(userId, currentUserId);
+    }
+
+    public List<Message> searchMessages(String query, Long userId) {
+        return messageRepository.findByContentContaining(query);
+    }
+
+    public void markMessageAsRead(Long messageId, Long userId) {
+        Message message = getMessageById(messageId, userId);
+        message.setRead(true);
+        messageRepository.save(message);
+    }
+
+    public void markMessageAsDelivered(Long messageId, Long userId) {
+        Message message = getMessageById(messageId, userId);
+        message.setDelivered(true);
+        messageRepository.save(message);
+    }
 }

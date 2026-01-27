@@ -27,7 +27,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class SisAuthenticationService implements ExternalAuthenticationService {
 
-    @Value("${app.sis.api.baseUrls.undergraduate:https://sis.unza.zm}")
+    @Value("${app.sis.api.baseUrls.undergraduate:https://devoap.unza.zm}")
     private String undergraduateUrl;
     
     @Value("${app.sis.api.baseUrls.postgraduate:https://pgonline.unza.zm}")
@@ -45,7 +45,7 @@ public class SisAuthenticationService implements ExternalAuthenticationService {
     @Value("${app.sis.api.baseUrls.ecampus:https://ecampusonline.unza.zm}")
     private String ecampusUrl;
     
-    @Value("${app.sis.api.loginEndpoint:/StudentApp/student_login.json}")
+    @Value("${app.sis.api.loginEndpoint:/api/v1/customers/login}")
     private String loginEndpoint;
     
     @Value("${app.sis.api.tokenEndpoint:/StudentApp/get_student_token.json}")
@@ -118,6 +118,23 @@ public class SisAuthenticationService implements ExternalAuthenticationService {
         if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
             try {
                 JsonNode jsonResponse = objectMapper.readTree(response.getBody());
+                
+                // Check for new API format (success: true, data: { ... })
+                if (jsonResponse.has("success") && jsonResponse.get("success").asBoolean() && jsonResponse.has("data")) {
+                    JsonNode dataNode = jsonResponse.get("data");
+                    JsonNode userNode = dataNode.get("user");
+                    
+                    if (userNode != null) {
+                        User user = mapSisResponseToUser(userNode, dataNode, instance, baseUrl);
+                        String externalId = userNode.has("username") ? userNode.get("username").asText() : 
+                                          (userNode.has("student_id") ? userNode.get("student_id").asText() : username);
+                        
+                        return new ExternalAuthResponse(true, "Authentication successful", user, 
+                                                      externalId, "SIS_" + instance.toUpperCase());
+                    }
+                }
+
+                // Fallback to old API format
                 JsonNode responseNode = jsonResponse.get("response");
                 
                 if (responseNode != null && 
@@ -129,14 +146,21 @@ public class SisAuthenticationService implements ExternalAuthenticationService {
                     
                     if (userNode != null) {
                         User user = mapSisResponseToUser(userNode, dataNode, instance, baseUrl);
+                        String externalId = userNode.has("computer_no") ? userNode.get("computer_no").asText() : 
+                                          (userNode.has("id") ? userNode.get("id").asText() : username);
+
                         return new ExternalAuthResponse(true, "Authentication successful", user, 
-                                                      userNode.get("computer_no").asText(), "SIS_" + instance.toUpperCase());
+                                                      externalId, "SIS_" + instance.toUpperCase());
                     }
                 }
                 
-                String errorMessage = responseNode != null && responseNode.has("message") 
-                    ? responseNode.get("message").asText() 
-                    : "Authentication failed";
+                String errorMessage = "Authentication failed";
+                if (jsonResponse.has("message")) {
+                    errorMessage = jsonResponse.get("message").asText();
+                } else if (responseNode != null && responseNode.has("message")) {
+                    errorMessage = responseNode.get("message").asText();
+                }
+                
                 return new ExternalAuthResponse(false, errorMessage);
                 
             } catch (Exception e) {
@@ -204,11 +228,29 @@ public class SisAuthenticationService implements ExternalAuthenticationService {
         User user = new User();
         
         // Basic user information
-        user.setUsername(userNode.has("computer_no") ? userNode.get("computer_no").asText() : "");
+        // Handle both new (username, student_id) and old (computer_no) formats
+        String username = "";
+        if (userNode.has("username")) {
+            username = userNode.get("username").asText();
+        } else if (userNode.has("computer_no")) {
+            username = userNode.get("computer_no").asText();
+        }
+        user.setUsername(username);
+
         user.setEmail(userNode.has("email") ? userNode.get("email").asText() : "");
         user.setFirstName(userNode.has("first_name") ? userNode.get("first_name").asText() : "");
         user.setLastName(userNode.has("last_name") ? userNode.get("last_name").asText() : "");
-        user.setStudentId(userNode.has("computer_no") ? userNode.get("computer_no").asText() : userNode.has("id") ? userNode.get("id").asText() : "");
+        
+        String studentId = "";
+        if (userNode.has("student_id")) {
+            studentId = userNode.get("student_id").asText();
+        } else if (userNode.has("computer_no")) {
+            studentId = userNode.get("computer_no").asText();
+        } else if (userNode.has("id")) {
+            studentId = userNode.get("id").asText();
+        }
+        user.setStudentId(studentId);
+        
         user.setPhoneNumber(userNode.has("phone") ? userNode.get("phone").asText() : "");
         
         // Academic information

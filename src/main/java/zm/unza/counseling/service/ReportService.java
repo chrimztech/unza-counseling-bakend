@@ -123,4 +123,20 @@ public interface ReportService {
      * @param type the report type
      */
     void generateScheduledReports(String type);
+
+    List<Report> getScheduledReports();
+    Report updateReportSchedule(Long id, String type, String format, String schedule);
+    void deleteReportSchedule(Long id);
+    Object getReportStatistics();
+    Object getReportAnalytics();
+    Report duplicateReport(Long id);
+    void archiveReport(Long id);
+    void restoreReport(Long id);
+    List<Report> getArchivedReports();
+    Object getReportSummary();
+    Object getAppointmentTrends();
+    Object getPresentingConcerns();
+    Object getRecentSessions();
+    Object getAllReportData();
+    byte[] exportReportLegacy(String format);
 }

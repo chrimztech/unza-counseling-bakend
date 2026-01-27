@@ -25,8 +25,12 @@ public class Message {
     @Column(columnDefinition = "TEXT")
     private String content;
 
+    @Column(name = "conversation_id")
+    private Long conversationId;
+
     private LocalDateTime sentAt;
     private boolean isRead;
+    private boolean isDelivered;
 
     @PrePersist
     protected void onCreate() {
