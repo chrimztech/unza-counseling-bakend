@@ -12,17 +12,62 @@ import zm.unza.counseling.service.UserService;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/v1/notifications")
+@RequestMapping({"/notifications", "/v1/notifications"})
 @RequiredArgsConstructor
 public class NotificationController {
 
     private final NotificationService notificationService;
     private final UserService userService;
 
+    @GetMapping("/user/{userId}")
+    public ResponseEntity<List<Notification>> getUserNotifications(
+            @PathVariable String userId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        Long userIdLong;
+        
+        // Handle special cases where we should use the authenticated user's ID
+        if (userId.equals("admin-user-id") || userId.equals("current-user") || 
+            userId.equals("me") || userId.equals("user-id") || !isNumeric(userId)) {
+            // Use the authenticated user's ID
+            userIdLong = userService.getUserByEmail(userDetails.getUsername()).getId();
+        } else {
+            userIdLong = Long.parseLong(userId);
+        }
+        
+        return ResponseEntity.ok(notificationService.getUserNotifications(userIdLong));
+    }
+
+    private boolean isNumeric(String str) {
+        try {
+            Long.parseLong(str);
+            return true;
+        } catch (NumberFormatException e) {
+            return false;
+        }
+    }
+
+    @GetMapping("/user/{userId}/notifications")
+    public ResponseEntity<List<Notification>> getUserNotificationsByUserId(
+            @PathVariable String userId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        Long userIdLong;
+        
+        // Handle special cases where we should use the authenticated user's ID
+        if (userId.equals("admin-user-id") || userId.equals("current-user") || 
+            userId.equals("me") || userId.equals("user-id") || !isNumeric(userId)) {
+            // Use the authenticated user's ID
+            userIdLong = userService.getUserByEmail(userDetails.getUsername()).getId();
+        } else {
+            userIdLong = Long.parseLong(userId);
+        }
+        
+        return ResponseEntity.ok(notificationService.getUserNotifications(userIdLong));
+    }
+
     @GetMapping
-    public ResponseEntity<List<Notification>> getUserNotifications(@AuthenticationPrincipal UserDetails userDetails) {
-        // Assuming username is email or ID used for notifications
-        String userId = userService.getUserByEmail(userDetails.getUsername()).getId().toString();
+    public ResponseEntity<List<Notification>> getCurrentUserNotifications(@AuthenticationPrincipal UserDetails userDetails) {
+        // Get the current user's ID
+        Long userId = userService.getUserByEmail(userDetails.getUsername()).getId();
         return ResponseEntity.ok(notificationService.getUserNotifications(userId));
     }
 

@@ -28,6 +28,7 @@ zm/unza/counseling/repository/SettingsRepository.class
 zm/unza/counseling/repository/SessionRepository.class
 zm/unza/counseling/dto/response/UserConsentResponse$UserConsentResponseBuilder.class
 zm/unza/counseling/config/centralized/ConfigManagementConfig.class
+zm/unza/counseling/config/DevelopmentServiceStubsConfig$2.class
 zm/unza/counseling/security/external/ExternalAuthenticationService.class
 zm/unza/counseling/dto/MentalHealthAcademicDtos$MentalHealthDistribution.class
 zm/unza/counseling/service/ConsentFormService$ConsentStatistics.class
@@ -232,6 +233,7 @@ zm/unza/counseling/dto/FacultyPerformanceReport$FacultyPerformanceReportBuilder.
 zm/unza/counseling/config/centralized/ConfigManagementConfig$SecurityConfig.class
 zm/unza/counseling/dto/request/SignConsentRequest.class
 zm/unza/counseling/entity/RiskAssessment.class
+zm/unza/counseling/config/DevelopmentServiceStubsConfig$1.class
 zm/unza/counseling/service/RiskAssessmentAlertService.class
 zm/unza/counseling/service/FileStorageService.class
 zm/unza/counseling/config/cache/CacheConfig$CacheNames.class
@@ -302,5 +304,6 @@ zm/unza/counseling/repository/AuditLogRepository.class
 zm/unza/counseling/config/SecurityOpenApiConfig.class
 zm/unza/counseling/config/circuitbreaker/ResilienceCircuitBreakerConfig$ServiceRetryConfigs.class
 zm/unza/counseling/exception/EnhancedGlobalExceptionHandler$ErrorResponse.class
+zm/unza/counseling/dto/request/UpdateAppointmentRequest.class
 zm/unza/counseling/controller/AppointmentController.class
 zm/unza/counseling/service/AcademicPerformanceService.class

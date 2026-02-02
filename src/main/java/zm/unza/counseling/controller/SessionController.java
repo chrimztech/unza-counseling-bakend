@@ -11,7 +11,7 @@ import zm.unza.counseling.dto.response.ApiResponse;
 import zm.unza.counseling.service.SessionService;
 
 @RestController
-@RequestMapping("/api/v1/sessions")
+@RequestMapping("/sessions")
 @RequiredArgsConstructor
 public class SessionController {
 

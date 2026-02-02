@@ -1,5 +1,7 @@
 package zm.unza.counseling.config;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -13,6 +15,8 @@ import java.util.Arrays;
 
 @Configuration
 public class CorsConfig implements WebMvcConfigurer {
+
+    private static final Logger logger = LoggerFactory.getLogger(CorsConfig.class);
 
     @Value("${cors.allowed-origins}")
     private String allowedOrigins;
@@ -31,8 +35,10 @@ public class CorsConfig implements WebMvcConfigurer {
 
     @Override
     public void addCorsMappings(CorsRegistry registry) {
+        logger.info("CORS WebMvc Configuration - allowedOrigins: {}, allowedMethods: {}, allowedHeaders: {}, allowCredentials: {}, maxAge: {}", 
+            allowedOrigins, allowedMethods, allowedHeaders, allowCredentials, maxAge);
         registry.addMapping("/**")
-                .allowedOrigins(allowedOrigins.split(","))
+                .allowedOriginPatterns(allowedOrigins.split(","))
                 .allowedMethods(allowedMethods.split(","))
                 .allowedHeaders(allowedHeaders.split(","))
                 .allowCredentials(allowCredentials)
@@ -41,7 +47,11 @@ public class CorsConfig implements WebMvcConfigurer {
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
+        logger.info("CORS Security Configuration - allowedOrigins: {}, allowedMethods: {}, allowedHeaders: {}, allowCredentials: {}, maxAge: {}", 
+            allowedOrigins, allowedMethods, allowedHeaders, allowCredentials, maxAge);
+        
         CorsConfiguration configuration = new CorsConfiguration();
+        logger.info("Setting allowedOriginPatterns to: {}", Arrays.asList(allowedOrigins.split(",")));
         configuration.setAllowedOriginPatterns(Arrays.asList(allowedOrigins.split(",")));
         configuration.setAllowedMethods(Arrays.asList(allowedMethods.split(",")));
         configuration.setAllowedHeaders(Arrays.asList(allowedHeaders.split(",")));

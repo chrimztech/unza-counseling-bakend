@@ -19,12 +19,15 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 
+import org.springframework.context.annotation.Profile;
+
 /**
  * Student Information System (SIS) Authentication Service
  * Handles authentication for students against the university's actual SIS systems
  */
 @Service("sisAuthenticationService")
 @RequiredArgsConstructor
+@Profile("!development")
 public class SisAuthenticationService implements ExternalAuthenticationService {
 
     @Value("${app.sis.api.baseUrls.undergraduate:https://devoap.unza.zm}")

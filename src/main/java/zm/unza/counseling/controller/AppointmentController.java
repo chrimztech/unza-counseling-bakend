@@ -2,64 +2,42 @@ package zm.unza.counseling.controller;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import zm.unza.counseling.dto.AppointmentDto;
-import zm.unza.counseling.dto.CreateAppointmentRequest;
-import zm.unza.counseling.dto.response.ApiResponse;
 import zm.unza.counseling.dto.UpdateAppointmentRequest;
+import zm.unza.counseling.dto.response.ApiResponse;
+import zm.unza.counseling.entity.Appointment;
 import zm.unza.counseling.service.AppointmentService;
 
 @RestController
-@RequestMapping("/api/v1/appointments")
+@RequestMapping("/api/appointments")
 @RequiredArgsConstructor
+@Slf4j
 public class AppointmentController {
 
     private final AppointmentService appointmentService;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'STUDENT', 'CLIENT')")
-    public ResponseEntity<ApiResponse<Page<AppointmentDto>>> getAllAppointments(Pageable pageable) {
-        return ResponseEntity.ok(ApiResponse.success(appointmentService.getAllAppointments(pageable)));
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<Page<AppointmentDto>> getAllAppointments(Pageable pageable) {
+        log.info("Fetching all appointments");
+        return ResponseEntity.ok(appointmentService.getAllAppointments(pageable));
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'STUDENT', 'CLIENT')")
-    public ResponseEntity<ApiResponse<AppointmentDto>> getAppointmentById(@PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.success(appointmentService.getAppointmentById(id)));
-    }
-
-    @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'STUDENT', 'CLIENT')")
-    public ResponseEntity<ApiResponse<AppointmentDto>> createAppointment(@Valid @RequestBody CreateAppointmentRequest request) {
-        return ResponseEntity.ok(ApiResponse.success(appointmentService.createAppointment(request), "Appointment created successfully."));
-    }
-
-    @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'STUDENT', 'CLIENT')")
-    public ResponseEntity<ApiResponse<AppointmentDto>> updateAppointment(@PathVariable Long id, @Valid @RequestBody UpdateAppointmentRequest request) {
-        return ResponseEntity.ok(ApiResponse.success(appointmentService.updateAppointmentStatus(id, request), "Appointment updated successfully."));
-    }
-
-    @GetMapping("/counselor/{counselorId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
-    public ResponseEntity<ApiResponse<Page<AppointmentDto>>> getAppointmentsByCounselor(@PathVariable Long counselorId, Pageable pageable) {
-        return ResponseEntity.ok(ApiResponse.success(appointmentService.getAppointmentsByCounselorId(counselorId, pageable)));
-    }
-
-    // Missing appointment endpoints
-
-    @GetMapping("/student/{studentId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'STUDENT', 'CLIENT')")
-    public ResponseEntity<ApiResponse<Page<AppointmentDto>>> getAppointmentsByStudent(@PathVariable Long studentId, Pageable pageable) {
-        return ResponseEntity.ok(ApiResponse.success(appointmentService.getAppointmentsByStudentId(studentId, pageable)));
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<AppointmentDto> getAppointmentById(@PathVariable Long id) {
+        log.info("Fetching appointment with id: {}", id);
+        return ResponseEntity.ok(appointmentService.getAppointmentById(id));
     }
 
     @GetMapping("/client/{clientId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'CLIENT')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<Page<AppointmentDto>>> getAppointmentsByClient(@PathVariable Long clientId, Pageable pageable) {
         return ResponseEntity.ok(ApiResponse.success(appointmentService.getAppointmentsByClientId(clientId, pageable)));
     }

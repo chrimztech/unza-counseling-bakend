@@ -16,7 +16,7 @@ import zm.unza.counseling.service.RiskAssessmentService;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/v1/risk-assessments")
+@RequestMapping("/risk-assessments")
 @RequiredArgsConstructor
 @Tag(name = "Risk Assessments", description = "Risk assessment management endpoints")
 public class RiskAssessmentController {

@@ -19,7 +19,7 @@ import zm.unza.counseling.service.ClientService;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/v1/clients")
+@RequestMapping({"/v1/clients", "/clients"})
 @RequiredArgsConstructor
 @Tag(name = "Clients", description = "Client management endpoints")
 @SecurityRequirement(name = "bearer-jwt")

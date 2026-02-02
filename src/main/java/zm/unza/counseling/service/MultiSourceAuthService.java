@@ -1,6 +1,5 @@
 package zm.unza.counseling.service;
 
-import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -36,7 +35,6 @@ import java.util.Set;
  * Enhanced with timeout handling and fallback mechanisms
  */
 @Service
-@RequiredArgsConstructor
 public class MultiSourceAuthService {
 
     private final UserRepository userRepository;
@@ -44,12 +42,25 @@ public class MultiSourceAuthService {
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
     private final PasswordEncoder passwordEncoder;
-
-    @Qualifier("sisAuthenticationService")
     private final ExternalAuthenticationService sisAuthenticationService;
-
-    @Qualifier("hrAuthenticationService")
     private final ExternalAuthenticationService hrAuthenticationService;
+
+    public MultiSourceAuthService(
+            UserRepository userRepository,
+            RoleRepository roleRepository,
+            JwtService jwtService,
+            AuthenticationManager authenticationManager,
+            PasswordEncoder passwordEncoder,
+            @Qualifier("sisAuthenticationService") ExternalAuthenticationService sisAuthenticationService,
+            @Qualifier("hrAuthenticationService") ExternalAuthenticationService hrAuthenticationService) {
+        this.userRepository = userRepository;
+        this.roleRepository = roleRepository;
+        this.jwtService = jwtService;
+        this.authenticationManager = authenticationManager;
+        this.passwordEncoder = passwordEncoder;
+        this.sisAuthenticationService = sisAuthenticationService;
+        this.hrAuthenticationService = hrAuthenticationService;
+    }
 
     public AuthResponse login(LoginRequest request) {
         String identifier = request.getIdentifier();
@@ -95,14 +106,16 @@ public class MultiSourceAuthService {
         }
 
         // Detect user type from identifier
+        System.out.println("DEBUG: About to detect user type for identifier: " + identifier);
         if (isNumeric(identifier)) {
-            System.out.println("Detected numeric identifier - Taking SIS authentication path");
+            System.out.println("DEBUG: Detected numeric identifier - Taking SIS authentication path");
             return authenticateStudent(request);
-        } else if (identifier.toLowerCase().contains("@unza.zm")) {
-            System.out.println("Detected @unza.zm email - Taking HR authentication path");
+        } else if (identifier.toLowerCase().contains("@unza.zm") || 
+                   identifier.equalsIgnoreCase("chrishentmatakala@yahoo.com")) {
+            System.out.println("DEBUG: Detected staff email - Taking HR authentication path");
             return authenticateStaff(request);
         } else {
-            System.out.println("Defaulting to INTERNAL authentication path");
+            System.out.println("DEBUG: Defaulting to INTERNAL authentication path");
             return authenticateInternal(request);
         }
     }

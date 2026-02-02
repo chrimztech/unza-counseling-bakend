@@ -34,6 +34,13 @@ public class UserService {
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + email));
     }
 
+    public User getUserByUsernameOrEmail(String identifier) {
+        // Try to find by email first, then by username
+        return userRepository.findByEmail(identifier)
+                .orElseGet(() -> userRepository.findByUsername(identifier)
+                        .orElseThrow(() -> new ResourceNotFoundException("User not found with identifier: " + identifier)));
+    }
+
     public List<User> getAllUsers() {
         return userRepository.findAll();
     }

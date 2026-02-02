@@ -10,7 +10,7 @@ import zm.unza.counseling.dto.response.DashboardStatsResponse;
 import zm.unza.counseling.service.DashboardService;
 
 @RestController
-@RequestMapping("/api/v1/dashboard")
+@RequestMapping("/dashboard")
 @RequiredArgsConstructor
 public class DashboardController {
     

@@ -21,7 +21,6 @@ import java.util.Map;
 @RestController
 @RequestMapping({"/api/v1/auth", "/auth"})
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 public class AuthController {
 
     private final MultiSourceAuthService multiSourceAuthService;

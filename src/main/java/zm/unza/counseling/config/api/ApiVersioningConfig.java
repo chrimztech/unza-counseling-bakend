@@ -1,10 +1,8 @@
 package zm.unza.counseling.config.api;
 
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
-import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 
 import java.util.regex.Pattern;
 
@@ -34,20 +32,7 @@ public class ApiVersioningConfig implements WebMvcConfigurer {
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(new ApiVersionInterceptor())
-                .addPathPatterns("/api/**")
-                .excludePathPatterns("/api/v1/**"); // v1 is the default version
-    }
-
-    /**
-     * Request mapping handler mapping for API versioning.
-     * Ensures proper handling of versioned endpoints.
-     */
-    @Bean
-    public RequestMappingHandlerMapping versionedRequestMappingHandlerMapping() {
-        RequestMappingHandlerMapping handlerMapping = new RequestMappingHandlerMapping();
-        handlerMapping.setOrder(0);
-        handlerMapping.setRemoveSemicolonContent(false);
-        return handlerMapping;
+                .addPathPatterns("/api/**");
     }
 
     /**

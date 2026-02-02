@@ -16,7 +16,7 @@ public class NotificationService {
     /**
      * Send system notification
      */
-    public CompletableFuture<Notification> sendSystemNotification(String userId, String title, 
+    public CompletableFuture<Notification> sendSystemNotification(Long userId, String title, 
                                                                 String message, String priority) {
         Notification notification = new Notification();
         notification.setRecipientId(userId);
@@ -29,7 +29,7 @@ public class NotificationService {
         return CompletableFuture.completedFuture(notificationRepository.save(notification));
     }
 
-    public List<Notification> getUserNotifications(String userId) {
+    public List<Notification> getUserNotifications(Long userId) {
         return notificationRepository.findByRecipientIdOrderByCreatedAtDesc(userId);
     }
 

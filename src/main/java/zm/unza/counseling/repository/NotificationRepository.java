@@ -12,15 +12,15 @@ import java.util.List;
 @Repository
 public interface NotificationRepository extends JpaRepository<Notification, Long> {
 
-    List<Notification> findByRecipientIdOrderByCreatedAtDesc(String recipientId);
+    List<Notification> findByRecipientIdOrderByCreatedAtDesc(Long recipientId);
 
-    List<Notification> findByRecipientIdAndIsReadOrderByCreatedAtDesc(String recipientId, Boolean isRead);
+    List<Notification> findByRecipientIdAndIsReadOrderByCreatedAtDesc(Long recipientId, Boolean isRead);
 
-    long countByRecipientIdAndIsRead(String recipientId, Boolean isRead);
+    long countByRecipientIdAndIsRead(Long recipientId, Boolean isRead);
 
     @Query("SELECT n FROM Notification n WHERE n.recipientId = ?1 ORDER BY n.createdAt DESC")
-    List<Notification> findByRecipientIdOrderByCreatedAtDescNative(String recipientId);
+    List<Notification> findByRecipientIdOrderByCreatedAtDescNative(Long recipientId);
 
     @Query("SELECT n FROM Notification n WHERE n.recipientId = ?1 AND n.isRead = ?2 ORDER BY n.createdAt DESC")
-    List<Notification> findByRecipientIdAndIsReadOrderByCreatedAtDescNative(String recipientId, Boolean isRead);
+    List<Notification> findByRecipientIdAndIsReadOrderByCreatedAtDescNative(Long recipientId, Boolean isRead);
 }

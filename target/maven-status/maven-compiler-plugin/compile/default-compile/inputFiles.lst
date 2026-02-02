@@ -54,6 +54,7 @@
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/config/DevelopmentServiceStubsConfig.java
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/dto/request/AssessmentSubmissionRequest.java
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/dto/MentalHealthAcademicDtos.java
+/home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/dto/request/UpdateAppointmentRequest.java
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/dto/response/AppointmentResponse.java
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/config/scheduler/QuartzConfig.java
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/controller/AuthController.java

@@ -25,18 +25,18 @@ public class NotificationServiceImpl {
     /**
      * Create and send a notification
      */
-    public CompletableFuture<Notification> createNotification(String recipientId, String title, 
+    public CompletableFuture<Notification> createNotification(Long recipientId, String title, 
                                                              String message, String type, 
                                                              String priority, String actionUrl) {
         Notification notification = new Notification();
-        // notification.setRecipientId(recipientId);
-        // notification.setTitle(title);
-        // notification.setMessage(message);
-        // notification.setType(type);
-        // notification.setPriority(priority);
-        // notification.setActionUrl(actionUrl);
-        // notification.setRead(false);
-        // notification.setCreatedAt(LocalDateTime.now());
+        notification.setRecipientId(recipientId);
+        notification.setTitle(title);
+        notification.setMessage(message);
+        notification.setType(type);
+        notification.setPriority(priority);
+        notification.setActionUrl(actionUrl);
+        notification.setIsRead(false);
+        notification.setCreatedAt(LocalDateTime.now());
         
         notification = notificationRepository.save(notification);
         
@@ -50,7 +50,7 @@ public class NotificationServiceImpl {
     /**
      * Send appointment notification
      */
-    public CompletableFuture<Void> sendAppointmentNotification(String userId, String appointmentId, 
+    public CompletableFuture<Void> sendAppointmentNotification(Long userId, String appointmentId, 
                                                              String type, String counselorName, 
                                                              String appointmentDate, String userEmail) {
         String title = "Appointment " + type;
@@ -69,10 +69,10 @@ public class NotificationServiceImpl {
                                                                    "TBD"); // Replace with actual time
                 } else if ("REMINDER".equals(type)) {
                     return emailService.sendAppointmentReminder(userEmail, 
-                                                               "User", // Replace with actual name
-                                                               counselorName, 
-                                                               appointmentDate, 
-                                                               "TBD"); // Replace with actual time
+                                                                "User", // Replace with actual name
+                                                                counselorName, 
+                                                                appointmentDate, 
+                                                                "TBD"); // Replace with actual time
                 }
                 return CompletableFuture.completedFuture(null);
             });
@@ -81,8 +81,8 @@ public class NotificationServiceImpl {
     /**
      * Send risk assessment notification
      */
-    public CompletableFuture<Void> sendRiskAssessmentNotification(String counselorId, String clientName, 
-                                                                String riskLevel, String assessmentDate) {
+    public CompletableFuture<Void> sendRiskAssessmentNotification(Long counselorId, String clientName, 
+                                                                 String riskLevel, String assessmentDate) {
         String title = "Risk Assessment Alert";
         String message = String.format("Client %s has been assessed with %s risk level on %s", 
                                      clientName, riskLevel, assessmentDate);
@@ -101,7 +101,7 @@ public class NotificationServiceImpl {
     /**
      * Send system notification
      */
-    public CompletableFuture<Notification> sendSystemNotification(String userId, String title, 
+    public CompletableFuture<Notification> sendSystemNotification(Long userId, String title, 
                                                                 String message, String priority) {
         return createNotification(userId, title, message, "SYSTEM", priority, "/dashboard");
     }
@@ -123,7 +123,7 @@ public class NotificationServiceImpl {
     /**
      * Get unread notifications for a user
      */
-    public CompletableFuture<List<Notification>> getUnreadNotifications(String userId) {
+    public CompletableFuture<List<Notification>> getUnreadNotifications(Long userId) {
         return CompletableFuture.supplyAsync(() -> 
             notificationRepository.findByRecipientIdAndIsReadOrderByCreatedAtDesc(userId, false)
         );
@@ -132,7 +132,7 @@ public class NotificationServiceImpl {
     /**
      * Get all notifications for a user
      */
-    public CompletableFuture<List<Notification>> getAllNotifications(String userId) {
+    public CompletableFuture<List<Notification>> getAllNotifications(Long userId) {
         return CompletableFuture.supplyAsync(() -> 
             notificationRepository.findByRecipientIdOrderByCreatedAtDesc(userId)
         );
@@ -141,7 +141,7 @@ public class NotificationServiceImpl {
     /**
      * Send real-time notification via WebSocket
      */
-    private void sendRealtimeNotification(String userId, Notification notification) {
+    private void sendRealtimeNotification(Long userId, Notification notification) {
         try {
             messagingTemplate.convertAndSend("/topic/notifications/" + userId, notification);
         } catch (Exception e) {
@@ -168,19 +168,19 @@ public class NotificationServiceImpl {
     /**
      * Bulk create notifications
      */
-    public CompletableFuture<List<Notification>> createBulkNotifications(List<String> userIds, 
-                                                                       String title, String message, 
-                                                                       String type, String priority) {
+    public CompletableFuture<List<Notification>> createBulkNotifications(List<Long> userIds, 
+                                                                        String title, String message, 
+                                                                        String type, String priority) {
         return CompletableFuture.supplyAsync(() -> {
             List<Notification> notifications = userIds.stream().map(userId -> {
                 Notification notification = new Notification();
-                // notification.setRecipientId(userId);
-                // notification.setTitle(title);
-                // notification.setMessage(message);
-                // notification.setType(type);
-                // notification.setPriority(priority);
-                // notification.setRead(false);
-                // notification.setCreatedAt(LocalDateTime.now());
+                notification.setRecipientId(userId);
+                notification.setTitle(title);
+                notification.setMessage(message);
+                notification.setType(type);
+                notification.setPriority(priority);
+                notification.setIsRead(false);
+                notification.setCreatedAt(LocalDateTime.now());
                 return notification;
             }).toList();
 

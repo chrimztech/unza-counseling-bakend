@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // API Configuration
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080/api';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080/api/v1';
 
 // Create axios instance
 const api = axios.create({
@@ -117,5 +117,11 @@ export const endpoints = {
     recentAppointments: '/dashboard/recent-appointments',
     upcomingAppointments: '/dashboard/upcoming-appointments',
     atRiskStudents: '/dashboard/at-risk-students',
+  },
+
+  // Notifications
+  notifications: {
+    list: '/notifications',
+    markAsRead: (id: string) => `/notifications/${id}/read`,
   },
 };

@@ -15,7 +15,7 @@ import zm.unza.counseling.service.ReportService;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/v1/reports")
+@RequestMapping({"/v1/reports", "/reports"})
 @RequiredArgsConstructor
 @Tag(name = "Reports", description = "Report generation and management endpoints")
 public class ReportController {
