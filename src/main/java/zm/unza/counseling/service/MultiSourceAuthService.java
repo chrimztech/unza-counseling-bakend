@@ -428,6 +428,30 @@ public class MultiSourceAuthService {
             userToSave.setRoles(userRoles);
         }
 
+        // Ensure SIS users have CLIENT role (they are also clients seeking counseling)
+        if (externalUser.getAuthenticationSource() == AuthenticationSource.SIS) {
+            Role clientRole = roleRepository.findByName(Role.ERole.ROLE_CLIENT)
+                    .orElseGet(() -> {
+                        Role newRole = new Role();
+                        newRole.setName(Role.ERole.ROLE_CLIENT);
+                        newRole.setDescription("Client role for SIS students");
+                        return roleRepository.save(newRole);
+                    });
+            userToSave.getRoles().add(clientRole);
+        }
+
+        // Ensure HR users have CLIENT role (staff can also seek counseling)
+        if (externalUser.getAuthenticationSource() == AuthenticationSource.HR) {
+            Role clientRole = roleRepository.findByName(Role.ERole.ROLE_CLIENT)
+                    .orElseGet(() -> {
+                        Role newRole = new Role();
+                        newRole.setName(Role.ERole.ROLE_CLIENT);
+                        newRole.setDescription("Client role for HR staff");
+                        return roleRepository.save(newRole);
+                    });
+            userToSave.getRoles().add(clientRole);
+        }
+
         // Ensure HR users don't have STUDENT role (cleanup for existing users)
         if (externalUser.getAuthenticationSource() == AuthenticationSource.HR && userToSave.getRoles() != null) {
             userToSave.getRoles().removeIf(r -> r.getName() == Role.ERole.ROLE_STUDENT);
@@ -472,10 +496,15 @@ public class MultiSourceAuthService {
                     defaultRoleType = Role.ERole.ROLE_COUNSELOR;
                     roleDescription = "Counselor role for HR staff based on position";
                 } else {
-                    // Default to counselor role for HR staff (since they're logging in as staff/counselors)
-                    defaultRoleType = Role.ERole.ROLE_COUNSELOR;
-                    roleDescription = "Counselor role for HR staff members";
+                    // HR staff are also clients (they can receive counseling)
+                    // Add both COUNSELOR (if needed for admin duties) and CLIENT roles
+                    defaultRoleType = Role.ERole.ROLE_CLIENT;
+                    roleDescription = "Client role for HR staff members";
                 }
+            } else if (userToSave.getAuthenticationSource() == AuthenticationSource.SIS) {
+                // SIS users (students) are also clients - they can receive counseling
+                defaultRoleType = Role.ERole.ROLE_CLIENT;
+                roleDescription = "Client role for SIS students";
             } else if (userToSave.getAuthenticationSource() == AuthenticationSource.INTERNAL) {
                 // For internal users, determine role based on their entity type
                 if (userToSave instanceof zm.unza.counseling.entity.Admin) {

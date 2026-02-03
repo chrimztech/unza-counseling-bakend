@@ -21,6 +21,7 @@
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/entity/RiskAssessment.java
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/service/ClientService.java
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/controller/SettingsController.java
+/home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/dto/request/CreateAdminRequest.java
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/repository/MentalHealthAcademicMapper.java
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/service/impl/ConsentFormServiceImpl.java
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/service/MessageService.java
@@ -160,6 +161,7 @@
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/service/EmailService.java
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/service/DashboardService.java
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/service/SessionService.java
+/home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/dto/request/AssignAppointmentRequest.java
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/security/JwtAuthenticationEntryPoint.java
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/exception/ResourceNotFoundException.java
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/entity/Message.java
@@ -172,6 +174,7 @@
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/service/NotificationService.java
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/service/AppointmentReminderService.java
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/repository/ConsentFormRepository.java
+/home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/dto/request/CreateCounselorRequest.java
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/controller/HealthController.java
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/dto/AcademicPerformanceSummary.java
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/entity/SessionNote.java

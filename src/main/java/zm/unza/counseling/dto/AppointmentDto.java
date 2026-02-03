@@ -56,8 +56,16 @@ public class AppointmentDto {
         dto.setTitle(appointment.getTitle());
         dto.setStudentId(appointment.getStudent().getId());
         dto.setStudentName(appointment.getStudent().getFirstName() + " " + appointment.getStudent().getLastName());
-        dto.setCounselorId(appointment.getCounselor().getId());
-        dto.setCounselorName(appointment.getCounselor().getFirstName() + " " + appointment.getCounselor().getLastName());
+        
+        // Handle null counselor (unassigned appointments)
+        if (appointment.getCounselor() != null) {
+            dto.setCounselorId(appointment.getCounselor().getId());
+            dto.setCounselorName(appointment.getCounselor().getFirstName() + " " + appointment.getCounselor().getLastName());
+        } else {
+            dto.setCounselorId(null);
+            dto.setCounselorName("Unassigned");
+        }
+        
         dto.setAppointmentDate(appointment.getAppointmentDate());
         dto.setDuration(appointment.getDuration());
         dto.setType(appointment.getType());

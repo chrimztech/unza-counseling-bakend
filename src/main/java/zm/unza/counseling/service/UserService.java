@@ -68,9 +68,13 @@ public class UserService {
         return userRepository.save(existingUser);
     }
 
+    @Transactional
     public void deleteUser(Long id) {
+        // Use soft delete instead of hard delete to preserve data integrity
+        // This is important for counseling records and audit trails
         User user = getUserById(id);
-        userRepository.delete(user);
+        user.setActive(false);
+        userRepository.save(user);
     }
 
     public List<User> getUsersByRole(String role) {

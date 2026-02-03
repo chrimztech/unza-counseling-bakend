@@ -69,6 +69,7 @@ zm/unza/counseling/entity/JsonMapConverter.class
 zm/unza/counseling/service/CounselorService.class
 zm/unza/counseling/dto/MentalHealthAcademicDtos$InterventionReport.class
 zm/unza/counseling/dto/AcademicPerformanceDtos$AcademicStatistics$Builder.class
+zm/unza/counseling/dto/request/CreateCounselorRequest.class
 zm/unza/counseling/dto/MentalHealthAcademicDtos$AnalysisDashboardStats$Builder.class
 zm/unza/counseling/service/ConsentFormService.class
 zm/unza/counseling/dto/FacultyPerformanceReport.class
@@ -307,3 +308,4 @@ zm/unza/counseling/exception/EnhancedGlobalExceptionHandler$ErrorResponse.class
 zm/unza/counseling/dto/request/UpdateAppointmentRequest.class
 zm/unza/counseling/controller/AppointmentController.class
 zm/unza/counseling/service/AcademicPerformanceService.class
+zm/unza/counseling/dto/request/CreateAdminRequest.class

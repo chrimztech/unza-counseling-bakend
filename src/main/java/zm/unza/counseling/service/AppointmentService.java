@@ -8,6 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 import zm.unza.counseling.dto.AppointmentDto;
 import zm.unza.counseling.dto.CreateAppointmentRequest;
 import zm.unza.counseling.dto.UpdateAppointmentRequest;
+import zm.unza.counseling.dto.request.AssignAppointmentRequest;
 import zm.unza.counseling.entity.Appointment;
 import zm.unza.counseling.entity.User;
 import zm.unza.counseling.repository.AppointmentRepository;
@@ -161,4 +162,32 @@ public interface AppointmentService {
      * @return paginated list of today's appointments
      */
     Page<AppointmentDto> getTodaysAppointments(Pageable pageable);
+
+    /**
+     * Get unassigned appointments (appointments without a counselor)
+     * @param pageable pagination information
+     * @return paginated list of unassigned appointments
+     */
+    Page<AppointmentDto> getUnassignedAppointments(Pageable pageable);
+
+    /**
+     * Admin assigns a session to a counselor
+     * @param request the assignment request containing appointment and counselor IDs
+     * @return the updated appointment
+     */
+    AppointmentDto assignSessionToCounselor(AssignAppointmentRequest request);
+
+    /**
+     * Counselor takes up an unassigned appointment
+     * @param appointmentId the appointment ID
+     * @param counselorId the counselor ID taking the appointment
+     * @return the updated appointment
+     */
+    AppointmentDto counselorTakeAppointment(Long appointmentId, Long counselorId);
+
+    /**
+     * Count unassigned appointments
+     * @return count of unassigned appointments
+     */
+    Long countUnassignedAppointments();
 }

@@ -45,10 +45,14 @@ public class SecurityConfig {
                 // Forwarded/error requests (e.g., error pages)
                 .dispatcherTypeMatchers(DispatcherType.FORWARD, DispatcherType.ERROR).permitAll()
 
-                // Public endpoints - Authentication & Documentation
-                .requestMatchers(new AntPathRequestMatcher("/auth/**")).permitAll()
-                .requestMatchers(new AntPathRequestMatcher("/api/auth/**")).permitAll()
+                // Public endpoints - Authentication & Documentation (servlet paths without context path)
+                .requestMatchers(new AntPathRequestMatcher("/v1/auth/**")).permitAll()
                 .requestMatchers(new AntPathRequestMatcher("/api/v1/auth/**")).permitAll()
+                .requestMatchers(new AntPathRequestMatcher("/auth/**")).permitAll()
+                .requestMatchers(new AntPathRequestMatcher("/api/appointments/stats")).permitAll()
+                .requestMatchers(new AntPathRequestMatcher("/appointments/stats")).permitAll()
+                .requestMatchers(new AntPathRequestMatcher("/api/appointments/availability")).permitAll()
+                .requestMatchers(new AntPathRequestMatcher("/appointments/availability")).permitAll()
                 .requestMatchers(new AntPathRequestMatcher("/v3/api-docs/**")).permitAll()
                 .requestMatchers(new AntPathRequestMatcher("/swagger-ui/**")).permitAll()
                 .requestMatchers(new AntPathRequestMatcher("/swagger-ui.html")).permitAll()

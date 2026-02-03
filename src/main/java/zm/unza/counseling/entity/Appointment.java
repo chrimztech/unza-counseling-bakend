@@ -22,7 +22,7 @@ private Long id;
 @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 private User student;
 @ManyToOne(fetch = FetchType.LAZY)
-@JoinColumn(name = "counselor_id", nullable = false)
+@JoinColumn(name = "counselor_id")
 @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 private User counselor;
 @Column(nullable = false)
@@ -92,6 +92,7 @@ IN_PROGRESS,
 COMPLETED,
 CANCELLED,
 NO_SHOW,
-RESCHEDULED
+RESCHEDULED,
+UNASSIGNED
 }
 }

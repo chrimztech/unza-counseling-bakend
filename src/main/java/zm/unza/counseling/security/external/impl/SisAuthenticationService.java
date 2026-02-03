@@ -27,7 +27,7 @@ import org.springframework.context.annotation.Profile;
  */
 @Service("sisAuthenticationService")
 @RequiredArgsConstructor
-@Profile("!development")
+// Removed @Profile restriction - now works in all environments including development
 public class SisAuthenticationService implements ExternalAuthenticationService {
 
     @Value("${app.sis.api.baseUrls.undergraduate:https://devoap.unza.zm}")

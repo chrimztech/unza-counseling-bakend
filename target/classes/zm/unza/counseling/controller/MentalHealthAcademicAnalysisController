@@ -1,0 +1,142 @@
+package zm.unza.counseling.controller;
+
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.web.bind.annotation.*;
+import zm.unza.counseling.dto.MentalHealthAcademicDtos.*;
+import zm.unza.counseling.dto.response.ApiResponse;
+import zm.unza.counseling.service.MentalHealthAcademicAnalysisService;
+
+import jakarta.validation.Valid;
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/mental-health-analysis")
+@RequiredArgsConstructor
+@Tag(name = "Mental Health Academic Analysis", description = "APIs for analyzing the relationship between mental health and academic performance")
+public class MentalHealthAcademicAnalysisController {
+
+    private final MentalHealthAcademicAnalysisService analysisService;
+
+    @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
+    @Operation(summary = "Create analysis", description = "Creates a new mental health academic analysis")
+    public ResponseEntity<ApiResponse<MentalHealthAcademicAnalysisResponse>> createAnalysis(
+            @Valid @RequestBody MentalHealthAcademicAnalysisRequest request,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        // Get counselor ID from authentication context
+        Long counselorId = extractCounselorId(userDetails);
+        MentalHealthAcademicAnalysisResponse response = analysisService.createAnalysis(request, counselorId);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success("Analysis created successfully", response));
+    }
+
+    @PostMapping("/ai-generate")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
+    @Operation(summary = "Generate AI analysis", description = "Generates an AI-powered mental health academic analysis")
+    public ResponseEntity<ApiResponse<AiAnalysisResponse>> generateAiAnalysis(
+            @Valid @RequestBody AiAnalysisRequest request) {
+        AiAnalysisResponse response = analysisService.generateAiAnalysis(request);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success("AI analysis generated successfully", response));
+    }
+
+    @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'CLIENT')")
+    @Operation(summary = "Get analysis by ID", description = "Retrieves a specific analysis")
+    public ResponseEntity<ApiResponse<MentalHealthAcademicAnalysisResponse>> getById(@PathVariable Long id) {
+        MentalHealthAcademicAnalysisResponse response = analysisService.getById(id);
+        return ResponseEntity.ok(ApiResponse.success("Analysis retrieved successfully", response));
+    }
+
+    @GetMapping("/client/{clientId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'CLIENT')")
+    @Operation(summary = "Get all analyses for a client", description = "Retrieves all analyses for a specific client")
+    public ResponseEntity<ApiResponse<List<MentalHealthAcademicAnalysisResponse>>> getByClientId(
+            @PathVariable Long clientId) {
+        List<MentalHealthAcademicAnalysisResponse> response = analysisService.getByClientId(clientId);
+        return ResponseEntity.ok(ApiResponse.success("Analyses retrieved successfully", response));
+    }
+
+    @GetMapping("/client/{clientId}/paginated")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'CLIENT')")
+    @Operation(summary = "Get paginated analyses for a client", description = "Retrieves paginated analyses")
+    public ResponseEntity<ApiResponse<Page<MentalHealthAcademicAnalysisResponse>>> getByClientIdPaginated(
+            @PathVariable Long clientId, Pageable pageable) {
+        Page<MentalHealthAcademicAnalysisResponse> response = analysisService.getByClientIdPaginated(clientId, pageable);
+        return ResponseEntity.ok(ApiResponse.success("Analyses retrieved successfully", response));
+    }
+
+    @GetMapping("/client/{clientId}/latest")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'CLIENT')")
+    @Operation(summary = "Get latest analysis for a client", description = "Retrieves the most recent analysis")
+    public ResponseEntity<ApiResponse<MentalHealthAcademicAnalysisResponse>> getLatestForClient(
+            @PathVariable Long clientId) {
+        MentalHealthAcademicAnalysisResponse response = analysisService.getLatestForClient(clientId);
+        return ResponseEntity.ok(ApiResponse.success("Latest analysis retrieved successfully", response));
+    }
+
+    @GetMapping("/client/{clientId}/correlation")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'CLIENT')")
+    @Operation(summary = "Get correlation analysis", description = "Retrieves correlation analysis between mental health and academics")
+    public ResponseEntity<ApiResponse<CorrelationAnalysisResult>> getCorrelationAnalysis(
+            @PathVariable Long clientId) {
+        CorrelationAnalysisResult response = analysisService.getCorrelationAnalysis(clientId);
+        return ResponseEntity.ok(ApiResponse.success("Correlation analysis retrieved successfully", response));
+    }
+
+    @GetMapping("/client/{clientId}/trend")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'CLIENT')")
+    @Operation(summary = "Get trend analysis", description = "Retrieves trend analysis for a client")
+    public ResponseEntity<ApiResponse<TrendAnalysisResult>> getTrendAnalysis(@PathVariable Long clientId) {
+        TrendAnalysisResult response = analysisService.getTrendAnalysis(clientId);
+        return ResponseEntity.ok(ApiResponse.success("Trend analysis retrieved successfully", response));
+    }
+
+    @GetMapping("/high-risk")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
+    @Operation(summary = "Get high-risk analyses", description = "Retrieves all high-risk analyses")
+    public ResponseEntity<ApiResponse<List<MentalHealthAcademicAnalysisResponse>>> getHighRiskAnalyses() {
+        List<MentalHealthAcademicAnalysisResponse> response = analysisService.getHighRiskAnalyses();
+        return ResponseEntity.ok(ApiResponse.success("High-risk analyses retrieved successfully", response));
+    }
+
+    @GetMapping("/urgent-interventions")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
+    @Operation(summary = "Get urgent interventions", description = "Retrieves analyses requiring urgent intervention")
+    public ResponseEntity<ApiResponse<List<MentalHealthAcademicAnalysisResponse>>> getUrgentInterventions() {
+        List<MentalHealthAcademicAnalysisResponse> response = analysisService.getUrgentInterventions();
+        return ResponseEntity.ok(ApiResponse.success("Urgent interventions retrieved successfully", response));
+    }
+
+    @GetMapping("/dashboard-stats")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
+    @Operation(summary = "Get dashboard statistics", description = "Retrieves dashboard statistics for analyses")
+    public ResponseEntity<ApiResponse<AnalysisDashboardStats>> getDashboardStats() {
+        AnalysisDashboardStats response = analysisService.getDashboardStats();
+        return ResponseEntity.ok(ApiResponse.success("Dashboard statistics retrieved successfully", response));
+    }
+
+    @GetMapping("/intervention-report")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
+    @Operation(summary = "Get intervention report", description = "Retrieves comprehensive intervention report")
+    public ResponseEntity<ApiResponse<InterventionReport>> getInterventionReport() {
+        InterventionReport response = analysisService.getInterventionReport();
+        return ResponseEntity.ok(ApiResponse.success("Intervention report retrieved successfully", response));
+    }
+
+    // Helper method to extract counselor ID from authentication
+    private Long extractCounselorId(UserDetails userDetails) {
+        // Implementation depends on your authentication setup
+        // This is a placeholder - implement based on your User entity structure
+        return null;
+    }
+}

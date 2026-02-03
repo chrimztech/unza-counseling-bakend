@@ -12,5 +12,6 @@ public class CreateAppointmentRequest {
     private String title;
     private String description;
     private LocalDateTime appointmentDate;
+    private Integer duration = 60; // default 60 minutes
     private Appointment.AppointmentType type;
 }

@@ -146,4 +146,14 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
     Page<Appointment> searchAppointments(@Param("keyword") String keyword, Pageable pageable);
 
     Page<Appointment> findByAppointmentDateBetween(LocalDateTime start, LocalDateTime end, Pageable pageable);
+
+    // Unassigned appointments (appointments without a counselor)
+    @Query("SELECT a FROM Appointment a WHERE a.counselor IS NULL " +
+           "AND a.status = 'UNASSIGNED' " +
+           "AND a.appointmentDate > :now " +
+           "ORDER BY a.appointmentDate")
+    Page<Appointment> findUnassignedAppointments(@Param("now") LocalDateTime now, Pageable pageable);
+
+    @Query("SELECT COUNT(a) FROM Appointment a WHERE a.counselor IS NULL")
+    Long countUnassignedAppointments();
 }

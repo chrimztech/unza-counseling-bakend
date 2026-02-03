@@ -23,7 +23,7 @@ import java.util.Map;
  * Handles authentication for staff against the university's HR system
  */
 @Service("hrAuthenticationService")
-@Profile("!development")
+// Removed @Profile restriction - now works in all environments including development
 public class HrAuthenticationService implements ExternalAuthenticationService {
 
     @Value("${app.hr.api.url:https://hr.unza.zm}")

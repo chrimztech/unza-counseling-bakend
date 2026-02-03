@@ -1,27 +1,32 @@
 package zm.unza.counseling.service.impl;
 
-import zm.unza.counseling.dto.AppointmentDto;
-import zm.unza.counseling.dto.CreateAppointmentRequest;
-import zm.unza.counseling.dto.UpdateAppointmentRequest;
-import zm.unza.counseling.entity.Appointment;
-import zm.unza.counseling.entity.User;
-import zm.unza.counseling.repository.AppointmentRepository;
-import zm.unza.counseling.repository.UserRepository;
-import zm.unza.counseling.service.AppointmentService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import zm.unza.counseling.dto.AppointmentDto;
+import zm.unza.counseling.dto.CreateAppointmentRequest;
+import zm.unza.counseling.dto.UpdateAppointmentRequest;
+import zm.unza.counseling.dto.request.AssignAppointmentRequest;
+import zm.unza.counseling.entity.Appointment;
+import zm.unza.counseling.entity.User;
+import zm.unza.counseling.repository.AppointmentRepository;
+import zm.unza.counseling.repository.UserRepository;
+import zm.unza.counseling.service.AppointmentService;
 
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.NoSuchElementException;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
 
 /**
  * Implementation of AppointmentService
  */
 @Service
+@RequiredArgsConstructor
+@Slf4j
 @Transactional
 public class AppointmentServiceImpl implements AppointmentService {
 
@@ -68,17 +73,25 @@ public class AppointmentServiceImpl implements AppointmentService {
     public AppointmentDto createAppointment(CreateAppointmentRequest request) {
         User student = userRepository.findById(request.getStudentId())
                 .orElseThrow(() -> new NoSuchElementException("Student not found with id: " + request.getStudentId()));
-        User counselor = userRepository.findById(request.getCounselorId())
-                .orElseThrow(() -> new NoSuchElementException("Counselor not found with id: " + request.getCounselorId()));
         
         Appointment appointment = new Appointment();
         appointment.setTitle(request.getTitle());
         appointment.setStudent(student);
-        appointment.setCounselor(counselor);
         appointment.setAppointmentDate(request.getAppointmentDate());
         appointment.setType(request.getType());
-        appointment.setStatus(Appointment.AppointmentStatus.SCHEDULED);
         appointment.setDescription(request.getDescription());
+        appointment.setDuration(request.getDuration() != null ? request.getDuration() : 60);
+        
+        // Handle optional counselor (for unassigned appointments)
+        if (request.getCounselorId() != null) {
+            User counselor = userRepository.findById(request.getCounselorId())
+                    .orElseThrow(() -> new NoSuchElementException("Counselor not found with id: " + request.getCounselorId()));
+            appointment.setCounselor(counselor);
+            appointment.setStatus(Appointment.AppointmentStatus.SCHEDULED);
+        } else {
+            // No counselor assigned yet - unassigned status
+            appointment.setStatus(Appointment.AppointmentStatus.UNASSIGNED);
+        }
         
         return AppointmentDto.from(appointmentRepository.save(appointment));
     }
@@ -87,9 +100,15 @@ public class AppointmentServiceImpl implements AppointmentService {
     public AppointmentDto updateAppointmentStatus(Long id, UpdateAppointmentRequest request) {
         Appointment appointment = appointmentRepository.findById(id)
                 .orElseThrow(() -> new NoSuchElementException("Appointment not found with id: " + id));
-        appointment.setStatus(request.getStatus());
-        appointment.setAppointmentDate(request.getAppointmentDate());
-        appointment.setCancellationReason(request.getCancellationReason());
+        if (request.getStatus() != null) {
+            appointment.setStatus(request.getStatus());
+        }
+        if (request.getAppointmentDate() != null) {
+            appointment.setAppointmentDate(request.getAppointmentDate());
+        }
+        if (request.getCancellationReason() != null) {
+            appointment.setCancellationReason(request.getCancellationReason());
+        }
         return AppointmentDto.from(appointmentRepository.save(appointment));
     }
 
@@ -147,25 +166,143 @@ public class AppointmentServiceImpl implements AppointmentService {
 
     @Override
     public boolean checkCounselorAvailability(Long counselorId, String dateTime) {
-        // Implementation would check if counselor is available at the given time
-        return true;
+        User counselor = userRepository.findById(counselorId)
+                .orElseThrow(() -> new NoSuchElementException("Counselor not found with id: " + counselorId));
+        
+        LocalDateTime requestedTime = LocalDateTime.parse(dateTime, DateTimeFormatter.ISO_DATE_TIME);
+        int duration = 60; // default duration
+        LocalDateTime endTime = requestedTime.plusMinutes(duration);
+        
+        // Check for conflicting appointments
+        List<Appointment> conflicts = appointmentRepository.findConflictingAppointments(counselor, requestedTime, endTime);
+        return conflicts.isEmpty();
     }
 
     @Override
-    public Object getAppointmentStatistics() {
-        // Implementation would return appointment statistics
-        return null;
+    public Map<String, Object> getAppointmentStatistics() {
+        Map<String, Object> stats = new HashMap<>();
+        
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime startOfDay = now.withHour(0).withMinute(0).withSecond(0).withNano(0);
+        LocalDateTime endOfDay = now.withHour(23).withMinute(59).withSecond(59).withNano(999999999);
+        LocalDateTime startOfMonth = now.withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0).withNano(0);
+        LocalDateTime endOfMonth = now.withDayOfMonth(now.toLocalDate().lengthOfMonth()).withHour(23).withMinute(59).withSecond(59).withNano(999999999);
+        
+        // Total appointments
+        stats.put("totalAppointments", appointmentRepository.count());
+        
+        // Today's appointments
+        stats.put("todayAppointments", appointmentRepository.findByAppointmentDateBetween(startOfDay, endOfDay, Pageable.unpaged()).getTotalElements());
+        
+        // Monthly appointments
+        stats.put("monthlyAppointments", appointmentRepository.findByAppointmentDateBetween(startOfMonth, endOfMonth, Pageable.unpaged()).getTotalElements());
+        
+        // Status counts
+        stats.put("scheduled", appointmentRepository.findByStatus(Appointment.AppointmentStatus.SCHEDULED, Pageable.unpaged()).getTotalElements());
+        stats.put("confirmed", appointmentRepository.findByStatus(Appointment.AppointmentStatus.CONFIRMED, Pageable.unpaged()).getTotalElements());
+        stats.put("completed", appointmentRepository.findByStatus(Appointment.AppointmentStatus.COMPLETED, Pageable.unpaged()).getTotalElements());
+        stats.put("cancelled", appointmentRepository.findByStatus(Appointment.AppointmentStatus.CANCELLED, Pageable.unpaged()).getTotalElements());
+        stats.put("unassigned", appointmentRepository.countUnassignedAppointments());
+        
+        return stats;
     }
 
     @Override
     public byte[] exportAppointments(String format, String startDate, String endDate) {
-        // Implementation would export appointments
-        return new byte[0];
+        LocalDateTime start = startDate != null ? LocalDateTime.parse(startDate + "T00:00:00", DateTimeFormatter.ISO_DATE_TIME) : LocalDateTime.now().minusMonths(1);
+        LocalDateTime end = endDate != null ? LocalDateTime.parse(endDate + "T23:59:59", DateTimeFormatter.ISO_DATE_TIME) : LocalDateTime.now();
+        
+        Page<Appointment> appointments = appointmentRepository.findByAppointmentDateBetween(start, end, Pageable.unpaged());
+        
+        StringBuilder csv = new StringBuilder();
+        csv.append("ID,Title,Student,Counselor,Date,Time,Duration,Type,Status,Description\n");
+        
+        for (Appointment apt : appointments.getContent()) {
+            String counselorName = apt.getCounselor() != null ? 
+                apt.getCounselor().getFirstName() + " " + apt.getCounselor().getLastName() : "Unassigned";
+            csv.append(String.format("%d,\"%s\",\"%s %s\",\"%s\",%s,%s,%d,\"%s\",\"%s\",\"%s\"\n",
+                    apt.getId(),
+                    apt.getTitle(),
+                    apt.getStudent().getFirstName(),
+                    apt.getStudent().getLastName(),
+                    counselorName,
+                    apt.getAppointmentDate().toLocalDate(),
+                    apt.getAppointmentDate().toLocalTime(),
+                    apt.getDuration(),
+                    apt.getType(),
+                    apt.getStatus(),
+                    apt.getDescription() != null ? apt.getDescription().replace("\"", "\"\"") : ""
+            ));
+        }
+        
+        return csv.toString().getBytes();
     }
 
+    @Override
     public Page<AppointmentDto> getTodaysAppointments(Pageable pageable) {
         LocalDateTime startOfDay = LocalDateTime.now().withHour(0).withMinute(0).withSecond(0).withNano(0);
         LocalDateTime endOfDay = LocalDateTime.now().withHour(23).withMinute(59).withSecond(59).withNano(999999999);
         return appointmentRepository.findByAppointmentDateBetween(startOfDay, endOfDay, pageable).map(AppointmentDto::from);
+    }
+
+    @Override
+    public Page<AppointmentDto> getUnassignedAppointments(Pageable pageable) {
+        return appointmentRepository.findUnassignedAppointments(LocalDateTime.now(), pageable).map(AppointmentDto::from);
+    }
+
+    @Override
+    public AppointmentDto assignSessionToCounselor(AssignAppointmentRequest request) {
+        Appointment appointment = appointmentRepository.findById(request.getAppointmentId())
+                .orElseThrow(() -> new NoSuchElementException("Appointment not found with id: " + request.getAppointmentId()));
+        
+        User counselor = userRepository.findById(request.getCounselorId())
+                .orElseThrow(() -> new NoSuchElementException("Counselor not found with id: " + request.getCounselorId()));
+        
+        // Validate appointment is unassigned
+        if (appointment.getCounselor() != null) {
+            throw new IllegalStateException("Appointment is already assigned to a counselor");
+        }
+        
+        appointment.setCounselor(counselor);
+        appointment.setStatus(Appointment.AppointmentStatus.SCHEDULED);
+        
+        log.info("Admin assigned appointment {} to counselor {}", appointment.getId(), counselor.getId());
+        
+        return AppointmentDto.from(appointmentRepository.save(appointment));
+    }
+
+    @Override
+    public AppointmentDto counselorTakeAppointment(Long appointmentId, Long counselorId) {
+        Appointment appointment = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new NoSuchElementException("Appointment not found with id: " + appointmentId));
+        
+        User counselor = userRepository.findById(counselorId)
+                .orElseThrow(() -> new NoSuchElementException("Counselor not found with id: " + counselorId));
+        
+        // Validate appointment is unassigned
+        if (appointment.getCounselor() != null) {
+            throw new IllegalStateException("Appointment is already assigned to a counselor");
+        }
+        
+        // Check counselor availability
+        LocalDateTime appointmentTime = appointment.getAppointmentDate();
+        LocalDateTime endTime = appointmentTime.plusMinutes(appointment.getDuration());
+        List<Appointment> conflicts = appointmentRepository.findConflictingAppointments(counselor, appointmentTime, endTime);
+        
+        if (!conflicts.isEmpty()) {
+            throw new IllegalStateException("Counselor has conflicting appointments at this time");
+        }
+        
+        appointment.setCounselor(counselor);
+        appointment.setStatus(Appointment.AppointmentStatus.SCHEDULED);
+        
+        log.info("Counselor {} took appointment {}", counselor.getId(), appointment.getId());
+        
+        return AppointmentDto.from(appointmentRepository.save(appointment));
+    }
+
+    @Override
+    public Long countUnassignedAppointments() {
+        return appointmentRepository.countUnassignedAppointments();
     }
 }
