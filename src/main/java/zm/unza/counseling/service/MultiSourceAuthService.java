@@ -9,10 +9,11 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import zm.unza.counseling.dto.request.LoginRequest;
 import zm.unza.counseling.dto.request.RegisterRequest;
 import zm.unza.counseling.dto.response.AuthResponse;
-import zm.unza.counseling.entity.Client;
 import zm.unza.counseling.entity.Role;
 import zm.unza.counseling.entity.User;
 import zm.unza.counseling.exception.ValidationException;
@@ -44,6 +45,9 @@ public class MultiSourceAuthService {
     private final PasswordEncoder passwordEncoder;
     private final ExternalAuthenticationService sisAuthenticationService;
     private final ExternalAuthenticationService hrAuthenticationService;
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     public MultiSourceAuthService(
             UserRepository userRepository,
@@ -81,9 +85,7 @@ public class MultiSourceAuthService {
         }
     
         // Check if user exists locally and is explicitly INTERNAL
-        // This allows admins with @unza.zm emails to login internally
         Optional<User> existingUser = userRepository.findByEmail(identifier);
-
         System.out.println("Checking for existing user by email: " + identifier + " - Found: " + existingUser.isPresent());
 
         // Fallback: Check by username if email lookup failed
@@ -202,7 +204,6 @@ public class MultiSourceAuthService {
                 .orElseThrow(() -> new ValidationException("User not found with email: " + email));
         
         // Generate reset token and send email
-        // Implementation would depend on your email service
     }
 
     /**
@@ -212,7 +213,6 @@ public class MultiSourceAuthService {
      */
     public void resetPassword(String token, String newPassword) {
         // Validate token and reset password
-        // Implementation would depend on your token validation logic
     }
 
     /**
@@ -221,7 +221,6 @@ public class MultiSourceAuthService {
      */
     public void verifyEmail(String token) {
         // Verify email using token
-        // Implementation would depend on your token validation logic
     }
 
     /**
@@ -233,7 +232,6 @@ public class MultiSourceAuthService {
                 .orElseThrow(() -> new ValidationException("User not found with email: " + email));
         
         // Send verification email
-        // Implementation would depend on your email service
     }
 
     /**
@@ -242,8 +240,6 @@ public class MultiSourceAuthService {
      * @return true if valid, false otherwise
      */
     public boolean validateToken(String token) {
-        // Validate token
-        // Implementation would depend on your token validation logic
         return false;
     }
 
@@ -258,7 +254,6 @@ public class MultiSourceAuthService {
                 throw new ValidationException(externalResponse.getMessage() != null ? externalResponse.getMessage() : "Invalid student credentials");
             }
         } catch (ExternalAuthenticationException e) {
-            // Log the exception in a real application
             System.err.println("SIS Authentication failed: " + e.getMessage());
             throw new ValidationException("SIS Authentication failed: " + e.getMessage());
         }
@@ -275,25 +270,19 @@ public class MultiSourceAuthService {
                 throw new ValidationException(externalResponse.getMessage() != null ? externalResponse.getMessage() : "Invalid staff credentials");
             }
         } catch (ExternalAuthenticationException e) {
-            // Enhanced error handling for timeout scenarios
             if (e.getMessage() != null && (e.getMessage().contains("temporarily unavailable") ||
                 e.getMessage().contains("not accessible") ||
                 e.getMessage().contains("taking too long"))) {
-                // For timeout scenarios, provide a more user-friendly message
                 System.err.println("HR system timeout - providing fallback authentication mechanism");
-                // In a real scenario, you might want to implement a fallback mechanism here
-                // For now, we'll return a specific error message
                 throw new ValidationException("Staff authentication system is temporarily unavailable. Please try again later or contact support.");
             }
             
-            // Log the exception in a real application
             System.err.println("HR Authentication failed: " + e.getMessage());
             throw new ValidationException("HR Authentication failed: " + e.getMessage());
         }
     }
 
     private AuthResponse authenticateInternal(LoginRequest request) {
-        // Internal authentication using database
         return authenticateAgainstDatabase(request, AuthenticationSource.INTERNAL);
     }
 
@@ -328,232 +317,149 @@ public class MultiSourceAuthService {
         } catch (BadCredentialsException e) {
             throw e;
         } catch (AuthenticationException e) {
-            // Catch other auth exceptions (like InternalAuthenticationServiceException) and treat as BadCredentials
             throw new BadCredentialsException("Authentication failed: " + e.getMessage());
         } catch (Exception e) {
-            // Catch specific Spring Security exceptions for better messages
             throw new ValidationException("Internal authentication failed: Invalid credentials.");
         }
     }
 
     /**
-     * Provisions a user from an external source.
-     * If the user exists (by username), it updates their details.
-     * If not, it creates a new user record.
-     * The user's password is not stored for external users. A placeholder is used.
-     *
-     * @param externalUser The user object from the external authentication service.
-     * @return The managed (persisted) User entity.
+     * Simplified user provisioning - creates or updates user from external source.
+     * This method is intentionally simple to avoid transaction issues.
+     * 
+     * @param externalUser The user from external authentication
+     * @return The saved user entity
      */
-    private User provisionUser(User externalUser) {
-        if (externalUser == null || externalUser.getUsername() == null || externalUser.getUsername().isBlank()) {
-            throw new ValidationException("External user data is invalid or missing a username.");
+    public User provisionUser(User externalUser) {
+        if (externalUser == null || externalUser.getUsername() == null) {
+            throw new ValidationException("Invalid external user data");
         }
 
-        Optional<User> existingUserOpt = userRepository.findByUsername(externalUser.getUsername());
-
+        // Check if user already exists
+        Optional<User> existingOpt = userRepository.findByUsername(externalUser.getUsername());
+        
         User userToSave;
-        if (existingUserOpt.isPresent()) {
-            // User exists, update their details
-            userToSave = existingUserOpt.get();
-            userToSave.setFirstName(externalUser.getFirstName());
-            userToSave.setLastName(externalUser.getLastName());
-            userToSave.setEmail(externalUser.getEmail());
-            userToSave.setPhoneNumber(externalUser.getPhoneNumber());
-            userToSave.setDepartment(externalUser.getDepartment());
-            userToSave.setProgram(externalUser.getProgram());
-            userToSave.setYearOfStudy(externalUser.getYearOfStudy());
-            userToSave.setGender(externalUser.getGender());
-            userToSave.setDateOfBirth(externalUser.getDateOfBirth());
-            if (externalUser.getStudentId() != null) {
-                userToSave.setStudentId(externalUser.getStudentId());
-            }
-            userToSave.setUpdatedAt(LocalDateTime.now());
+        boolean isNewUser = false;
+        
+        if (existingOpt.isPresent()) {
+            userToSave = existingOpt.get();
         } else {
-            // New user, create a record
-            Client client = new Client();
-            client.setRiskLevel(Client.RiskLevel.LOW);
-            client.setRegistrationDate(LocalDateTime.now());
-            // Set initial status to indicate consent is needed.
-            // The frontend will check this status in the returned user object to show the consent form.
-            client.setClientStatus(Client.ClientStatus.ACTIVE);
-            userToSave = client;
-            userToSave.setUsername(externalUser.getUsername());
-            userToSave.setFirstName(externalUser.getFirstName());
-            userToSave.setLastName(externalUser.getLastName());
-            userToSave.setEmail(externalUser.getEmail());
-            userToSave.setPhoneNumber(externalUser.getPhoneNumber());
-            userToSave.setDepartment(externalUser.getDepartment());
-            userToSave.setProgram(externalUser.getProgram());
-            userToSave.setYearOfStudy(externalUser.getYearOfStudy());
-            userToSave.setGender(externalUser.getGender());
-            userToSave.setDateOfBirth(externalUser.getDateOfBirth());
-            if (externalUser.getStudentId() != null) {
-                userToSave.setStudentId(externalUser.getStudentId());
-            }
-            userToSave.setCreatedAt(LocalDateTime.now());
-            userToSave.setUpdatedAt(LocalDateTime.now());
-            // External users don't have a password stored in our system.
-            // A non-null password is required for the UserDetails contract, but it won't be used for login.
-            userToSave.setPassword("EXTERNALLY_AUTHENTICATED_USER_NO_PASSWORD");
+            userToSave = new User();
+            isNewUser = true;
         }
 
-        // Map Client specific fields if applicable
-        if (userToSave instanceof Client) {
-            Client client = (Client) userToSave;
-            client.setProgramme(externalUser.getProgram());
-            client.setFaculty(externalUser.getDepartment());
-            if (externalUser.getStudentId() != null) {
-                client.setStudentId(externalUser.getStudentId());
-            }
+        // Set basic fields
+        userToSave.setUsername(externalUser.getUsername());
+        userToSave.setFirstName(externalUser.getFirstName());
+        userToSave.setLastName(externalUser.getLastName());
+        
+        // Handle email - use username@unza.zm as default if null
+        String email = externalUser.getEmail();
+        if (email == null || email.trim().isEmpty() || "null".equalsIgnoreCase(email)) {
+            email = externalUser.getUsername() + "@unza.zm";
+        }
+        userToSave.setEmail(email);
+        
+        userToSave.setPhoneNumber(externalUser.getPhoneNumber());
+        userToSave.setDepartment(externalUser.getDepartment());
+        userToSave.setProgram(externalUser.getProgram());
+        userToSave.setYearOfStudy(externalUser.getYearOfStudy());
+        userToSave.setGender(externalUser.getGender());
+        userToSave.setDateOfBirth(externalUser.getDateOfBirth());
+        
+        if (externalUser.getStudentId() != null) {
+            userToSave.setStudentId(externalUser.getStudentId());
         }
 
-        // Map roles from external user
-        if (externalUser.getRoles() != null && !externalUser.getRoles().isEmpty()) {
-            Set<Role> userRoles = userToSave.getRoles();
-            if (userRoles == null) {
-                userRoles = new HashSet<>();
-            }
-
-            for (Role extRole : externalUser.getRoles()) {
-                Role dbRole = roleRepository.findByName(extRole.getName())
-                        .orElseGet(() -> {
-                            Role newRole = new Role();
-                            newRole.setName(extRole.getName());
-                            newRole.setDescription("Provisioned from " + externalUser.getAuthenticationSource());
-                            return roleRepository.save(newRole);
-                        });
-                userRoles.add(dbRole);
-            }
-            userToSave.setRoles(userRoles);
-        }
-
-        // Ensure SIS users have CLIENT role (they are also clients seeking counseling)
-        if (externalUser.getAuthenticationSource() == AuthenticationSource.SIS) {
-            Role clientRole = roleRepository.findByName(Role.ERole.ROLE_CLIENT)
-                    .orElseGet(() -> {
-                        Role newRole = new Role();
-                        newRole.setName(Role.ERole.ROLE_CLIENT);
-                        newRole.setDescription("Client role for SIS students");
-                        return roleRepository.save(newRole);
-                    });
-            userToSave.getRoles().add(clientRole);
-        }
-
-        // Ensure HR users have CLIENT role (staff can also seek counseling)
-        if (externalUser.getAuthenticationSource() == AuthenticationSource.HR) {
-            Role clientRole = roleRepository.findByName(Role.ERole.ROLE_CLIENT)
-                    .orElseGet(() -> {
-                        Role newRole = new Role();
-                        newRole.setName(Role.ERole.ROLE_CLIENT);
-                        newRole.setDescription("Client role for HR staff");
-                        return roleRepository.save(newRole);
-                    });
-            userToSave.getRoles().add(clientRole);
-        }
-
-        // Ensure HR users don't have STUDENT role (cleanup for existing users)
-        if (externalUser.getAuthenticationSource() == AuthenticationSource.HR && userToSave.getRoles() != null) {
-            userToSave.getRoles().removeIf(r -> r.getName() == Role.ERole.ROLE_STUDENT);
-        }
-
-        // Handle email for external users - generate default if missing
-        if (userToSave.getEmail() == null || userToSave.getEmail().trim().isEmpty()) {
-            if (userToSave.getStudentId() != null && !userToSave.getStudentId().trim().isEmpty()) {
-                // Generate email from student ID
-                userToSave.setEmail(userToSave.getStudentId().toLowerCase() + "@unza.zm");
-            } else if (userToSave.getUsername() != null && !userToSave.getUsername().trim().isEmpty()) {
-                // Generate email from username
-                userToSave.setEmail(userToSave.getUsername().toLowerCase() + "@unza.zm");
-            } else {
-                // Fallback - use a generic email format
-                userToSave.setEmail("user" + System.currentTimeMillis() + "@unza.zm");
-            }
-        }
-
-        // Ensure authentication source is set correctly from the external source
         userToSave.setAuthenticationSource(externalUser.getAuthenticationSource());
+        userToSave.setActive(true);
+        userToSave.setEmailVerified(true);
+        userToSave.setUpdatedAt(LocalDateTime.now());
         
-        // Set default role if none exists, but preserve existing roles for internal users
-        if (userToSave.getRoles() == null || userToSave.getRoles().isEmpty()) {
-            Role.ERole defaultRoleType;
-            String roleDescription;
+        if (isNewUser) {
+            userToSave.setCreatedAt(LocalDateTime.now());
+            userToSave.setPassword("EXTERNALLY_AUTHENTICATED");
+        }
 
-            if (userToSave.getAuthenticationSource() == AuthenticationSource.HR) {
-                // For HR staff, determine role based on position/department
-                // Check if staff member should be a counselor based on their position
-                String position = userToSave.getDepartment(); // Position is stored in department field
-                System.out.println("HR User Position/Department: " + position);
-                
-                if (position != null && (position.toLowerCase().contains("counselor") ||
-                    position.toLowerCase().contains("counsellor") ||
-                    position.toLowerCase().contains("psychologist") ||
-                    position.toLowerCase().contains("therapist") ||
-                    position.toLowerCase().contains("mental health") ||
-                    position.toLowerCase().contains("guidance") ||
-                    position.toLowerCase().contains("student services") ||
-                    position.toLowerCase().contains("wellness"))) {
-                    defaultRoleType = Role.ERole.ROLE_COUNSELOR;
-                    roleDescription = "Counselor role for HR staff based on position";
-                } else {
-                    // HR staff are also clients (they can receive counseling)
-                    // Add both COUNSELOR (if needed for admin duties) and CLIENT roles
-                    defaultRoleType = Role.ERole.ROLE_CLIENT;
-                    roleDescription = "Client role for HR staff members";
+        // Only set roles for NEW users - never modify roles on existing managed entities
+        if (isNewUser) {
+            // Set roles based on authentication source for new users
+            Set<Role> roles = new HashSet<>();
+            
+            if (externalUser.getAuthenticationSource() == AuthenticationSource.SIS) {
+                // SIS users get STUDENT and CLIENT roles
+                Role studentRole = roleRepository.findByName(Role.ERole.ROLE_STUDENT).orElse(null);
+                if (studentRole != null) {
+                    roles.add(studentRole);
                 }
-            } else if (userToSave.getAuthenticationSource() == AuthenticationSource.SIS) {
-                // SIS users (students) are also clients - they can receive counseling
-                defaultRoleType = Role.ERole.ROLE_CLIENT;
-                roleDescription = "Client role for SIS students";
-            } else if (userToSave.getAuthenticationSource() == AuthenticationSource.INTERNAL) {
-                // For internal users, determine role based on their entity type
-                if (userToSave instanceof zm.unza.counseling.entity.Admin) {
-                    defaultRoleType = Role.ERole.ROLE_ADMIN;
-                    roleDescription = "Admin role for internal admin users";
-                } else if (userToSave instanceof zm.unza.counseling.entity.Counselor) {
-                    defaultRoleType = Role.ERole.ROLE_COUNSELOR;
-                    roleDescription = "Counselor role for internal counselor users";
-                } else {
-                    // For regular User entities (like those created by InitialAdminConfig),
-                    // default to client role
-                    defaultRoleType = Role.ERole.ROLE_CLIENT;
-                    roleDescription = "Client role for internal users";
+                Role clientRole = roleRepository.findByName(Role.ERole.ROLE_CLIENT).orElse(null);
+                if (clientRole != null) {
+                    roles.add(clientRole);
                 }
-            } else {
-                defaultRoleType = Role.ERole.ROLE_STUDENT;
-                roleDescription = "Student role for external users";
+            } else if (externalUser.getAuthenticationSource() == AuthenticationSource.HR) {
+                // HR users get CLIENT role by default
+                Role clientRole = roleRepository.findByName(Role.ERole.ROLE_CLIENT).orElse(null);
+                if (clientRole != null) {
+                    roles.add(clientRole);
+                }
             }
             
-            Role defaultRole = roleRepository.findByName(defaultRoleType)
-                    .orElseGet(() -> {
-                        Role newRole = new Role();
-                        newRole.setName(defaultRoleType);
-                        newRole.setDescription(roleDescription);
-                        return roleRepository.save(newRole);
-                    });
-            
-            Set<Role> roles = new HashSet<>();
-            roles.add(defaultRole);
             userToSave.setRoles(roles);
-        } else if (userToSave.getAuthenticationSource() == AuthenticationSource.INTERNAL) {
-            // For existing internal users, preserve their existing roles
-            // Don't overwrite roles for internal users who already have them
-            System.out.println("Preserving existing roles for internal user: " + userToSave.getUsername());
         }
-        
-        userToSave.setActive(true);
-        userToSave.setEmailVerified(true); // Assume verified from external source
-        
-        try {
-            return userRepository.save(userToSave);
-        } catch (Exception e) {
-            System.err.println("Error provisioning user: " + e.getMessage());
-            throw new ValidationException("Failed to provision user: " + e.getMessage());
+
+        // For existing users, use native UPDATE query to avoid SINGLE_TABLE inheritance issues
+        if (!isNewUser) {
+            // Update user fields directly using native query
+            String nativeSql = """
+                UPDATE users SET 
+                    first_name = :firstName, 
+                    last_name = :lastName, 
+                    email = :email,
+                    phone_number = :phoneNumber,
+                    department = :department,
+                    program = :program,
+                    year_of_study = :yearOfStudy,
+                    gender = :gender,
+                    date_of_birth = :dateOfBirth,
+                    student_id = :studentId,
+                    authentication_source = :authSource,
+                    is_active = true,
+                    email_verified = true,
+                    updated_at = NOW()
+                WHERE id = :id
+                """;
+            
+            entityManager.createNativeQuery(nativeSql)
+                .setParameter("firstName", externalUser.getFirstName())
+                .setParameter("lastName", externalUser.getLastName())
+                .setParameter("email", email)
+                .setParameter("phoneNumber", externalUser.getPhoneNumber())
+                .setParameter("department", externalUser.getDepartment())
+                .setParameter("program", externalUser.getProgram())
+                .setParameter("yearOfStudy", externalUser.getYearOfStudy())
+                .setParameter("gender", externalUser.getGender() != null ? externalUser.getGender().name() : null)
+                .setParameter("dateOfBirth", externalUser.getDateOfBirth())
+                .setParameter("studentId", externalUser.getStudentId())
+                .setParameter("authSource", externalUser.getAuthenticationSource().name())
+                .setParameter("id", userToSave.getId())
+                .executeUpdate();
+            
+            entityManager.flush();
+            
+            // Return the user with refreshed data
+            return entityManager.find(User.class, userToSave.getId());
         }
+
+        // For new users, persist normally
+        if (isNewUser) {
+            entityManager.persist(userToSave);
+        }
+
+        return userToSave;
     }
 
     private AuthResponse createAuthResponse(User user) {
-        // Ensure roles are loaded before creating the token and response
+        // Fetch user with roles loaded
         User userWithRoles = userRepository.findByEmailWithRoles(user.getEmail())
                 .or(() -> userRepository.findByUsername(user.getUsername()))
                 .orElseThrow(() -> new ValidationException("User not found when creating auth response"));

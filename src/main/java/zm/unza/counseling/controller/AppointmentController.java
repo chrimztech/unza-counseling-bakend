@@ -17,7 +17,7 @@ import zm.unza.counseling.entity.Appointment;
 import zm.unza.counseling.service.AppointmentService;
 
 @RestController
-@RequestMapping("/api/appointments")
+@RequestMapping("/appointments")
 @RequiredArgsConstructor
 @Slf4j
 public class AppointmentController {

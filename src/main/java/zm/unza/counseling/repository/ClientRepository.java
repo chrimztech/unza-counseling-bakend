@@ -4,6 +4,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import zm.unza.counseling.entity.Client;
 
@@ -26,4 +27,14 @@ public interface ClientRepository extends JpaRepository<Client, Long> {
     
     @Query("SELECT COUNT(c) FROM Client c WHERE c.riskLevel IN :riskLevels")
     long countByRiskLevels(List<Client.RiskLevel> riskLevels);
+    
+    @Query("SELECT c FROM Client c WHERE c.riskLevel IN :riskLevels ORDER BY c.riskScore DESC")
+    List<Client> findByRiskLevelsOrderByRiskScoreDesc(@Param("riskLevels") List<Client.RiskLevel> riskLevels);
+    
+    @Query("SELECT c FROM Client c ORDER BY c.createdAt DESC")
+    List<Client> findTop10ByOrderByCreatedAtDesc(Pageable pageable);
+    
+    default List<Client> findTop10ByOrderByCreatedAtDesc() {
+        return findTop10ByOrderByCreatedAtDesc(org.springframework.data.domain.PageRequest.of(0, 10));
+    }
 }

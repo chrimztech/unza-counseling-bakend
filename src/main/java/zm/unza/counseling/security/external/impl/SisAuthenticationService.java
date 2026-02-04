@@ -230,19 +230,26 @@ public class SisAuthenticationService implements ExternalAuthenticationService {
     private User mapSisResponseToUser(JsonNode userNode, JsonNode dataNode, String instance, String baseUrl) {
         User user = new User();
         
+        // Helper method to safely extract string and handle "null" values
+        java.util.function.Function<JsonNode, String> safeString = node -> {
+            if (node == null || node.isNull()) return "";
+            String value = node.asText();
+            return "null".equalsIgnoreCase(value) ? "" : value;
+        };
+        
         // Basic user information
         // Handle both new (username, student_id) and old (computer_no) formats
         String username = "";
         if (userNode.has("username")) {
-            username = userNode.get("username").asText();
+            username = safeString.apply(userNode.get("username"));
         } else if (userNode.has("computer_no")) {
-            username = userNode.get("computer_no").asText();
+            username = safeString.apply(userNode.get("computer_no"));
         }
         user.setUsername(username);
 
-        user.setEmail(userNode.has("email") ? userNode.get("email").asText() : "");
-        user.setFirstName(userNode.has("first_name") ? userNode.get("first_name").asText() : "");
-        user.setLastName(userNode.has("last_name") ? userNode.get("last_name").asText() : "");
+        user.setEmail(safeString.apply(userNode.get("email")));
+        user.setFirstName(safeString.apply(userNode.get("first_name")));
+        user.setLastName(safeString.apply(userNode.get("last_name")));
         
         String studentId = "";
         if (userNode.has("student_id")) {

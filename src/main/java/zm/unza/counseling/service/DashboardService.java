@@ -1,6 +1,7 @@
 package zm.unza.counseling.service;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import zm.unza.counseling.dto.response.DashboardStatsResponse;
 import zm.unza.counseling.entity.Appointment;
@@ -11,7 +12,9 @@ import zm.unza.counseling.repository.SessionRepository;
 import zm.unza.counseling.repository.UserRepository;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -52,5 +55,50 @@ public class DashboardService {
                 .totalCounselors(totalCounselors)
                 .averageSatisfaction(averageSatisfaction)
                 .build();
+    }
+
+    public List<Client> getHighRiskClients() {
+        return clientRepository.findByRiskLevelsOrderByRiskScoreDesc(
+                List.of(Client.RiskLevel.HIGH, Client.RiskLevel.CRITICAL)
+        );
+    }
+
+    public List<Client> getRecentClients() {
+        return clientRepository.findTop10ByOrderByCreatedAtDesc(PageRequest.of(0, 10));
+    }
+
+    public Map<String, Object> getPerformanceMetrics() {
+        Map<String, Object> metrics = new HashMap<>();
+        
+        long totalAppointments = appointmentRepository.count();
+        List<Appointment> completedList = appointmentRepository.findByStatus(Appointment.AppointmentStatus.COMPLETED);
+        List<Appointment> cancelledList = appointmentRepository.findByStatus(Appointment.AppointmentStatus.CANCELLED);
+        List<Appointment> scheduledList = appointmentRepository.findByStatus(Appointment.AppointmentStatus.SCHEDULED);
+        
+        long completedAppointments = completedList.size();
+        long cancelledAppointments = cancelledList.size();
+        long scheduledAppointments = scheduledList.size();
+        
+        double completionRate = totalAppointments > 0 
+                ? (double) completedAppointments / totalAppointments * 100 
+                : 0;
+        
+        metrics.put("totalAppointments", totalAppointments);
+        metrics.put("completedAppointments", completedAppointments);
+        metrics.put("cancelledAppointments", cancelledAppointments);
+        metrics.put("scheduledAppointments", scheduledAppointments);
+        metrics.put("completionRate", Math.round(completionRate * 100.0) / 100.0);
+        
+        return metrics;
+    }
+
+    public List<Appointment> getUpcomingAppointments() {
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime endOfWeek = now.plusDays(7);
+        return appointmentRepository.findByStatusAndDateRange(
+                Appointment.AppointmentStatus.SCHEDULED,
+                now,
+                endOfWeek
+        );
     }
 }

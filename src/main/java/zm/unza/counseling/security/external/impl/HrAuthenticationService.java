@@ -45,6 +45,14 @@ public class HrAuthenticationService implements ExternalAuthenticationService {
         public ExternalAuthResponse authenticate(String username, String password) throws ExternalAuthenticationException {
             System.out.println("Attempting HR authentication for staff: " + username);
             
+            // Extract username from email if provided (e.g., chrishent.mutondo@unza.zm -> chrishent.mutondo)
+            String hrUsername = username;
+            if (username != null && username.contains("@")) {
+                hrUsername = username.split("@")[0];
+            }
+            
+            System.out.println("HR Username (extracted): " + hrUsername);
+            
             try {
                 // Step 1: Authenticate and get a token
                 HttpHeaders loginHeaders = new HttpHeaders();
@@ -52,7 +60,7 @@ public class HrAuthenticationService implements ExternalAuthenticationService {
                 loginHeaders.set("Accept", "application/json");
     
                 Map<String, String> loginRequest = Map.of(
-                    "username", username,
+                    "username", hrUsername,
                     "password", password
                 );
     
@@ -170,13 +178,19 @@ public class HrAuthenticationService implements ExternalAuthenticationService {
         HrUserData data = hrUser.getResponse().getData();
         User user = new User();
         
+        // Helper method to safely extract string and handle "null" values
+        java.util.function.Function<String, String> safeString = value -> {
+            if (value == null) return "";
+            return "null".equalsIgnoreCase(value) ? "" : value;
+        };
+        
         // Map fields from HR response to User entity
-        user.setUsername(data.getManNumber()); // Use man_number as username
-        user.setEmail(data.getEmail());
-        user.setFirstName(data.getFirstName());
-        user.setLastName(data.getLastName());
-        user.setDepartment(data.getPosition()); // Use position as department
-        user.setPhoneNumber(data.getPhone());
+        user.setUsername(safeString.apply(data.getManNumber())); // Use man_number as username
+        user.setEmail(safeString.apply(data.getEmail()));
+        user.setFirstName(safeString.apply(data.getFirstName()));
+        user.setLastName(safeString.apply(data.getLastName()));
+        user.setDepartment(safeString.apply(data.getPosition())); // Use position as department
+        user.setPhoneNumber(safeString.apply(data.getPhone()));
         user.setActive(true);
         user.setEmailVerified(true);
         user.setAuthenticationSource(zm.unza.counseling.security.AuthenticationSource.HR);
