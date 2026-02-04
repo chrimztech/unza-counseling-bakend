@@ -28,7 +28,6 @@ zm/unza/counseling/repository/SettingsRepository.class
 zm/unza/counseling/repository/SessionRepository.class
 zm/unza/counseling/dto/response/UserConsentResponse$UserConsentResponseBuilder.class
 zm/unza/counseling/config/centralized/ConfigManagementConfig.class
-zm/unza/counseling/config/DevelopmentServiceStubsConfig$2.class
 zm/unza/counseling/security/external/ExternalAuthenticationService.class
 zm/unza/counseling/dto/MentalHealthAcademicDtos$MentalHealthDistribution.class
 zm/unza/counseling/service/ConsentFormService$ConsentStatistics.class
@@ -74,7 +73,6 @@ zm/unza/counseling/dto/MentalHealthAcademicDtos$AnalysisDashboardStats$Builder.c
 zm/unza/counseling/service/ConsentFormService.class
 zm/unza/counseling/dto/FacultyPerformanceReport.class
 zm/unza/counseling/repository/AdminRepository.class
-zm/unza/counseling/config/DevelopmentServiceStubsConfig.class
 zm/unza/counseling/config/InitialAdminConfig.class
 zm/unza/counseling/service/AdminService.class
 zm/unza/counseling/config/monitoring/ApplicationHealthIndicator.class
@@ -141,6 +139,7 @@ zm/unza/counseling/security/JwtAuthenticationFilter.class
 zm/unza/counseling/dto/StudentAtRiskDto$StudentAtRiskDtoBuilder.class
 zm/unza/counseling/dto/response/ClientResponse.class
 zm/unza/counseling/entity/Report$ReportStatus.class
+zm/unza/counseling/dto/request/AssignAppointmentRequest.class
 zm/unza/counseling/entity/Report$ReportFormat.class
 zm/unza/counseling/security/external/impl/HrAuthenticationService$HrUserMetadataResponse.class
 zm/unza/counseling/dto/MentalHealthAcademicDtos$Recommendations$Builder.class
@@ -234,7 +233,6 @@ zm/unza/counseling/dto/FacultyPerformanceReport$FacultyPerformanceReportBuilder.
 zm/unza/counseling/config/centralized/ConfigManagementConfig$SecurityConfig.class
 zm/unza/counseling/dto/request/SignConsentRequest.class
 zm/unza/counseling/entity/RiskAssessment.class
-zm/unza/counseling/config/DevelopmentServiceStubsConfig$1.class
 zm/unza/counseling/service/RiskAssessmentAlertService.class
 zm/unza/counseling/service/FileStorageService.class
 zm/unza/counseling/config/cache/CacheConfig$CacheNames.class
@@ -271,6 +269,7 @@ zm/unza/counseling/entity/User.class
 zm/unza/counseling/entity/MentalHealthAcademicAnalysis.class
 zm/unza/counseling/entity/MentalHealthAcademicAnalysis$CorrelationStrength.class
 zm/unza/counseling/config/api/ApiVersioningConfig.class
+zm/unza/counseling/config/WebSocketConfig.class
 zm/unza/counseling/dto/MentalHealthAcademicDtos$CorrelationAnalysisResult$Builder.class
 zm/unza/counseling/dto/AcademicPerformanceDtos$AcademicStatistics.class
 zm/unza/counseling/service/impl/SettingsServiceImpl.class

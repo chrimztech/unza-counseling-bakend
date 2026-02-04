@@ -52,7 +52,6 @@
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/service/MentalHealthAcademicAnalysisService.java
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/repository/AdminRepository.java
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/dto/response/UserResponse.java
-/home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/config/DevelopmentServiceStubsConfig.java
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/dto/request/AssessmentSubmissionRequest.java
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/dto/MentalHealthAcademicDtos.java
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/dto/request/UpdateAppointmentRequest.java
@@ -157,6 +156,7 @@
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/service/MultiSourceAuthService.java
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/config/api/ApiVersioningConfig.java
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/security/external/ExternalAuthResponse.java
+/home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/config/WebSocketConfig.java
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/exception/UnauthorizedException.java
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/service/EmailService.java
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/service/DashboardService.java
