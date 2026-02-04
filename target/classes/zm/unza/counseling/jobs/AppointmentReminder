@@ -1,0 +1,56 @@
+package zm.unza.counseling.jobs;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.quartz.Job;
+import org.quartz.JobExecutionContext;
+import org.springframework.stereotype.Component;
+import zm.unza.counseling.service.AppointmentService;
+import zm.unza.counseling.service.NotificationService;
+
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+
+@Slf4j
+@Component
+@RequiredArgsConstructor
+public class AppointmentReminderJob implements Job {
+
+    private final AppointmentService appointmentService;
+    private final NotificationService notificationService;
+    private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+
+    @Override
+    public void execute(JobExecutionContext context) {
+        log.info("Starting appointment reminder job at {}", LocalDateTime.now());
+        
+        try {
+            // Get appointments for tomorrow
+            LocalDateTime tomorrow = LocalDateTime.now().plusDays(1);
+            LocalDateTime tomorrowEnd = tomorrow.plusDays(1);
+            
+            // Send reminders for confirmed appointments
+            appointmentService.getAppointmentsByDateRange(tomorrow, tomorrowEnd)
+                    .forEach(appointment -> {
+                        if ("CONFIRMED".equals(appointment.getStatus())) {
+                            String message = String.format(
+                                "Reminder: You have an appointment with %s tomorrow at %s", 
+                                appointment.getCounselorName(),
+                                appointment.getAppointmentDate().format(formatter)
+                            );
+                            
+                            notificationService.sendSystemNotification(
+                                appointment.getStudentId().toString(),
+                                "Appointment Reminder",
+                                message,
+                                "MEDIUM"
+                            );
+                        }
+                    });
+            
+            log.info("Appointment reminder job completed successfully");
+        } catch (Exception e) {
+            log.error("Error in appointment reminder job", e);
+        }
+    }
+}
