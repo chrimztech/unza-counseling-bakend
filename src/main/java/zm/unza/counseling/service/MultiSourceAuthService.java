@@ -9,8 +9,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
+import org.springframework.transaction.annotation.Transactional;
 import zm.unza.counseling.dto.request.LoginRequest;
 import zm.unza.counseling.dto.request.RegisterRequest;
 import zm.unza.counseling.dto.response.AuthResponse;
@@ -45,9 +44,6 @@ public class MultiSourceAuthService {
     private final PasswordEncoder passwordEncoder;
     private final ExternalAuthenticationService sisAuthenticationService;
     private final ExternalAuthenticationService hrAuthenticationService;
-
-    @PersistenceContext
-    private EntityManager entityManager;
 
     public MultiSourceAuthService(
             UserRepository userRepository,
@@ -113,6 +109,7 @@ public class MultiSourceAuthService {
             System.out.println("DEBUG: Detected numeric identifier - Taking SIS authentication path");
             return authenticateStudent(request);
         } else if (identifier.toLowerCase().contains("@unza.zm") || 
+                   identifier.toLowerCase().contains("@unza.ac.zm") || 
                    identifier.equalsIgnoreCase("chrishentmatakala@yahoo.com")) {
             System.out.println("DEBUG: Detected staff email - Taking HR authentication path");
             return authenticateStaff(request);
@@ -267,18 +264,25 @@ public class MultiSourceAuthService {
                 User provisionedUser = provisionUser(externalResponse.getUser());
                 return createAuthResponse(provisionedUser);
             } else {
+                // Check for rate limiting message
+                String message = externalResponse.getMessage();
+                if (message != null && message.toLowerCase().contains("too many")) {
+                    throw new ValidationException("HR system rate limit exceeded. Please wait a few minutes before trying again.");
+                }
                 throw new ValidationException(externalResponse.getMessage() != null ? externalResponse.getMessage() : "Invalid staff credentials");
             }
         } catch (ExternalAuthenticationException e) {
-            if (e.getMessage() != null && (e.getMessage().contains("temporarily unavailable") ||
-                e.getMessage().contains("not accessible") ||
-                e.getMessage().contains("taking too long"))) {
-                System.err.println("HR system timeout - providing fallback authentication mechanism");
-                throw new ValidationException("Staff authentication system is temporarily unavailable. Please try again later or contact support.");
+            String errorMsg = e.getMessage();
+            if (errorMsg != null && (errorMsg.contains("temporarily unavailable") ||
+                errorMsg.contains("not accessible") ||
+                errorMsg.contains("taking too long") ||
+                errorMsg.contains("Too many"))) {
+                System.err.println("HR system rate limit or timeout - providing user-friendly message");
+                throw new ValidationException("HR system is busy or rate limited. Please wait a few minutes before trying again.");
             }
             
             System.err.println("HR Authentication failed: " + e.getMessage());
-            throw new ValidationException("HR Authentication failed: " + e.getMessage());
+            throw new ValidationException("HR Authentication failed. Please check your credentials and try again.");
         }
     }
 
@@ -325,18 +329,22 @@ public class MultiSourceAuthService {
 
     /**
      * Simplified user provisioning - creates or updates user from external source.
-     * This method is intentionally simple to avoid transaction issues.
+     * Uses repository operations for proper transaction management.
      * 
      * @param externalUser The user from external authentication
      * @return The saved user entity
      */
+    @Transactional
     public User provisionUser(User externalUser) {
         if (externalUser == null || externalUser.getUsername() == null) {
             throw new ValidationException("Invalid external user data");
         }
 
-        // Check if user already exists
+        // Check if user already exists by username or email
         Optional<User> existingOpt = userRepository.findByUsername(externalUser.getUsername());
+        if (existingOpt.isEmpty() && externalUser.getEmail() != null) {
+            existingOpt = userRepository.findByEmail(externalUser.getEmail());
+        }
         
         User userToSave;
         boolean isNewUser = false;
@@ -348,26 +356,47 @@ public class MultiSourceAuthService {
             isNewUser = true;
         }
 
-        // Set basic fields
-        userToSave.setUsername(externalUser.getUsername());
-        userToSave.setFirstName(externalUser.getFirstName());
-        userToSave.setLastName(externalUser.getLastName());
+        // Set basic fields - use null checks to avoid validation errors
+        userToSave.setUsername(safeTrim(externalUser.getUsername()));
         
-        // Handle email - use username@unza.zm as default if null
-        String email = externalUser.getEmail();
-        if (email == null || email.trim().isEmpty() || "null".equalsIgnoreCase(email)) {
+        // Handle firstName - use default if missing to satisfy @NotBlank constraint
+        String firstName = safeTrim(externalUser.getFirstName());
+        if (firstName == null || firstName.isEmpty()) {
+            firstName = "Student"; // Default for SIS users without first name
+        }
+        userToSave.setFirstName(firstName);
+        
+        // Handle lastName - use default if missing to satisfy @NotBlank constraint
+        String lastName = safeTrim(externalUser.getLastName());
+        if (lastName == null || lastName.isEmpty()) {
+            lastName = externalUser.getUsername() != null ? externalUser.getUsername() : "User";
+        }
+        userToSave.setLastName(lastName);
+        
+        // Handle email - use username@unza.zm as default if null or empty
+        String email = safeTrim(externalUser.getEmail());
+        if (email == null || email.isEmpty()) {
             email = externalUser.getUsername() + "@unza.zm";
         }
         userToSave.setEmail(email);
         
-        userToSave.setPhoneNumber(externalUser.getPhoneNumber());
-        userToSave.setDepartment(externalUser.getDepartment());
-        userToSave.setProgram(externalUser.getProgram());
-        userToSave.setYearOfStudy(externalUser.getYearOfStudy());
-        userToSave.setGender(externalUser.getGender());
-        userToSave.setDateOfBirth(externalUser.getDateOfBirth());
+        userToSave.setPhoneNumber(safeTrim(externalUser.getPhoneNumber()));
+        userToSave.setDepartment(safeTrim(externalUser.getDepartment()));
+        userToSave.setProgram(safeTrim(externalUser.getProgram()));
         
-        if (externalUser.getStudentId() != null) {
+        if (externalUser.getYearOfStudy() != null) {
+            userToSave.setYearOfStudy(externalUser.getYearOfStudy());
+        }
+        
+        if (externalUser.getGender() != null) {
+            userToSave.setGender(externalUser.getGender());
+        }
+        
+        if (externalUser.getDateOfBirth() != null) {
+            userToSave.setDateOfBirth(externalUser.getDateOfBirth());
+        }
+        
+        if (safeTrim(externalUser.getStudentId()) != null) {
             userToSave.setStudentId(externalUser.getStudentId());
         }
 
@@ -388,74 +417,33 @@ public class MultiSourceAuthService {
             
             if (externalUser.getAuthenticationSource() == AuthenticationSource.SIS) {
                 // SIS users get STUDENT and CLIENT roles
-                Role studentRole = roleRepository.findByName(Role.ERole.ROLE_STUDENT).orElse(null);
-                if (studentRole != null) {
-                    roles.add(studentRole);
-                }
-                Role clientRole = roleRepository.findByName(Role.ERole.ROLE_CLIENT).orElse(null);
-                if (clientRole != null) {
-                    roles.add(clientRole);
-                }
+                roleRepository.findByName(Role.ERole.ROLE_STUDENT).ifPresent(roles::add);
+                roleRepository.findByName(Role.ERole.ROLE_CLIENT).ifPresent(roles::add);
             } else if (externalUser.getAuthenticationSource() == AuthenticationSource.HR) {
                 // HR users get CLIENT role by default
-                Role clientRole = roleRepository.findByName(Role.ERole.ROLE_CLIENT).orElse(null);
-                if (clientRole != null) {
-                    roles.add(clientRole);
-                }
+                roleRepository.findByName(Role.ERole.ROLE_CLIENT).ifPresent(roles::add);
             }
             
             userToSave.setRoles(roles);
         }
 
-        // For existing users, use native UPDATE query to avoid SINGLE_TABLE inheritance issues
-        if (!isNewUser) {
-            // Update user fields directly using native query
-            String nativeSql = """
-                UPDATE users SET 
-                    first_name = :firstName, 
-                    last_name = :lastName, 
-                    email = :email,
-                    phone_number = :phoneNumber,
-                    department = :department,
-                    program = :program,
-                    year_of_study = :yearOfStudy,
-                    gender = :gender,
-                    date_of_birth = :dateOfBirth,
-                    student_id = :studentId,
-                    authentication_source = :authSource,
-                    is_active = true,
-                    email_verified = true,
-                    updated_at = NOW()
-                WHERE id = :id
-                """;
-            
-            entityManager.createNativeQuery(nativeSql)
-                .setParameter("firstName", externalUser.getFirstName())
-                .setParameter("lastName", externalUser.getLastName())
-                .setParameter("email", email)
-                .setParameter("phoneNumber", externalUser.getPhoneNumber())
-                .setParameter("department", externalUser.getDepartment())
-                .setParameter("program", externalUser.getProgram())
-                .setParameter("yearOfStudy", externalUser.getYearOfStudy())
-                .setParameter("gender", externalUser.getGender() != null ? externalUser.getGender().name() : null)
-                .setParameter("dateOfBirth", externalUser.getDateOfBirth())
-                .setParameter("studentId", externalUser.getStudentId())
-                .setParameter("authSource", externalUser.getAuthenticationSource().name())
-                .setParameter("id", userToSave.getId())
-                .executeUpdate();
-            
-            entityManager.flush();
-            
-            // Return the user with refreshed data
-            return entityManager.find(User.class, userToSave.getId());
-        }
-
-        // For new users, persist normally
-        if (isNewUser) {
-            entityManager.persist(userToSave);
-        }
-
+        // Save using repository (handles both insert and update)
+        userToSave = userRepository.save(userToSave);
+        
+        System.out.println("Provisioned user: " + userToSave.getUsername() + " (isNewUser=" + isNewUser + ")");
+        
         return userToSave;
+    }
+    
+    /**
+     * Safely trim a string, returning null if empty
+     */
+    private String safeTrim(String value) {
+        if (value == null || "null".equalsIgnoreCase(value)) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 
     private AuthResponse createAuthResponse(User user) {

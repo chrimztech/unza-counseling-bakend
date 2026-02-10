@@ -19,13 +19,16 @@ public class DataLoader {
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
     private final AppointmentRepository appointmentRepository;
+    private final ConsentFormRepository consentFormRepository;
 
     public DataLoader(UserRepository userRepository, RoleRepository roleRepository, 
-                     PasswordEncoder passwordEncoder, AppointmentRepository appointmentRepository) {
+                     PasswordEncoder passwordEncoder, AppointmentRepository appointmentRepository,
+                     ConsentFormRepository consentFormRepository) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.passwordEncoder = passwordEncoder;
         this.appointmentRepository = appointmentRepository;
+        this.consentFormRepository = consentFormRepository;
     }
 
     @PostConstruct
@@ -176,6 +179,9 @@ public class DataLoader {
 
             appointmentRepository.saveAll(Set.of(appointment1, appointment2, appointment3, appointment4, appointment5));
 
+            // Create default consent form
+            createDefaultConsentForm();
+
             System.out.println("Data loading completed successfully!");
             System.out.println("Created " + userRepository.count() + " users, " + roleRepository.count() + " roles, " + appointmentRepository.count() + " appointments");
 
@@ -216,5 +222,49 @@ public class DataLoader {
         user.setAuthenticationSource(AuthenticationSource.INTERNAL);
         user.setHasSignedConsent(false);
         return user;
+    }
+
+    private void createDefaultConsentForm() {
+        ConsentForm consentForm = new ConsentForm();
+        consentForm.setTitle("Counseling Services Consent Form");
+        consentForm.setContent("""
+            <h2>UNZA Counseling Services - Consent Form</h2>
+            
+            <h3>1. Introduction</h3>
+            <p>Welcome to the University of Zambia (UNZA) Counseling Services. This consent form outlines the terms and conditions for receiving counseling services.</p>
+            
+            <h3>2. Confidentiality</h3>
+            <p>All information shared during counseling sessions is strictly confidential. Exceptions include situations where there is risk of harm to yourself or others, or as required by law.</p>
+            
+            <h3>3. Services Provided</h3>
+            <p>We offer individual counseling, group therapy, crisis intervention, and academic support for students experiencing personal, emotional, or psychological challenges.</p>
+            
+            <h3>4. Your Rights</h3>
+            <p>You have the right to:
+            <ul>
+                <li>Be treated with respect and dignity</li>
+                <li>Receive services in a safe and comfortable environment</li>
+                <li>Request to stop counseling at any time</li>
+                <li>Access your counseling records as permitted by law</li>
+            </ul>
+            </p>
+            
+            <h3>5. Responsibilities</h3>
+            <p>As a client, you agree to:
+            <ul>
+                <li>Attend scheduled appointments on time</li>
+                <li>Communicate openly with your counselor</li>
+                <li>Notify us of any concerns or changes in your situation</li>
+            </ul>
+            </p>
+            
+            <h3>6. Agreement</h3>
+            <p>By signing this form, you acknowledge that you have read, understood, and agree to the terms outlined above.</p>
+            """);
+        consentForm.setVersion("1.0");
+        consentForm.setActive(true);
+        consentForm.setEffectiveDate(LocalDateTime.now());
+        consentFormRepository.save(consentForm);
+        System.out.println("Default consent form created successfully");
     }
 }

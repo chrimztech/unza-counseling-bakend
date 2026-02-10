@@ -55,11 +55,11 @@ public interface AppointmentService {
 
     /**
      * Get appointments by student ID
-     * @param studentId the student ID
+     * @param studentId the student ID (VARCHAR in database)
      * @param pageable pagination information
      * @return paginated list of appointments
      */
-    Page<AppointmentDto> getAppointmentsByStudentId(Long studentId, Pageable pageable);
+    Page<AppointmentDto> getAppointmentsByStudentId(String studentId, Pageable pageable);
 
     /**
      * Create appointment

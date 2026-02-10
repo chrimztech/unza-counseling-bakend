@@ -33,9 +33,9 @@ public class AppointmentController {
 
     @GetMapping
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<Page<AppointmentDto>> getAllAppointments(Pageable pageable) {
+    public ResponseEntity<ApiResponse<Page<AppointmentDto>>> getAllAppointments(Pageable pageable) {
         log.info("Fetching all appointments");
-        return ResponseEntity.ok(appointmentService.getAllAppointments(pageable));
+        return ResponseEntity.ok(ApiResponse.success(appointmentService.getAllAppointments(pageable)));
     }
 
     @GetMapping("/{id}")

@@ -19,6 +19,7 @@ import zm.unza.counseling.service.ConsentFormService;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -98,12 +99,12 @@ public class ConsentFormServiceImpl implements ConsentFormService {
     }
 
     @Override
-    public ConsentFormResponse getLatestActiveConsentForm() {
+    public Optional<ConsentFormResponse> getLatestActiveConsentForm() {
         List<ConsentForm> forms = consentFormRepository.findLatestActive();
         if (forms.isEmpty()) {
-            throw new ResourceNotFoundException("No active consent forms found");
+            return Optional.empty();
         }
-        return mapToResponse(forms.get(0));
+        return Optional.of(mapToResponse(forms.get(0)));
     }
 
     @Override

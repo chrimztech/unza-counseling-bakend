@@ -16,6 +16,7 @@
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/config/cache/CacheConfig.java
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/dto/AcademicPerformanceDtos.java
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/service/impl/NotificationServiceImpl.java
+/home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/config/JacksonConfig.java
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/interceptor/ApiVersionInterceptor.java
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/dto/response/ConsentFormResponse.java
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/entity/RiskAssessment.java
@@ -44,6 +45,7 @@
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/service/ResourceService.java
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/service/interfaces/AcademicPerformanceService.java
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/validation/EnterpriseValidationConfig.java
+/home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/entity/AcademicQualification.java
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/service/AnalyticsService.java
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/entity/Appointment.java
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/repository/SessionRepository.java
@@ -58,13 +60,17 @@
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/dto/response/AppointmentResponse.java
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/config/scheduler/QuartzConfig.java
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/controller/AuthController.java
+/home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/dto/sis/SisResultsDtos.java
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/security/external/ExternalAuthenticationService.java
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/repository/MessageRepository.java
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/entity/Role.java
+/home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/repository/AcademicQualificationRepository.java
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/repository/SettingsRepository.java
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/service/AppointmentService.java
+/home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/controller/WebSocketEventController.java
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/entity/Session.java
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/repository/CounselorRepository.java
+/home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/dto/response/ConversationDto.java
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/service/impl/ReportServiceImpl.java
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/service/RiskAssessmentService.java
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/dto/response/AuthResponse.java
@@ -98,6 +104,7 @@
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/security/EncryptionService.java
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/repository/RoleRepository.java
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/controller/SessionController.java
+/home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/service/SisResultsService.java
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/repository/RiskAssessmentRepository.java
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/util/DateUtil.java
 /home/dev/Public/unza-projects/counseling/unza-counseling-bakend/src/main/java/zm/unza/counseling/util/Constants.java

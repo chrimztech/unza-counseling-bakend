@@ -3,6 +3,7 @@ package zm.unza.counseling.repository;
 import zm.unza.counseling.entity.Appointment;
 import zm.unza.counseling.entity.Appointment.AppointmentStatus;
 import zm.unza.counseling.entity.User;
+import zm.unza.counseling.entity.Client;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -27,6 +28,9 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
     Page<Appointment> findByStudent(User student, Pageable pageable);
     
     List<Appointment> findByStudentAndStatus(User student, AppointmentStatus status);
+    
+    // Client appointments (appointments where client is the user receiving counseling)
+    Page<Appointment> findByClient(Client client, Pageable pageable);
     
     @Query("SELECT a FROM Appointment a WHERE a.student = :student " +
            "AND a.appointmentDate >= :start AND a.appointmentDate <= :end " +

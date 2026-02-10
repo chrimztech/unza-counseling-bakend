@@ -9,6 +9,7 @@ import zm.unza.counseling.entity.User;
 import zm.unza.counseling.entity.UserConsent;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Service interface for consent form management
@@ -43,7 +44,7 @@ public interface ConsentFormService {
     /**
      * Get the latest active consent form
      */
-    ConsentFormResponse getLatestActiveConsentForm();
+    Optional<ConsentFormResponse> getLatestActiveConsentForm();
 
     /**
      * Sign a consent form

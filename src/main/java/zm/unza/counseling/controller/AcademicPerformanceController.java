@@ -2,7 +2,6 @@ package zm.unza.counseling.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -16,7 +15,9 @@ import zm.unza.counseling.dto.StudentAtRiskDto;
 import zm.unza.counseling.dto.request.AcademicPerformanceRequest;
 import zm.unza.counseling.dto.response.AcademicPerformanceResponse;
 import zm.unza.counseling.dto.response.ApiResponse;
+import zm.unza.counseling.dto.sis.SisResultsDtos.SyncResultsResponse;
 import zm.unza.counseling.service.AcademicPerformanceService;
+import zm.unza.counseling.service.SisResultsService;
 
 import jakarta.validation.Valid;
 import java.math.BigDecimal;
@@ -24,11 +25,17 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/academic-performance")
-@RequiredArgsConstructor
 @Tag(name = "Academic Performance", description = "APIs for managing student academic performance records")
 public class AcademicPerformanceController {
 
     private final AcademicPerformanceService academicPerformanceService;
+    private final SisResultsService sisResultsService;
+
+    public AcademicPerformanceController(AcademicPerformanceService academicPerformanceService,
+                                          SisResultsService sisResultsService) {
+        this.academicPerformanceService = academicPerformanceService;
+        this.sisResultsService = sisResultsService;
+    }
 
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
@@ -145,5 +152,52 @@ public class AcademicPerformanceController {
     @Operation(summary = "Get academic performance analytics", description = "Retrieves analytics about academic performance")
     public ResponseEntity<ApiResponse<?>> getAcademicPerformanceAnalytics() {
         return ResponseEntity.ok(ApiResponse.success(academicPerformanceService.getAcademicPerformanceAnalytics()));
+    }
+
+    // ============ SIS Results Sync Endpoints ============
+
+    @PostMapping("/sync/sis")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'CLIENT')")
+    @Operation(summary = "Sync results from SIS", description = "Fetches and syncs academic results from the external SIS API")
+    public ResponseEntity<ApiResponse<SyncResultsResponse>> syncSisResults(
+            @RequestParam String studentId,
+            @RequestParam(required = false) String token,
+            @RequestParam(defaultValue = "false") boolean forceRefresh) {
+        SyncResultsResponse response = sisResultsService.fetchStudentResults(studentId, token, forceRefresh);
+        if (response.isSuccess()) {
+            return ResponseEntity.ok(ApiResponse.success(response, "Results synced successfully from SIS"));
+        } else {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.error(response.getMessage()));
+        }
+    }
+
+    @PostMapping("/client/{clientId}/sync/sis")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'CLIENT')")
+    @Operation(summary = "Sync results for client from SIS", description = "Fetches and syncs academic results for a specific client from the external SIS API")
+    public ResponseEntity<ApiResponse<SyncResultsResponse>> syncClientSisResults(
+            @PathVariable Long clientId,
+            @RequestParam(required = false) String token,
+            @RequestParam(defaultValue = "false") boolean forceRefresh) {
+        SyncResultsResponse response = sisResultsService.fetchResultsForClient(clientId, token, forceRefresh);
+        if (response.isSuccess()) {
+            return ResponseEntity.ok(ApiResponse.success(response, "Results synced successfully from SIS"));
+        } else {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.error(response.getMessage()));
+        }
+    }
+
+    @GetMapping("/client/{clientId}/cached/sis")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'CLIENT')")
+    @Operation(summary = "Get cached SIS results", description = "Retrieves cached academic results for a client")
+    public ResponseEntity<ApiResponse<SyncResultsResponse>> getCachedSisResults(@PathVariable Long clientId) {
+        SyncResultsResponse response = sisResultsService.getCachedResults(clientId);
+        if (response.isSuccess()) {
+            return ResponseEntity.ok(ApiResponse.success(response, "Cached results retrieved successfully"));
+        } else {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ApiResponse.error(response.getMessage()));
+        }
     }
 }

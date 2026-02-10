@@ -5,6 +5,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import zm.unza.counseling.dto.AppointmentDto;
@@ -12,8 +14,10 @@ import zm.unza.counseling.dto.CreateAppointmentRequest;
 import zm.unza.counseling.dto.UpdateAppointmentRequest;
 import zm.unza.counseling.dto.request.AssignAppointmentRequest;
 import zm.unza.counseling.entity.Appointment;
+import zm.unza.counseling.entity.Client;
 import zm.unza.counseling.entity.User;
 import zm.unza.counseling.repository.AppointmentRepository;
+import zm.unza.counseling.repository.ClientRepository;
 import zm.unza.counseling.repository.UserRepository;
 import zm.unza.counseling.service.AppointmentService;
 
@@ -36,6 +40,9 @@ public class AppointmentServiceImpl implements AppointmentService {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private ClientRepository clientRepository;
+
     @Override
     public Page<AppointmentDto> getAllAppointments(Pageable pageable) {
         return appointmentRepository.findAll(pageable).map(AppointmentDto::from);
@@ -50,9 +57,9 @@ public class AppointmentServiceImpl implements AppointmentService {
 
     @Override
     public Page<AppointmentDto> getAppointmentsByClientId(Long clientId, Pageable pageable) {
-        User client = userRepository.findById(clientId)
+        Client client = clientRepository.findById(clientId)
                 .orElseThrow(() -> new NoSuchElementException("Client not found with id: " + clientId));
-        return appointmentRepository.findByStudent(client, pageable).map(AppointmentDto::from);
+        return appointmentRepository.findByClient(client, pageable).map(AppointmentDto::from);
     }
 
     @Override
@@ -63,22 +70,66 @@ public class AppointmentServiceImpl implements AppointmentService {
     }
 
     @Override
-    public Page<AppointmentDto> getAppointmentsByStudentId(Long studentId, Pageable pageable) {
-        User student = userRepository.findById(studentId)
-                .orElseThrow(() -> new NoSuchElementException("Student not found with id: " + studentId));
+    public Page<AppointmentDto> getAppointmentsByStudentId(String studentId, Pageable pageable) {
+        User student = userRepository.findByStudentId(studentId)
+                .orElseThrow(() -> new NoSuchElementException("Student not found with studentId: " + studentId));
         return appointmentRepository.findByStudent(student, pageable).map(AppointmentDto::from);
     }
 
     @Override
     public AppointmentDto createAppointment(CreateAppointmentRequest request) {
-        User student = userRepository.findById(request.getStudentId())
-                .orElseThrow(() -> new NoSuchElementException("Student not found with id: " + request.getStudentId()));
+        // Get the authenticated user's identifier from the security context
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String principalName = authentication.getName();
+        
+        // Find the user by username or email
+        User user = userRepository.findByUsername(principalName)
+                .orElseGet(() -> userRepository.findByEmail(principalName)
+                        .orElseThrow(() -> new NoSuchElementException("User not found: " + principalName)));
+        
+        // Get or create Client record
+        Client client = clientRepository.findById(user.getId())
+                .orElseGet(() -> {
+                    // Create a new Client record for this user
+                    Client newClient = new Client();
+                    newClient.setId(user.getId());
+                    newClient.setUsername(user.getUsername());
+                    newClient.setEmail(user.getEmail());
+                    newClient.setPassword(user.getPassword());
+                    newClient.setFirstName(user.getFirstName());
+                    newClient.setLastName(user.getLastName());
+                    newClient.setStudentId(user.getStudentId());
+                    newClient.setPhoneNumber(user.getPhoneNumber());
+                    newClient.setProfilePicture(user.getProfilePicture());
+                    newClient.setBio(user.getBio());
+                    newClient.setGender(user.getGender());
+                    newClient.setDateOfBirth(user.getDateOfBirth());
+                    newClient.setDepartment(user.getDepartment());
+                    newClient.setProgram(user.getProgram());
+                    newClient.setYearOfStudy(user.getYearOfStudy());
+                    newClient.setActive(user.getActive());
+                    newClient.setEmailVerified(user.getEmailVerified());
+                    newClient.setLastLogin(user.getLastLogin());
+                    newClient.setRoles(user.getRoles());
+                    newClient.setCreatedAt(user.getCreatedAt());
+                    newClient.setUpdatedAt(user.getUpdatedAt());
+                    newClient.setAvailableForAppointments(user.getAvailableForAppointments());
+                    newClient.setHasSignedConsent(user.getHasSignedConsent());
+                    // Client-specific fields
+                    newClient.setClientStatus(Client.ClientStatus.ACTIVE);
+                    newClient.setRiskLevel(Client.RiskLevel.LOW);
+                    newClient.setRiskScore(0);
+                    newClient.setTotalSessions(0);
+                    log.info("Created Client record for user: {}", principalName);
+                    return clientRepository.save(newClient);
+                });
         
         Appointment appointment = new Appointment();
         appointment.setTitle(request.getTitle());
-        appointment.setStudent(student);
+        appointment.setStudent(user);
+        appointment.setClient(client);
         appointment.setAppointmentDate(request.getAppointmentDate());
-        appointment.setType(request.getType());
+        appointment.setType(request.getAppointmentType());
         appointment.setDescription(request.getDescription());
         appointment.setDuration(request.getDuration() != null ? request.getDuration() : 60);
         

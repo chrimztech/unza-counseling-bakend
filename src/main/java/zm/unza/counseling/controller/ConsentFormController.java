@@ -14,12 +14,13 @@ import zm.unza.counseling.service.ConsentFormService;
 
 import java.security.Principal;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Controller for consent form management
  */
 @RestController
-@RequestMapping("/api/v1/consent")
+@RequestMapping({"/v1/consent", "/consent"})
 @RequiredArgsConstructor
 @CrossOrigin(origins = "*")
 public class ConsentFormController {
@@ -77,8 +78,9 @@ public class ConsentFormController {
      */
     @GetMapping("/forms/latest")
     public ResponseEntity<ConsentFormResponse> getLatestActiveConsentForm() {
-        ConsentFormResponse response = consentFormService.getLatestActiveConsentForm();
-        return ResponseEntity.ok(response);
+        Optional<ConsentFormResponse> response = consentFormService.getLatestActiveConsentForm();
+        return response.map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.noContent().build());
     }
 
     /**

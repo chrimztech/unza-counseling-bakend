@@ -99,6 +99,12 @@ export const endpoints = {
     delete: (id: string) => `/academic-performance/${id}`,
     byStudent: (studentId: string) => `/academic-performance/student/${studentId}`,
     analytics: '/academic-performance/analytics',
+    // SIS Results
+    syncSis: '/academic-performance/sync/sis',
+    syncClientSis: (clientId: string) => `/academic-performance/client/${clientId}/sync/sis`,
+    cachedSis: (clientId: string) => `/academic-performance/client/${clientId}/cached/sis`,
+    gpaTrend: (clientId: string) => `/academic-performance/client/${clientId}/gpa-trend`,
+    atRisk: '/academic-performance/at-risk',
   },
   
   // Risk Assessments
@@ -123,5 +129,18 @@ export const endpoints = {
   notifications: {
     list: '/notifications',
     markAsRead: (id: string) => `/notifications/${id}/read`,
+  },
+
+  // Messages
+  messages: {
+    list: '/messages',
+    get: (partnerId: string) => `/messages/${partnerId}`,
+    create: '/messages',
+    send: '/messages/send',
+    unreadCount: '/messages/unread-count',
+    markAsRead: (messageId: string) => `/messages/${messageId}/read`,
+    markAllAsRead: '/messages/read-all',
+    getConversations: '/conversations',
+    markConversationAsRead: (partnerId: string) => `/conversations/${partnerId}/read`,
   },
 };

@@ -101,8 +101,25 @@ public class JwtService {
      * Validate token
      */
     public boolean isTokenValid(String token, UserDetails userDetails) {
-        final String username = extractUsername(token);
-        return (username.equals(userDetails.getUsername())) && !isTokenExpired(token);
+        try {
+            final String username = extractUsername(token);
+            final Date expiration = extractExpiration(token);
+            
+            // Check that username matches AND token has not expired
+            // Using lenient expiration check with 5 minute clock skew
+            boolean isUsernameValid = username != null && username.equals(userDetails.getUsername());
+            
+            // Check expiration - token is valid if expiration is in the future
+            // or within 5 minutes past (clock skew tolerance)
+            Date now = new Date();
+            boolean isNotExpired = expiration == null || 
+                    !expiration.before(new Date(now.getTime() - (5 * 60 * 1000)));
+            
+            return isUsernameValid && isNotExpired;
+        } catch (Exception e) {
+            System.err.println("JWT validation error: " + e.getMessage());
+            return false;
+        }
     }
 
     /**

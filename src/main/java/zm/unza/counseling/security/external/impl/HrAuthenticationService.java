@@ -45,13 +45,10 @@ public class HrAuthenticationService implements ExternalAuthenticationService {
         public ExternalAuthResponse authenticate(String username, String password) throws ExternalAuthenticationException {
             System.out.println("Attempting HR authentication for staff: " + username);
             
-            // Extract username from email if provided (e.g., chrishent.mutondo@unza.zm -> chrishent.mutondo)
+            // HR API accepts full email as username (e.g., chrishent.mutondo@unza.ac.zm)
             String hrUsername = username;
-            if (username != null && username.contains("@")) {
-                hrUsername = username.split("@")[0];
-            }
             
-            System.out.println("HR Username (extracted): " + hrUsername);
+            System.out.println("HR Username: " + hrUsername);
             
             try {
                 // Step 1: Authenticate and get a token
@@ -106,7 +103,7 @@ public class HrAuthenticationService implements ExternalAuthenticationService {
     
                 if (metadataResponse.getStatusCode() == HttpStatus.OK && metadataResponse.getBody() != null) {
                     HrUserMetadataResponse hrUser = metadataResponse.getBody();
-                    User user = mapHrResponseToUser(hrUser);
+                    User user = mapHrResponseToUser(hrUser, username);
                     System.out.println("HR authentication successful for staff: " + username);
                     return new ExternalAuthResponse(true, "Authentication successful", user, hrUser.getResponse().getData().getManNumber(), "HR");
                 } else {
@@ -159,7 +156,7 @@ public class HrAuthenticationService implements ExternalAuthenticationService {
             ResponseEntity<HrUserMetadataResponse> response = restTemplate.getForEntity(url, HrUserMetadataResponse.class);
             
             if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
-                return mapHrResponseToUser(response.getBody());
+                return mapHrResponseToUser(response.getBody(), username);
             } else {
                 throw new ExternalAuthenticationException("Staff member not found in HR system");
             }
@@ -170,7 +167,7 @@ public class HrAuthenticationService implements ExternalAuthenticationService {
         }
     }
 
-    private User mapHrResponseToUser(HrUserMetadataResponse hrUser) throws ExternalAuthenticationException {
+    private User mapHrResponseToUser(HrUserMetadataResponse hrUser, String loginUsername) throws ExternalAuthenticationException {
         if (hrUser == null || hrUser.getResponse() == null || hrUser.getResponse().getData() == null) {
             throw new ExternalAuthenticationException("Invalid HR user data received");
         }
@@ -184,24 +181,30 @@ public class HrAuthenticationService implements ExternalAuthenticationService {
             return "null".equalsIgnoreCase(value) ? "" : value;
         };
         
-        // Map fields from HR response to User entity
-        user.setUsername(safeString.apply(data.getManNumber())); // Use man_number as username
+        // Map username with fallback
+        String username = safeString.apply(data.getManNumber());
+        if (username.isEmpty()) {
+            username = loginUsername;
+        }
+        if (username.isEmpty()) {
+            username = "staff_" + System.currentTimeMillis();
+        }
+        user.setUsername(username);
+        
         user.setEmail(safeString.apply(data.getEmail()));
         user.setFirstName(safeString.apply(data.getFirstName()));
         user.setLastName(safeString.apply(data.getLastName()));
-        user.setDepartment(safeString.apply(data.getPosition())); // Use position as department
+        user.setDepartment(safeString.apply(data.getPosition()));
         user.setPhoneNumber(safeString.apply(data.getPhone()));
+        user.setGender(User.Gender.OTHER);
         user.setActive(true);
         user.setEmailVerified(true);
         user.setAuthenticationSource(zm.unza.counseling.security.AuthenticationSource.HR);
         user.setCreatedAt(LocalDateTime.now());
         user.setUpdatedAt(LocalDateTime.now());
         
-        // Set placeholder password for external authentication
         user.setPassword("EXTERNALLY_AUTHENTICATED_USER_NO_PASSWORD");
         
-        // Don't assign roles here - let MultiSourceAuthService handle role assignment
-        // based on the staff member's position and department
         user.setRoles(new HashSet<>());
         
         return user;

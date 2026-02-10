@@ -1,9 +1,11 @@
 package zm.unza.counseling.dto.request;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.validation.constraints.*;
 import lombok.Data;
 
 @Data
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class LoginRequest {
 
     @NotBlank(message = "Identifier is required")

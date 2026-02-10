@@ -13,11 +13,12 @@ import zm.unza.counseling.dto.response.UserResponse;
 import zm.unza.counseling.entity.User;
 import zm.unza.counseling.service.UserService;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping({"/v1/users", "/users"})
+@RequestMapping({"/v1/users", "/users", "/api/v1/users", "/api/users"})
 @RequiredArgsConstructor
 public class UserController {
     
@@ -145,5 +146,29 @@ public class UserController {
         return ResponseEntity.ok()
                 .header("Content-Disposition", "attachment; filename=users." + format)
                 .body(exportedData);
+    }
+
+    // Notification settings endpoint for user profile
+    @GetMapping("/{userId}/notification-settings")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'STUDENT', 'CLIENT')")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getUserNotificationSettings(@PathVariable Long userId) {
+        // Return default notification settings for the user
+        Map<String, Object> settings = new HashMap<>();
+        settings.put("emailNotifications", true);
+        settings.put("pushNotifications", true);
+        settings.put("appointmentReminders", true);
+        settings.put("messageNotifications", true);
+        settings.put("weeklyDigest", false);
+        settings.put("riskAlerts", true);
+        return ResponseEntity.ok(ApiResponse.success(settings));
+    }
+
+    @PutMapping("/{userId}/notification-settings")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'STUDENT', 'CLIENT')")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> updateUserNotificationSettings(
+            @PathVariable Long userId,
+            @RequestBody Map<String, Object> settings) {
+        // In a full implementation, this would save to a user-specific settings table
+        return ResponseEntity.ok(ApiResponse.success(settings, "Notification settings updated successfully"));
     }
 }

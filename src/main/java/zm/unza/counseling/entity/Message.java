@@ -31,6 +31,11 @@ public class Message {
     private LocalDateTime sentAt;
     private boolean isRead;
     private boolean isDelivered;
+    private boolean isArchived;
+    private boolean isStarred;
+    
+    @Column(name = "read_at")
+    private LocalDateTime readAt;
 
     @PrePersist
     protected void onCreate() {

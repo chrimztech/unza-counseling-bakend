@@ -1,8 +1,8 @@
 package zm.unza.counseling.service.impl;
 
-import lombok.RequiredArgsConstructor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
@@ -13,14 +13,30 @@ import zm.unza.counseling.entity.Notification;
 import zm.unza.counseling.repository.NotificationRepository;
 
 @Service
-@RequiredArgsConstructor
+@Slf4j
 public class NotificationServiceImpl {
 
-    private static final Logger log = LoggerFactory.getLogger(NotificationServiceImpl.class);
-
     private final NotificationRepository notificationRepository;
-    private final SimpMessagingTemplate messagingTemplate;
     private final EmailServiceImpl emailService;
+    
+    // Make SimpMessagingTemplate optional (lazy injected)
+    private SimpMessagingTemplate messagingTemplate;
+
+    @Autowired
+    public NotificationServiceImpl(NotificationRepository notificationRepository, EmailServiceImpl emailService) {
+        this.notificationRepository = notificationRepository;
+        this.emailService = emailService;
+    }
+
+    @Autowired(required = false)
+    public void setMessagingTemplate(@Lazy SimpMessagingTemplate messagingTemplate) {
+        this.messagingTemplate = messagingTemplate;
+        log.info("WebSocket messaging template available - real-time notifications enabled");
+    }
+
+    private boolean isWebSocketAvailable() {
+        return messagingTemplate != null;
+    }
 
     /**
      * Create and send a notification
@@ -143,7 +159,11 @@ public class NotificationServiceImpl {
      */
     private void sendRealtimeNotification(Long userId, Notification notification) {
         try {
-            messagingTemplate.convertAndSend("/topic/notifications/" + userId, notification);
+            if (isWebSocketAvailable()) {
+                messagingTemplate.convertAndSend("/topic/notifications/" + userId, notification);
+            } else {
+                log.debug("WebSocket not available - notification {} stored but not sent in real-time", notification.getId());
+            }
         } catch (Exception e) {
             log.error("Failed to send real-time notification to user: {}", userId, e);
         }

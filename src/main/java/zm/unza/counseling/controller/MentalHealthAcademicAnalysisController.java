@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/api/v1/analysis")
+@RequestMapping("/v1/analysis")
 @RequiredArgsConstructor
 public class MentalHealthAcademicAnalysisController {
 
@@ -61,6 +61,23 @@ public class MentalHealthAcademicAnalysisController {
     @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
     public ResponseEntity<ApiResponse<?>> getAnalysisTrendForClient(@PathVariable Long clientId) {
         return ResponseEntity.ok(ApiResponse.success(service.getAnalysisTrendForClient(clientId)));
+    }
+
+    // Dashboard endpoints
+    @GetMapping("/dashboard-stats")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
+    public ResponseEntity<ApiResponse<Object>> getDashboardStats() {
+        // Return dashboard statistics
+        Object stats = service.getDashboardStats();
+        return ResponseEntity.ok(ApiResponse.success(stats));
+    }
+
+    @GetMapping("/intervention-report")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
+    public ResponseEntity<ApiResponse<Object>> getInterventionReport() {
+        // Return intervention report
+        Object report = service.getInterventionReport();
+        return ResponseEntity.ok(ApiResponse.success(report));
     }
 
 }

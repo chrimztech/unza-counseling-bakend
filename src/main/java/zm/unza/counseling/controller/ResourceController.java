@@ -2,6 +2,7 @@ package zm.unza.counseling.controller;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import zm.unza.counseling.entity.Resource;
 import zm.unza.counseling.service.ResourceService;
@@ -22,11 +23,13 @@ public class ResourceController {
     }
 
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Resource> createResource(@RequestBody Resource resource) {
         return ResponseEntity.ok(resourceService.createResource(resource));
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deleteResource(@PathVariable Long id) {
         resourceService.deleteResource(id);
         return ResponseEntity.ok().build();

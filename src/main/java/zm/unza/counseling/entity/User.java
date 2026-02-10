@@ -81,7 +81,7 @@ public class User implements UserDetails {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private Gender gender;
+    private Gender gender = Gender.OTHER;
 
     private LocalDateTime dateOfBirth;
 

@@ -17,35 +17,39 @@ private Long id;
     @Column(length = 200, nullable = false)
     private String title;
 
-@ManyToOne(fetch = FetchType.LAZY)
-@JoinColumn(name = "student_id", nullable = false)
-@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
-private User student;
-@ManyToOne(fetch = FetchType.LAZY)
-@JoinColumn(name = "counselor_id")
-@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
-private User counselor;
-@Column(nullable = false)
-private LocalDateTime appointmentDate;
-private Integer duration = 60; // minutes
-@Enumerated(EnumType.STRING)
-@Column(nullable = false)
-private AppointmentType type;
-@Enumerated(EnumType.STRING)
-@Column(nullable = false)
-private AppointmentStatus status = AppointmentStatus.SCHEDULED;
-@Column(length = 1000)
-private String description;
-private String meetingLink;
-private String location;
-@Column(length = 2000)
-private String cancellationReason;
-private Boolean reminderSent = false;
-@CreatedDate
-@Column(nullable = false, updatable = false)
-private LocalDateTime createdAt;
-@LastModifiedDate
-private LocalDateTime updatedAt;
+ @ManyToOne(fetch = FetchType.LAZY)
+ @JoinColumn(name = "student_id", nullable = false)
+ @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+ private User student;
+ @ManyToOne(fetch = FetchType.LAZY)
+ @JoinColumn(name = "client_id", nullable = false)
+ @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+ private Client client;
+ @ManyToOne(fetch = FetchType.LAZY)
+ @JoinColumn(name = "counselor_id")
+ @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+ private User counselor;
+ @Column(nullable = false)
+ private LocalDateTime appointmentDate;
+ private Integer duration = 60; // minutes
+ @Enumerated(EnumType.STRING)
+ @Column(nullable = false)
+ private AppointmentType type;
+ @Enumerated(EnumType.STRING)
+ @Column(nullable = false)
+ private AppointmentStatus status = AppointmentStatus.SCHEDULED;
+ @Column(length = 1000)
+ private String description;
+ private String meetingLink;
+ private String location;
+ @Column(length = 2000)
+ private String cancellationReason;
+ private Boolean reminderSent = false;
+ @CreatedDate
+ @Column(nullable = false, updatable = false)
+ private LocalDateTime createdAt;
+ @LastModifiedDate
+ private LocalDateTime updatedAt;
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -53,6 +57,8 @@ private LocalDateTime updatedAt;
     public void setTitle(String title) { this.title = title; }
     public User getStudent() { return student; }
     public void setStudent(User student) { this.student = student; }
+    public Client getClient() { return client; }
+    public void setClient(Client client) { this.client = client; }
     public User getCounselor() { return counselor; }
     public void setCounselor(User counselor) { this.counselor = counselor; }
     public LocalDateTime getAppointmentDate() { return appointmentDate; }
@@ -78,21 +84,21 @@ private LocalDateTime updatedAt;
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 
-public enum AppointmentType {
-INITIAL_CONSULTATION,
-FOLLOW_UP,
-GROUP_SESSION,
-ASSESSMENT,
-CRISIS_INTERVENTION
-}
-public enum AppointmentStatus {
-SCHEDULED,
-CONFIRMED,
-IN_PROGRESS,
-COMPLETED,
-CANCELLED,
-NO_SHOW,
-RESCHEDULED,
-UNASSIGNED
-}
+ public enum AppointmentType {
+ INITIAL_CONSULTATION,
+ FOLLOW_UP,
+ GROUP_SESSION,
+ ASSESSMENT,
+ CRISIS_INTERVENTION
+ }
+ public enum AppointmentStatus {
+ SCHEDULED,
+ CONFIRMED,
+ IN_PROGRESS,
+ COMPLETED,
+ CANCELLED,
+ NO_SHOW,
+ RESCHEDULED,
+ UNASSIGNED
+ }
 }
