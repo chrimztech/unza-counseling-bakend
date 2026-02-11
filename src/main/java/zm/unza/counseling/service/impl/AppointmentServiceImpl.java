@@ -57,8 +57,46 @@ public class AppointmentServiceImpl implements AppointmentService {
 
     @Override
     public Page<AppointmentDto> getAppointmentsByClientId(Long clientId, Pageable pageable) {
+        // Try to find Client record, auto-create if doesn't exist
         Client client = clientRepository.findById(clientId)
-                .orElseThrow(() -> new NoSuchElementException("Client not found with id: " + clientId));
+                .orElseGet(() -> {
+                    // Try to find user with this ID
+                    User user = userRepository.findById(clientId)
+                            .orElseThrow(() -> new NoSuchElementException("Client not found with id: " + clientId));
+                    
+                    // Create Client record from User
+                    Client newClient = new Client();
+                    newClient.setId(user.getId());
+                    newClient.setUsername(user.getUsername());
+                    newClient.setEmail(user.getEmail());
+                    newClient.setPassword(user.getPassword());
+                    newClient.setFirstName(user.getFirstName());
+                    newClient.setLastName(user.getLastName());
+                    newClient.setStudentId(user.getStudentId());
+                    newClient.setPhoneNumber(user.getPhoneNumber());
+                    newClient.setProfilePicture(user.getProfilePicture());
+                    newClient.setBio(user.getBio());
+                    newClient.setGender(user.getGender());
+                    newClient.setDateOfBirth(user.getDateOfBirth());
+                    newClient.setDepartment(user.getDepartment());
+                    newClient.setProgram(user.getProgram());
+                    newClient.setYearOfStudy(user.getYearOfStudy());
+                    newClient.setActive(user.getActive());
+                    newClient.setEmailVerified(user.getEmailVerified());
+                    newClient.setLastLogin(user.getLastLogin());
+                    newClient.setRoles(user.getRoles());
+                    newClient.setCreatedAt(user.getCreatedAt());
+                    newClient.setUpdatedAt(user.getUpdatedAt());
+                    newClient.setAvailableForAppointments(user.getAvailableForAppointments());
+                    newClient.setHasSignedConsent(user.getHasSignedConsent());
+                    // Client-specific fields
+                    newClient.setClientStatus(Client.ClientStatus.ACTIVE);
+                    newClient.setRiskLevel(Client.RiskLevel.LOW);
+                    newClient.setRiskScore(0);
+                    newClient.setTotalSessions(0);
+                    log.info("Auto-created Client record for user: {}", user.getUsername());
+                    return clientRepository.save(newClient);
+                });
         return appointmentRepository.findByClient(client, pageable).map(AppointmentDto::from);
     }
 

@@ -30,6 +30,28 @@ public class UserController {
         return ResponseEntity.ok(ApiResponse.success(userService.getAllUsers(pageable)));
     }
 
+    // Notification settings endpoints - MUST come before /{id} to avoid path matching conflicts
+    @GetMapping("/{userId}/notification-settings")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'STUDENT', 'CLIENT')")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getUserNotificationSettings(@PathVariable Long userId) {
+        Map<String, Object> settings = new HashMap<>();
+        settings.put("emailNotifications", true);
+        settings.put("pushNotifications", true);
+        settings.put("appointmentReminders", true);
+        settings.put("messageNotifications", true);
+        settings.put("weeklyDigest", false);
+        settings.put("riskAlerts", true);
+        return ResponseEntity.ok(ApiResponse.success(settings));
+    }
+
+    @PutMapping("/{userId}/notification-settings")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'STUDENT', 'CLIENT')")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> updateUserNotificationSettings(
+            @PathVariable Long userId,
+            @RequestBody Map<String, Object> settings) {
+        return ResponseEntity.ok(ApiResponse.success(settings, "Notification settings updated successfully"));
+    }
+
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
     public ResponseEntity<ApiResponse<User>> getUserById(@PathVariable Long id) {
@@ -148,27 +170,4 @@ public class UserController {
                 .body(exportedData);
     }
 
-    // Notification settings endpoint for user profile
-    @GetMapping("/{userId}/notification-settings")
-    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'STUDENT', 'CLIENT')")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> getUserNotificationSettings(@PathVariable Long userId) {
-        // Return default notification settings for the user
-        Map<String, Object> settings = new HashMap<>();
-        settings.put("emailNotifications", true);
-        settings.put("pushNotifications", true);
-        settings.put("appointmentReminders", true);
-        settings.put("messageNotifications", true);
-        settings.put("weeklyDigest", false);
-        settings.put("riskAlerts", true);
-        return ResponseEntity.ok(ApiResponse.success(settings));
-    }
-
-    @PutMapping("/{userId}/notification-settings")
-    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'STUDENT', 'CLIENT')")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> updateUserNotificationSettings(
-            @PathVariable Long userId,
-            @RequestBody Map<String, Object> settings) {
-        // In a full implementation, this would save to a user-specific settings table
-        return ResponseEntity.ok(ApiResponse.success(settings, "Notification settings updated successfully"));
-    }
 }

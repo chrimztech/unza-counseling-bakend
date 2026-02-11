@@ -13,9 +13,11 @@ import org.springframework.transaction.annotation.Transactional;
 import zm.unza.counseling.dto.request.LoginRequest;
 import zm.unza.counseling.dto.request.RegisterRequest;
 import zm.unza.counseling.dto.response.AuthResponse;
+import zm.unza.counseling.entity.Client;
 import zm.unza.counseling.entity.Role;
 import zm.unza.counseling.entity.User;
 import zm.unza.counseling.exception.ValidationException;
+import zm.unza.counseling.repository.ClientRepository;
 import zm.unza.counseling.repository.RoleRepository;
 import zm.unza.counseling.repository.UserRepository;
 import zm.unza.counseling.security.AuthenticationSource;
@@ -39,6 +41,7 @@ public class MultiSourceAuthService {
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
+    private final ClientRepository clientRepository;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
     private final PasswordEncoder passwordEncoder;
@@ -48,6 +51,7 @@ public class MultiSourceAuthService {
     public MultiSourceAuthService(
             UserRepository userRepository,
             RoleRepository roleRepository,
+            ClientRepository clientRepository,
             JwtService jwtService,
             AuthenticationManager authenticationManager,
             PasswordEncoder passwordEncoder,
@@ -55,6 +59,7 @@ public class MultiSourceAuthService {
             @Qualifier("hrAuthenticationService") ExternalAuthenticationService hrAuthenticationService) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
+        this.clientRepository = clientRepository;
         this.jwtService = jwtService;
         this.authenticationManager = authenticationManager;
         this.passwordEncoder = passwordEncoder;
@@ -242,10 +247,18 @@ public class MultiSourceAuthService {
 
     private AuthResponse authenticateStudent(LoginRequest request) {
         try {
+            System.out.println("=== STUDENT AUTHENTICATION START ===");
+            System.out.println("Identifier: " + request.getIdentifier());
+            System.out.println("SIS URL: https://devoap.unza.zm/api/v1/customers/login");
+            
             ExternalAuthResponse externalResponse = sisAuthenticationService.authenticate(request.getIdentifier(), request.getPassword());
 
+            System.out.println("SIS Response - Authenticated: " + externalResponse.isAuthenticated());
+            System.out.println("SIS Response - Message: " + externalResponse.getMessage());
+            
             if (externalResponse.isAuthenticated()) {
                 User provisionedUser = provisionUser(externalResponse.getUser());
+                System.out.println("Provisioned User - Username: " + provisionedUser.getUsername() + ", Email: " + provisionedUser.getEmail());
                 return createAuthResponse(provisionedUser);
             } else {
                 throw new ValidationException(externalResponse.getMessage() != null ? externalResponse.getMessage() : "Invalid student credentials");
@@ -377,6 +390,15 @@ public class MultiSourceAuthService {
         String email = safeTrim(externalUser.getEmail());
         if (email == null || email.isEmpty()) {
             email = externalUser.getUsername() + "@unza.zm";
+        } else {
+            // Fix common email typos (comma to dot)
+            if (email.contains(",")) {
+                email = email.replace(",", ".");
+            }
+            // Validate email format
+            if (!email.matches("^[A-Za-z0-9+_.-]+@(.+)$")) {
+                email = externalUser.getUsername() + "@unza.zm";
+            }
         }
         userToSave.setEmail(email);
         
@@ -426,6 +448,11 @@ public class MultiSourceAuthService {
             
             userToSave.setRoles(roles);
         }
+        
+        // For SIS users, also create/update Client record
+        if (externalUser.getAuthenticationSource() == AuthenticationSource.SIS && isNewUser) {
+            createClientRecord(userToSave);
+        }
 
         // Save using repository (handles both insert and update)
         userToSave = userRepository.save(userToSave);
@@ -444,6 +471,34 @@ public class MultiSourceAuthService {
         }
         String trimmed = value.trim();
         return trimmed.isEmpty() ? null : trimmed;
+    }
+    
+    /**
+     * Create a Client record for SIS users
+     */
+    private void createClientRecord(User user) {
+        try {
+            Client client = new Client();
+            client.setUsername(user.getUsername());
+            client.setEmail(user.getEmail());
+            client.setPassword(user.getPassword());
+            client.setFirstName(user.getFirstName());
+            client.setLastName(user.getLastName());
+            client.setStudentId(user.getStudentId());
+            client.setPhoneNumber(user.getPhoneNumber());
+            client.setProgram(user.getProgram());
+            client.setDepartment(user.getDepartment());
+            client.setYearOfStudy(user.getYearOfStudy());
+            client.setActive(true);
+            client.setEmailVerified(true);
+            client.setAuthenticationSource(user.getAuthenticationSource());
+            client.setRoles(user.getRoles());
+            
+            clientRepository.save(client);
+            System.out.println("Created Client record for user: " + user.getUsername());
+        } catch (Exception e) {
+            System.err.println("Failed to create Client record: " + e.getMessage());
+        }
     }
 
     private AuthResponse createAuthResponse(User user) {
