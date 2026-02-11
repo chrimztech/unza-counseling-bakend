@@ -137,6 +137,10 @@ public class SisAuthenticationService implements ExternalAuthenticationService {
                     if (userNode != null) {
                         // Extract user data from the new format
                         String email = getJsonText(userNode, "email");
+                        // Fix email typo: replace comma with dot
+                        if (email != null && email.contains(",")) {
+                            email = email.replace(",", ".");
+                        }
                         String firstName = getJsonText(userNode, "first_name");
                         String lastName = getJsonText(userNode, "last_name");
                         String studentId = getJsonText(userNode, "student_id");
@@ -250,11 +254,12 @@ public class SisAuthenticationService implements ExternalAuthenticationService {
         }
     }
 
-    // Helper method to safely extract text from JSON node
+    // Helper method to safely extract text from JSON node (handles both string and numeric values)
     private String getJsonText(JsonNode node, String fieldName) {
         if (node == null || !node.has(fieldName)) return "";
         JsonNode fieldNode = node.get(fieldName);
         if (fieldNode == null || fieldNode.isNull()) return "";
+        // asText() works for both string and numeric values
         String value = fieldNode.asText();
         return "null".equalsIgnoreCase(value) ? "" : value;
     }
