@@ -12,6 +12,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -36,22 +37,38 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         @NonNull FilterChain filterChain
     ) throws ServletException, IOException {
 
+        final String requestPath = request.getRequestURI();
         final String authHeader = request.getHeader("Authorization");
 
+        log.debug("Processing request: {} {}", request.getMethod(), requestPath);
+
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            log.debug("No Bearer token found for request: {}", requestPath);
             filterChain.doFilter(request, response);
             return;
         }
 
         try {
             final String jwt = authHeader.substring(7);
+            log.debug("JWT token received (first 20 chars): {}", 
+                jwt.length() > 20 ? jwt.substring(0, 20) + "..." : jwt);
+            
             final String username = jwtService.extractUsername(jwt);
+            log.debug("Extracted username from token: {}", username);
 
             if (username != null &&
                 SecurityContextHolder.getContext().getAuthentication() == null) {
 
-                UserDetails userDetails =
-                    userDetailsService.loadUserByUsername(username);
+                UserDetails userDetails;
+                try {
+                    userDetails = userDetailsService.loadUserByUsername(username);
+                    log.debug("Loaded user details for: {}, authorities: {}", 
+                        username, userDetails.getAuthorities());
+                } catch (UsernameNotFoundException e) {
+                    log.error("User not found in database: {}", username);
+                    filterChain.doFilter(request, response);
+                    return;
+                }
 
                 if (jwtService.isTokenValid(jwt, userDetails)) {
                     UsernamePasswordAuthenticationToken authToken =
@@ -68,10 +85,25 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
                     SecurityContextHolder.getContext()
                         .setAuthentication(authToken);
+                    log.debug("Successfully authenticated user: {} for path: {}", 
+                        username, requestPath);
+                } else {
+                    log.warn("Token validation failed for user: {}", username);
                 }
+            } else if (username == null) {
+                log.error("Could not extract username from token");
+            } else {
+                log.debug("Authentication already set in SecurityContext");
             }
+        } catch (io.jsonwebtoken.ExpiredJwtException e) {
+            log.error("JWT token expired: {}", e.getMessage());
+        } catch (io.jsonwebtoken.MalformedJwtException e) {
+            log.error("Invalid JWT token format: {}", e.getMessage());
+        } catch (io.jsonwebtoken.security.SignatureException e) {
+            log.error("Invalid JWT signature: {}", e.getMessage());
         } catch (Exception e) {
-            log.error("JWT authentication failed: {}", e.getMessage());
+            log.error("JWT authentication failed: {} - {}", 
+                e.getClass().getSimpleName(), e.getMessage());
         }
 
         filterChain.doFilter(request, response);

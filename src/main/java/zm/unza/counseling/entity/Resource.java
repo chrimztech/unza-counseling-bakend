@@ -20,6 +20,13 @@ public class Resource {
     private String url;
     private LocalDateTime createdAt;
 
+    // File upload fields
+    private String fileName;
+    private String fileType;
+    private Long fileSize;
+    private String fileUrl;
+    private String fileKey;
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();

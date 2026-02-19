@@ -16,8 +16,10 @@ public class AppointmentDto {
     private Integer duration;
     private Appointment.AppointmentType type;
     private Appointment.AppointmentStatus status;
+    private Appointment.SessionMode sessionMode;
     private String description;
     private String meetingLink;
+    private String meetingProvider;
     private String location;
     private LocalDateTime createdAt;
 
@@ -41,10 +43,14 @@ public class AppointmentDto {
     public void setType(Appointment.AppointmentType type) { this.type = type; }
     public Appointment.AppointmentStatus getStatus() { return status; }
     public void setStatus(Appointment.AppointmentStatus status) { this.status = status; }
+    public Appointment.SessionMode getSessionMode() { return sessionMode; }
+    public void setSessionMode(Appointment.SessionMode sessionMode) { this.sessionMode = sessionMode; }
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
     public String getMeetingLink() { return meetingLink; }
     public void setMeetingLink(String meetingLink) { this.meetingLink = meetingLink; }
+    public String getMeetingProvider() { return meetingProvider; }
+    public void setMeetingProvider(String meetingProvider) { this.meetingProvider = meetingProvider; }
     public String getLocation() { return location; }
     public void setLocation(String location) { this.location = location; }
     public LocalDateTime getCreatedAt() { return createdAt; }
@@ -70,8 +76,10 @@ public class AppointmentDto {
         dto.setDuration(appointment.getDuration());
         dto.setType(appointment.getType());
         dto.setStatus(appointment.getStatus());
+        dto.setSessionMode(appointment.getSessionMode());
         dto.setDescription(appointment.getDescription());
         dto.setMeetingLink(appointment.getMeetingLink());
+        dto.setMeetingProvider(appointment.getMeetingProvider());
         dto.setLocation(appointment.getLocation());
         dto.setCreatedAt(appointment.getCreatedAt());
         return dto;

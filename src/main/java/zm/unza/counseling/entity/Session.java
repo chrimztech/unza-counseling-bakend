@@ -49,6 +49,9 @@ public class Session {
     @NotNull
     @Column(nullable = false)
     private LocalDateTime sessionDate;
+    
+    @Column(name = "meeting_link", length = 500)
+    private String meetingLink;
 
     @NotNull
     @Column(nullable = false)
@@ -125,6 +128,8 @@ public class Session {
     public void setCounselor(User counselor) { this.counselor = counselor; }
     public LocalDateTime getSessionDate() { return sessionDate; }
     public void setSessionDate(LocalDateTime sessionDate) { this.sessionDate = sessionDate; }
+    public String getMeetingLink() { return meetingLink; }
+    public void setMeetingLink(String meetingLink) { this.meetingLink = meetingLink; }
     public Integer getDurationMinutes() { return durationMinutes; }
     public void setDurationMinutes(Integer durationMinutes) { this.durationMinutes = durationMinutes; }
     public SessionType getType() { return type; }

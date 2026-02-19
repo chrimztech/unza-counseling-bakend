@@ -20,7 +20,7 @@ import java.util.Optional;
  * Controller for consent form management
  */
 @RestController
-@RequestMapping({"/v1/consent", "/consent"})
+@RequestMapping({"/api/v1/consent", "/api/consent", "/v1/consent", "/consent"})
 @RequiredArgsConstructor
 @CrossOrigin(origins = "*")
 public class ConsentFormController {
@@ -102,11 +102,22 @@ public class ConsentFormController {
      */
     @GetMapping("/check-signed")
     public ResponseEntity<Boolean> hasUserSignedLatestConsent(Principal principal) {
+        // If no authentication, return false (user needs to sign consent)
+        if (principal == null) {
+            return ResponseEntity.ok(false);
+        }
+        
         String email = principal.getName();
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        if (email == null || email.isEmpty()) {
+            return ResponseEntity.ok(false);
+        }
+        
+        User user = userRepository.findByEmail(email).orElse(null);
+        if (user == null) {
+            return ResponseEntity.ok(false);
+        }
+        
         Long userId = user.getId();
-
         boolean hasSigned = consentFormService.hasUserSignedLatestConsent(userId);
         return ResponseEntity.ok(hasSigned);
     }

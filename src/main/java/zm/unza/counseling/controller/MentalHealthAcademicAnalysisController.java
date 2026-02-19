@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import zm.unza.counseling.dto.MentalHealthAcademicDtos.MentalHealthAcademicAnalysisResponse;
 import zm.unza.counseling.dto.response.ApiResponse;
+import zm.unza.counseling.entity.MentalHealthAcademicAnalysis;
 import zm.unza.counseling.mapper.MentalHealthAcademicMapper;
 import zm.unza.counseling.service.MentalHealthAcademicAnalysisService;
 
@@ -16,7 +17,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/v1/analysis")
+@RequestMapping({"/api/v1/analysis","/api/analysis","/v1/analysis","/analysis"})
 @RequiredArgsConstructor
 public class MentalHealthAcademicAnalysisController {
 
@@ -51,9 +52,13 @@ public class MentalHealthAcademicAnalysisController {
     }
 
     @GetMapping("/client/{clientId}/latest")
-    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'CLIENT')")
     public ResponseEntity<ApiResponse<MentalHealthAcademicAnalysisResponse>> getLatestAnalysisForClient(@PathVariable Long clientId) {
-        MentalHealthAcademicAnalysisResponse response = mapper.toResponse(service.getLatestAnalysisForClient(clientId));
+        MentalHealthAcademicAnalysis analysis = service.getLatestAnalysisForClient(clientId);
+        if (analysis == null) {
+            return ResponseEntity.ok(ApiResponse.success(null));
+        }
+        MentalHealthAcademicAnalysisResponse response = mapper.toResponse(analysis);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 

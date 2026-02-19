@@ -9,6 +9,8 @@ public class AuthResponse {
     private String refreshToken;
     private User user;
     private int expiresIn;
+    private boolean requiresConsent;
+    private boolean isFirstLogin;
 
     // Explicit getters and setters to ensure they work
     public String getToken() {
@@ -41,5 +43,21 @@ public class AuthResponse {
 
     public void setExpiresIn(int expiresIn) {
         this.expiresIn = expiresIn;
+    }
+
+    public boolean isRequiresConsent() {
+        return requiresConsent;
+    }
+
+    public void setRequiresConsent(boolean requiresConsent) {
+        this.requiresConsent = requiresConsent;
+    }
+
+    public boolean isFirstLogin() {
+        return isFirstLogin;
+    }
+
+    public void setFirstLogin(boolean firstLogin) {
+        isFirstLogin = firstLogin;
     }
 }

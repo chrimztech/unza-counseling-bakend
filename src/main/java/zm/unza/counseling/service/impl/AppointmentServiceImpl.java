@@ -3,6 +3,7 @@ package zm.unza.counseling.service.impl;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
@@ -10,14 +11,20 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import zm.unza.counseling.dto.AppointmentDto;
+import zm.unza.counseling.dto.AppointmentStats;
+import zm.unza.counseling.dto.AvailabilitySlot;
 import zm.unza.counseling.dto.CreateAppointmentRequest;
 import zm.unza.counseling.dto.UpdateAppointmentRequest;
 import zm.unza.counseling.dto.request.AssignAppointmentRequest;
+import zm.unza.counseling.dto.request.CancelRequest;
+import zm.unza.counseling.dto.request.RescheduleRequest;
 import zm.unza.counseling.entity.Appointment;
 import zm.unza.counseling.entity.Client;
+import zm.unza.counseling.entity.Session;
 import zm.unza.counseling.entity.User;
 import zm.unza.counseling.repository.AppointmentRepository;
 import zm.unza.counseling.repository.ClientRepository;
+import zm.unza.counseling.repository.SessionRepository;
 import zm.unza.counseling.repository.UserRepository;
 import zm.unza.counseling.service.AppointmentService;
 
@@ -42,6 +49,18 @@ public class AppointmentServiceImpl implements AppointmentService {
 
     @Autowired
     private ClientRepository clientRepository;
+    
+    @Autowired
+    private SessionRepository sessionRepository;
+    
+    @Value("${app.meeting.jitsi-domain:meet.jit.si}")
+    private String jitsiDomain;
+    
+    @Value("${app.meeting.custom-domain:meet.unza.edu.zm}")
+    private String customMeetingDomain;
+    
+    @Value("${app.meeting.default-provider:jitsi}")
+    private String defaultMeetingProvider;
 
     @Override
     public Page<AppointmentDto> getAllAppointments(Pageable pageable) {
@@ -57,47 +76,20 @@ public class AppointmentServiceImpl implements AppointmentService {
 
     @Override
     public Page<AppointmentDto> getAppointmentsByClientId(Long clientId, Pageable pageable) {
-        // Try to find Client record, auto-create if doesn't exist
-        Client client = clientRepository.findById(clientId)
-                .orElseGet(() -> {
-                    // Try to find user with this ID
-                    User user = userRepository.findById(clientId)
-                            .orElseThrow(() -> new NoSuchElementException("Client not found with id: " + clientId));
-                    
-                    // Create Client record from User
-                    Client newClient = new Client();
-                    newClient.setId(user.getId());
-                    newClient.setUsername(user.getUsername());
-                    newClient.setEmail(user.getEmail());
-                    newClient.setPassword(user.getPassword());
-                    newClient.setFirstName(user.getFirstName());
-                    newClient.setLastName(user.getLastName());
-                    newClient.setStudentId(user.getStudentId());
-                    newClient.setPhoneNumber(user.getPhoneNumber());
-                    newClient.setProfilePicture(user.getProfilePicture());
-                    newClient.setBio(user.getBio());
-                    newClient.setGender(user.getGender());
-                    newClient.setDateOfBirth(user.getDateOfBirth());
-                    newClient.setDepartment(user.getDepartment());
-                    newClient.setProgram(user.getProgram());
-                    newClient.setYearOfStudy(user.getYearOfStudy());
-                    newClient.setActive(user.getActive());
-                    newClient.setEmailVerified(user.getEmailVerified());
-                    newClient.setLastLogin(user.getLastLogin());
-                    newClient.setRoles(user.getRoles());
-                    newClient.setCreatedAt(user.getCreatedAt());
-                    newClient.setUpdatedAt(user.getUpdatedAt());
-                    newClient.setAvailableForAppointments(user.getAvailableForAppointments());
-                    newClient.setHasSignedConsent(user.getHasSignedConsent());
-                    // Client-specific fields
-                    newClient.setClientStatus(Client.ClientStatus.ACTIVE);
-                    newClient.setRiskLevel(Client.RiskLevel.LOW);
-                    newClient.setRiskScore(0);
-                    newClient.setTotalSessions(0);
-                    log.info("Auto-created Client record for user: {}", user.getUsername());
-                    return clientRepository.save(newClient);
-                });
-        return appointmentRepository.findByClient(client, pageable).map(AppointmentDto::from);
+        // Try to find Client record first
+        Optional<Client> clientOpt = clientRepository.findById(clientId);
+        
+        if (clientOpt.isPresent()) {
+            // Client record exists, query by client
+            return appointmentRepository.findByClient(clientOpt.get(), pageable).map(AppointmentDto::from);
+        } else {
+            // No Client record - find User and query by student instead
+            // This avoids duplicate email constraint violation from auto-creating Client
+            User user = userRepository.findById(clientId)
+                    .orElseThrow(() -> new NoSuchElementException("Client not found with id: " + clientId));
+            log.info("No Client record found for user {}, querying appointments by student", user.getUsername());
+            return appointmentRepository.findByStudent(user, pageable).map(AppointmentDto::from);
+        }
     }
 
     @Override
@@ -125,51 +117,44 @@ public class AppointmentServiceImpl implements AppointmentService {
                 .orElseGet(() -> userRepository.findByEmail(principalName)
                         .orElseThrow(() -> new NoSuchElementException("User not found: " + principalName)));
         
-        // Get or create Client record
-        Client client = clientRepository.findById(user.getId())
-                .orElseGet(() -> {
-                    // Create a new Client record for this user
-                    Client newClient = new Client();
-                    newClient.setId(user.getId());
-                    newClient.setUsername(user.getUsername());
-                    newClient.setEmail(user.getEmail());
-                    newClient.setPassword(user.getPassword());
-                    newClient.setFirstName(user.getFirstName());
-                    newClient.setLastName(user.getLastName());
-                    newClient.setStudentId(user.getStudentId());
-                    newClient.setPhoneNumber(user.getPhoneNumber());
-                    newClient.setProfilePicture(user.getProfilePicture());
-                    newClient.setBio(user.getBio());
-                    newClient.setGender(user.getGender());
-                    newClient.setDateOfBirth(user.getDateOfBirth());
-                    newClient.setDepartment(user.getDepartment());
-                    newClient.setProgram(user.getProgram());
-                    newClient.setYearOfStudy(user.getYearOfStudy());
-                    newClient.setActive(user.getActive());
-                    newClient.setEmailVerified(user.getEmailVerified());
-                    newClient.setLastLogin(user.getLastLogin());
-                    newClient.setRoles(user.getRoles());
-                    newClient.setCreatedAt(user.getCreatedAt());
-                    newClient.setUpdatedAt(user.getUpdatedAt());
-                    newClient.setAvailableForAppointments(user.getAvailableForAppointments());
-                    newClient.setHasSignedConsent(user.getHasSignedConsent());
-                    // Client-specific fields
-                    newClient.setClientStatus(Client.ClientStatus.ACTIVE);
-                    newClient.setRiskLevel(Client.RiskLevel.LOW);
-                    newClient.setRiskScore(0);
-                    newClient.setTotalSessions(0);
-                    log.info("Created Client record for user: {}", principalName);
-                    return clientRepository.save(newClient);
-                });
+        // Get existing Client record or use null (appointments can be linked via student field)
+        // Don't auto-create Client to avoid duplicate email constraint violation
+        Client client = clientRepository.findById(user.getId()).orElse(null);
+        if (client == null) {
+            log.info("No Client record found for user {}, appointment will be linked via student field", principalName);
+        }
         
         Appointment appointment = new Appointment();
         appointment.setTitle(request.getTitle());
         appointment.setStudent(user);
         appointment.setClient(client);
         appointment.setAppointmentDate(request.getAppointmentDate());
-        appointment.setType(request.getAppointmentType());
+        // Set appointment type with default fallback
+        Appointment.AppointmentType appointmentType = request.getAppointmentType();
+        if (appointmentType == null) {
+            appointmentType = Appointment.AppointmentType.INITIAL_CONSULTATION;
+            log.warn("No valid appointment type provided, defaulting to INITIAL_CONSULTATION");
+        }
+        appointment.setType(appointmentType);
         appointment.setDescription(request.getDescription());
         appointment.setDuration(request.getDuration() != null ? request.getDuration() : 60);
+        
+        // Set session mode and generate meeting link for virtual sessions
+        Appointment.SessionMode sessionMode = request.getSessionModeEnum();
+        appointment.setSessionMode(sessionMode);
+        
+        if (sessionMode == Appointment.SessionMode.VIRTUAL) {
+            // Generate meeting link for virtual sessions
+            String meetingLink = generateMeetingLink(appointment);
+            appointment.setMeetingLink(meetingLink);
+            appointment.setMeetingProvider(defaultMeetingProvider);
+            log.info("Generated meeting link for virtual appointment: {}", meetingLink);
+        } else {
+            // For in-person sessions, set location if provided
+            if (request.getLocation() != null) {
+                appointment.setLocation(request.getLocation());
+            }
+        }
         
         // Handle optional counselor (for unassigned appointments)
         if (request.getCounselorId() != null) {
@@ -180,6 +165,30 @@ public class AppointmentServiceImpl implements AppointmentService {
         } else {
             // No counselor assigned yet - unassigned status
             appointment.setStatus(Appointment.AppointmentStatus.UNASSIGNED);
+        }
+        
+        return AppointmentDto.from(appointmentRepository.save(appointment));
+    }
+
+    @Override
+    public AppointmentDto updateAppointment(Long id, UpdateAppointmentRequest request) {
+        Appointment appointment = appointmentRepository.findById(id)
+                .orElseThrow(() -> new NoSuchElementException("Appointment not found with id: " + id));
+        
+        if (request.getTitle() != null) {
+            appointment.setTitle(request.getTitle());
+        }
+        if (request.getDescription() != null) {
+            appointment.setDescription(request.getDescription());
+        }
+        if (request.getStatus() != null) {
+            appointment.setStatus(request.getStatus());
+        }
+        if (request.getAppointmentDate() != null) {
+            appointment.setAppointmentDate(request.getAppointmentDate());
+        }
+        if (request.getCancellationReason() != null) {
+            appointment.setCancellationReason(request.getCancellationReason());
         }
         
         return AppointmentDto.from(appointmentRepository.save(appointment));
@@ -199,6 +208,14 @@ public class AppointmentServiceImpl implements AppointmentService {
             appointment.setCancellationReason(request.getCancellationReason());
         }
         return AppointmentDto.from(appointmentRepository.save(appointment));
+    }
+
+    @Override
+    public void deleteAppointment(Long id) {
+        Appointment appointment = appointmentRepository.findById(id)
+                .orElseThrow(() -> new NoSuchElementException("Appointment not found with id: " + id));
+        appointmentRepository.delete(appointment);
+        log.info("Deleted appointment with id: {}", id);
     }
 
     @Override
@@ -223,14 +240,23 @@ public class AppointmentServiceImpl implements AppointmentService {
 
     @Override
     public Page<AppointmentDto> getPendingAppointments(Pageable pageable) {
-        return appointmentRepository.findByStatus(Appointment.AppointmentStatus.SCHEDULED, pageable).map(AppointmentDto::from);
+        return appointmentRepository.findByStatus(Appointment.AppointmentStatus.PENDING, pageable).map(AppointmentDto::from);
     }
 
     @Override
     public AppointmentDto cancelAppointment(Long id) {
+        return cancelAppointment(id, null);
+    }
+
+    @Override
+    public AppointmentDto cancelAppointment(Long id, CancelRequest request) {
         Appointment appointment = appointmentRepository.findById(id)
                 .orElseThrow(() -> new NoSuchElementException("Appointment not found with id: " + id));
         appointment.setStatus(Appointment.AppointmentStatus.CANCELLED);
+        if (request != null && request.getReason() != null) {
+            appointment.setCancellationReason(request.getReason());
+        }
+        log.info("Cancelled appointment with id: {}", id);
         return AppointmentDto.from(appointmentRepository.save(appointment));
     }
 
@@ -239,7 +265,13 @@ public class AppointmentServiceImpl implements AppointmentService {
         Appointment appointment = appointmentRepository.findById(id)
                 .orElseThrow(() -> new NoSuchElementException("Appointment not found with id: " + id));
         appointment.setStatus(Appointment.AppointmentStatus.CONFIRMED);
-        return AppointmentDto.from(appointmentRepository.save(appointment));
+        appointment = appointmentRepository.save(appointment);
+        
+        // Create a session from the confirmed appointment
+        createSessionFromAppointment(appointment);
+        
+        log.info("Confirmed appointment with id: {}", id);
+        return AppointmentDto.from(appointment);
     }
 
     @Override
@@ -250,6 +282,21 @@ public class AppointmentServiceImpl implements AppointmentService {
         if (request.getTitle() != null) {
             appointment.setTitle(request.getTitle());
         }
+        appointment.setStatus(Appointment.AppointmentStatus.RESCHEDULED);
+        log.info("Rescheduled appointment with id: {} to {}", id, request.getAppointmentDate());
+        return AppointmentDto.from(appointmentRepository.save(appointment));
+    }
+
+    @Override
+    public AppointmentDto rescheduleAppointment(Long id, RescheduleRequest request) {
+        Appointment appointment = appointmentRepository.findById(id)
+                .orElseThrow(() -> new NoSuchElementException("Appointment not found with id: " + id));
+        appointment.setAppointmentDate(request.getAppointmentDate());
+        if (request.getTitle() != null) {
+            appointment.setTitle(request.getTitle());
+        }
+        appointment.setStatus(Appointment.AppointmentStatus.RESCHEDULED);
+        log.info("Rescheduled appointment with id: {} to {}", id, request.getAppointmentDate());
         return AppointmentDto.from(appointmentRepository.save(appointment));
     }
 
@@ -268,32 +315,55 @@ public class AppointmentServiceImpl implements AppointmentService {
     }
 
     @Override
-    public Map<String, Object> getAppointmentStatistics() {
-        Map<String, Object> stats = new HashMap<>();
+    public List<AvailabilitySlot> getCounselorAvailabilitySlots(Long counselorId, LocalDateTime dateTime) {
+        List<AvailabilitySlot> slots = new ArrayList<>();
+        LocalDateTime startOfDay = dateTime.toLocalDate().atStartOfDay();
         
+        // Generate slots from 8 AM to 5 PM
+        for (int hour = 8; hour < 17; hour++) {
+            LocalDateTime slotStart = startOfDay.withHour(hour);
+            LocalDateTime slotEnd = slotStart.plusHours(1);
+            
+            boolean available = checkAvailabilityInternal(counselorId, slotStart);
+            
+            slots.add(new AvailabilitySlot(slotStart, slotEnd, available));
+        }
+        
+        return slots;
+    }
+
+    private boolean checkAvailabilityInternal(Long counselorId, LocalDateTime dateTime) {
+        User counselor = userRepository.findById(counselorId).orElse(null);
+        if (counselor == null) {
+            return false;
+        }
+        
+        LocalDateTime endTime = dateTime.plusHours(1);
+        
+        List<Appointment> conflicts = appointmentRepository.findConflictingAppointments(counselor, dateTime, endTime);
+        
+        return conflicts.isEmpty();
+    }
+
+    @Override
+    public AppointmentStats getAppointmentStatistics() {
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime startOfDay = now.withHour(0).withMinute(0).withSecond(0).withNano(0);
         LocalDateTime endOfDay = now.withHour(23).withMinute(59).withSecond(59).withNano(999999999);
         LocalDateTime startOfMonth = now.withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0).withNano(0);
         LocalDateTime endOfMonth = now.withDayOfMonth(now.toLocalDate().lengthOfMonth()).withHour(23).withMinute(59).withSecond(59).withNano(999999999);
         
-        // Total appointments
-        stats.put("totalAppointments", appointmentRepository.count());
-        
-        // Today's appointments
-        stats.put("todayAppointments", appointmentRepository.findByAppointmentDateBetween(startOfDay, endOfDay, Pageable.unpaged()).getTotalElements());
-        
-        // Monthly appointments
-        stats.put("monthlyAppointments", appointmentRepository.findByAppointmentDateBetween(startOfMonth, endOfMonth, Pageable.unpaged()).getTotalElements());
-        
-        // Status counts
-        stats.put("scheduled", appointmentRepository.findByStatus(Appointment.AppointmentStatus.SCHEDULED, Pageable.unpaged()).getTotalElements());
-        stats.put("confirmed", appointmentRepository.findByStatus(Appointment.AppointmentStatus.CONFIRMED, Pageable.unpaged()).getTotalElements());
-        stats.put("completed", appointmentRepository.findByStatus(Appointment.AppointmentStatus.COMPLETED, Pageable.unpaged()).getTotalElements());
-        stats.put("cancelled", appointmentRepository.findByStatus(Appointment.AppointmentStatus.CANCELLED, Pageable.unpaged()).getTotalElements());
-        stats.put("unassigned", appointmentRepository.countUnassignedAppointments());
-        
-        return stats;
+        return AppointmentStats.builder()
+            .totalAppointments(appointmentRepository.count())
+            .todayAppointments(appointmentRepository.findByAppointmentDateBetween(startOfDay, endOfDay, Pageable.unpaged()).getTotalElements())
+            .monthlyAppointments(appointmentRepository.findByAppointmentDateBetween(startOfMonth, endOfMonth, Pageable.unpaged()).getTotalElements())
+            .scheduled(appointmentRepository.findByStatus(Appointment.AppointmentStatus.SCHEDULED, Pageable.unpaged()).getTotalElements())
+            .confirmed(appointmentRepository.findByStatus(Appointment.AppointmentStatus.CONFIRMED, Pageable.unpaged()).getTotalElements())
+            .completed(appointmentRepository.findByStatus(Appointment.AppointmentStatus.COMPLETED, Pageable.unpaged()).getTotalElements())
+            .cancelled(appointmentRepository.findByStatus(Appointment.AppointmentStatus.CANCELLED, Pageable.unpaged()).getTotalElements())
+            .pending(appointmentRepository.findByStatus(Appointment.AppointmentStatus.PENDING, Pageable.unpaged()).getTotalElements())
+            .unassigned(appointmentRepository.countUnassignedAppointments())
+            .build();
     }
 
     @Override
@@ -393,5 +463,103 @@ public class AppointmentServiceImpl implements AppointmentService {
     @Override
     public Long countUnassignedAppointments() {
         return appointmentRepository.countUnassignedAppointments();
+    }
+    
+    /**
+     * Generate a unique meeting link using Jitsi Meet
+     * Jitsi is free and doesn't require API keys
+     */
+    private String generateMeetingLink(Appointment appointment) {
+        String roomName = generateRoomName(appointment);
+        return String.format("https://%s/%s", jitsiDomain, roomName);
+    }
+    
+    /**
+     * Generate a unique room name for the meeting
+     */
+    private String generateRoomName(Appointment appointment) {
+        String randomPart = UUID.randomUUID().toString().substring(0, 8);
+        Long counselorId = appointment.getCounselor() != null ? appointment.getCounselor().getId() : 0L;
+        return String.format("unza-counseling-%d-%d-%d-%s",
+            counselorId,
+            appointment.getStudent().getId(),
+            System.currentTimeMillis(),
+            randomPart
+        );
+    }
+    
+    /**
+     * Create a counseling session from a confirmed appointment
+     */
+    private void createSessionFromAppointment(Appointment appointment) {
+        Session session = new Session();
+        session.setAppointment(appointment);
+        session.setStudent(appointment.getStudent());
+        session.setCounselor(appointment.getCounselor());
+        session.setSessionDate(appointment.getAppointmentDate());
+        session.setDurationMinutes(appointment.getDuration());
+        session.setType(mapAppointmentTypeToSessionType(appointment.getType()));
+        session.setStatus(Session.SessionStatus.SCHEDULED);
+        session.setTitle(appointment.getTitle());
+        session.setPresentingIssue(appointment.getDescription());
+        
+        sessionRepository.save(session);
+        log.info("Created session from appointment: {}", appointment.getId());
+    }
+    
+    /**
+     * Map appointment type to session type
+     */
+    private Session.SessionType mapAppointmentTypeToSessionType(Appointment.AppointmentType appointmentType) {
+        switch (appointmentType) {
+            case INITIAL_CONSULTATION:
+                return Session.SessionType.CONSULTATION;
+            case FOLLOW_UP:
+                return Session.SessionType.FOLLOW_UP;
+            case GROUP_SESSION:
+                return Session.SessionType.GROUP;
+            case ASSESSMENT:
+                return Session.SessionType.ASSESSMENT;
+            case CRISIS_INTERVENTION:
+                return Session.SessionType.CRISIS;
+            default:
+                return Session.SessionType.INDIVIDUAL;
+        }
+    }
+    
+    /**
+     * Create a Client entity from a User entity
+     */
+    private Client createClientFromUser(User user) {
+        Client newClient = new Client();
+        newClient.setId(user.getId());
+        newClient.setUsername(user.getUsername());
+        newClient.setEmail(user.getEmail());
+        newClient.setPassword(user.getPassword());
+        newClient.setFirstName(user.getFirstName());
+        newClient.setLastName(user.getLastName());
+        newClient.setStudentId(user.getStudentId());
+        newClient.setPhoneNumber(user.getPhoneNumber());
+        newClient.setProfilePicture(user.getProfilePicture());
+        newClient.setBio(user.getBio());
+        newClient.setGender(user.getGender());
+        newClient.setDateOfBirth(user.getDateOfBirth());
+        newClient.setDepartment(user.getDepartment());
+        newClient.setProgram(user.getProgram());
+        newClient.setYearOfStudy(user.getYearOfStudy());
+        newClient.setActive(user.getActive());
+        newClient.setEmailVerified(user.getEmailVerified());
+        newClient.setLastLogin(user.getLastLogin());
+        newClient.setRoles(user.getRoles());
+        newClient.setCreatedAt(user.getCreatedAt());
+        newClient.setUpdatedAt(user.getUpdatedAt());
+        newClient.setAvailableForAppointments(user.getAvailableForAppointments());
+        newClient.setHasSignedConsent(user.getHasSignedConsent());
+        // Client-specific fields
+        newClient.setClientStatus(Client.ClientStatus.ACTIVE);
+        newClient.setRiskLevel(Client.RiskLevel.LOW);
+        newClient.setRiskScore(0);
+        newClient.setTotalSessions(0);
+        return newClient;
     }
 }

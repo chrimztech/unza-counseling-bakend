@@ -1,22 +1,18 @@
 package zm.unza.counseling.service;
 
-import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import zm.unza.counseling.dto.AppointmentDto;
+import zm.unza.counseling.dto.AppointmentStats;
+import zm.unza.counseling.dto.AvailabilitySlot;
 import zm.unza.counseling.dto.CreateAppointmentRequest;
 import zm.unza.counseling.dto.UpdateAppointmentRequest;
 import zm.unza.counseling.dto.request.AssignAppointmentRequest;
-import zm.unza.counseling.entity.Appointment;
-import zm.unza.counseling.entity.User;
-import zm.unza.counseling.repository.AppointmentRepository;
-import zm.unza.counseling.repository.UserRepository;
+import zm.unza.counseling.dto.request.CancelRequest;
+import zm.unza.counseling.dto.request.RescheduleRequest;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.NoSuchElementException;
 
 /**
  * Service interface for appointment management
@@ -69,12 +65,26 @@ public interface AppointmentService {
     AppointmentDto createAppointment(CreateAppointmentRequest request);
 
     /**
+     * Update appointment
+     * @param id the appointment ID
+     * @param request the update appointment request
+     * @return the updated appointment
+     */
+    AppointmentDto updateAppointment(Long id, UpdateAppointmentRequest request);
+
+    /**
      * Update appointment status
      * @param id the appointment ID
      * @param request the update appointment request
      * @return the updated appointment
      */
     AppointmentDto updateAppointmentStatus(Long id, UpdateAppointmentRequest request);
+
+    /**
+     * Delete appointment
+     * @param id the appointment ID
+     */
+    void deleteAppointment(Long id);
 
     /**
      * Get upcoming appointments
@@ -119,6 +129,14 @@ public interface AppointmentService {
     AppointmentDto cancelAppointment(Long id);
 
     /**
+     * Cancel appointment with reason
+     * @param id the appointment ID
+     * @param request the cancel request with reason
+     * @return the cancelled appointment
+     */
+    AppointmentDto cancelAppointment(Long id, CancelRequest request);
+
+    /**
      * Confirm appointment
      * @param id the appointment ID
      * @return the confirmed appointment
@@ -134,6 +152,14 @@ public interface AppointmentService {
     AppointmentDto rescheduleAppointment(Long id, UpdateAppointmentRequest request);
 
     /**
+     * Reschedule appointment with dedicated request
+     * @param id the appointment ID
+     * @param request the reschedule request
+     * @return the rescheduled appointment
+     */
+    AppointmentDto rescheduleAppointment(Long id, RescheduleRequest request);
+
+    /**
      * Check counselor availability
      * @param counselorId the counselor ID
      * @param dateTime the date and time to check
@@ -142,10 +168,18 @@ public interface AppointmentService {
     boolean checkCounselorAvailability(Long counselorId, String dateTime);
 
     /**
+     * Get counselor availability slots for a day
+     * @param counselorId the counselor ID
+     * @param dateTime the date to check
+     * @return list of availability slots
+     */
+    List<AvailabilitySlot> getCounselorAvailabilitySlots(Long counselorId, LocalDateTime dateTime);
+
+    /**
      * Get appointment statistics
      * @return appointment statistics
      */
-    Object getAppointmentStatistics();
+    AppointmentStats getAppointmentStatistics();
 
     /**
      * Export appointments

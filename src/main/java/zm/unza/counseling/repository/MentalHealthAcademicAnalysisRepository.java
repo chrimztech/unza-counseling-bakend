@@ -2,8 +2,12 @@ package zm.unza.counseling.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import zm.unza.counseling.entity.MentalHealthAcademicAnalysis;
+import zm.unza.counseling.entity.MentalHealthAcademicAnalysis.ImpactLevel;
+import zm.unza.counseling.entity.MentalHealthAcademicAnalysis.InterventionUrgency;
+import zm.unza.counseling.entity.MentalHealthAcademicAnalysis.MentalHealthStatus;
 
 import java.util.List;
 import java.util.Optional;
@@ -11,11 +15,23 @@ import java.util.Optional;
 @Repository
 public interface MentalHealthAcademicAnalysisRepository extends JpaRepository<MentalHealthAcademicAnalysis, Long> {
 
-    @Query("SELECT a FROM MentalHealthAcademicAnalysis a WHERE a.interventionUrgency = 'IMMEDIATE' OR a.impactLevel = 'CRITICAL'")
-    List<MentalHealthAcademicAnalysis> findUrgentInterventions();
+    @Query("SELECT a FROM MentalHealthAcademicAnalysis a WHERE a.interventionUrgency = :immediate OR a.impactLevel = :critical")
+    List<MentalHealthAcademicAnalysis> findUrgentInterventions(
+            @Param("immediate") InterventionUrgency immediate,
+            @Param("critical") ImpactLevel critical);
 
-    @Query("SELECT a FROM MentalHealthAcademicAnalysis a WHERE a.mentalHealthStatus = 'CRISIS' OR a.mentalHealthStatus = 'AT_RISK'")
-    List<MentalHealthAcademicAnalysis> findHighRiskAnalyses();
+    default List<MentalHealthAcademicAnalysis> findUrgentInterventions() {
+        return findUrgentInterventions(InterventionUrgency.IMMEDIATE, ImpactLevel.CRITICAL);
+    }
+
+    @Query("SELECT a FROM MentalHealthAcademicAnalysis a WHERE a.mentalHealthStatus = :crisis OR a.mentalHealthStatus = :atRisk")
+    List<MentalHealthAcademicAnalysis> findHighRiskAnalyses(
+            @Param("crisis") MentalHealthStatus crisis,
+            @Param("atRisk") MentalHealthStatus atRisk);
+
+    default List<MentalHealthAcademicAnalysis> findHighRiskAnalyses() {
+        return findHighRiskAnalyses(MentalHealthStatus.CRISIS, MentalHealthStatus.AT_RISK);
+    }
 
     long countByInterventionNeeded(boolean needed);
     long countByCounselingRecommended(boolean recommended);

@@ -134,6 +134,12 @@ public class SisAuthenticationService implements ExternalAuthenticationService {
                     System.out.println("Data Node: " + dataNode.toString());
                     System.out.println("User Node: " + (userNode != null ? userNode.toString() : "null"));
                     
+                    // Also check dataNode directly for user info (some APIs put user data at data level)
+                    if (userNode == null) {
+                        userNode = dataNode;
+                        System.out.println("No 'user' node found, using dataNode as userNode");
+                    }
+                    
                     if (userNode != null) {
                         // Extract user data from the new format
                         String email = getJsonText(userNode, "email");
@@ -141,9 +147,100 @@ public class SisAuthenticationService implements ExternalAuthenticationService {
                         if (email != null && email.contains(",")) {
                             email = email.replace(",", ".");
                         }
+                        
+                        System.out.println("=== EXTRACTING NAMES FROM SIS RESPONSE ===");
+                        System.out.println("userNode has first_name: " + userNode.has("first_name"));
+                        System.out.println("userNode has last_name: " + userNode.has("last_name"));
+                        
+                        // Try multiple field names for first name
                         String firstName = getJsonText(userNode, "first_name");
+                        System.out.println("getJsonText(userNode, 'first_name') = '" + firstName + "'");
+                        if (firstName == null || firstName.isEmpty()) {
+                            firstName = getJsonText(userNode, "firstname");
+                            System.out.println("getJsonText(userNode, 'firstname') = '" + firstName + "'");
+                        }
+                        if (firstName == null || firstName.isEmpty()) {
+                            firstName = getJsonText(userNode, "given_name");
+                        }
+                        if (firstName == null || firstName.isEmpty()) {
+                            firstName = getJsonText(userNode, "fname");
+                        }
+                        
+                        // Try multiple field names for last name
                         String lastName = getJsonText(userNode, "last_name");
+                        System.out.println("getJsonText(userNode, 'last_name') = '" + lastName + "'");
+                        if (lastName == null || lastName.isEmpty()) {
+                            lastName = getJsonText(userNode, "lastname");
+                            System.out.println("getJsonText(userNode, 'lastname') = '" + lastName + "'");
+                        }
+                        if (lastName == null || lastName.isEmpty()) {
+                            lastName = getJsonText(userNode, "surname");
+                        }
+                        if (lastName == null || lastName.isEmpty()) {
+                            lastName = getJsonText(userNode, "family_name");
+                        }
+                        if (lastName == null || lastName.isEmpty()) {
+                            lastName = getJsonText(userNode, "lname");
+                        }
+                        
+                        System.out.println("=== FINAL EXTRACTED NAMES ===");
+                        System.out.println("firstName: '" + firstName + "'");
+                        System.out.println("lastName: '" + lastName + "'");
+                        
+                        // Try to get full name and split if first/last are empty
+                        String fullName = getJsonText(userNode, "full_name");
+                        if (fullName == null || fullName.isEmpty()) {
+                            fullName = getJsonText(userNode, "fullname");
+                        }
+                        if (fullName == null || fullName.isEmpty()) {
+                            fullName = getJsonText(userNode, "name");
+                        }
+                        if (fullName == null || fullName.isEmpty()) {
+                            fullName = getJsonText(userNode, "names");
+                        }
+                        if (fullName == null || fullName.isEmpty()) {
+                            fullName = getJsonText(userNode, "student_name");
+                        }
+                        // Also check dataNode for names
+                        if (fullName == null || fullName.isEmpty()) {
+                            fullName = getJsonText(dataNode, "names");
+                        }
+                        if (fullName == null || fullName.isEmpty()) {
+                            fullName = getJsonText(dataNode, "full_name");
+                        }
+                        if (fullName == null || fullName.isEmpty()) {
+                            fullName = getJsonText(dataNode, "student_name");
+                        }
+                        
+                        if (fullName != null && !fullName.isEmpty() && 
+                            (firstName == null || firstName.isEmpty()) && 
+                            (lastName == null || lastName.isEmpty())) {
+                            // Handle "SURNAME FIRSTNAME" format (common in some systems)
+                            String[] nameParts = fullName.trim().split("\\s+", 2);
+                            if (nameParts.length >= 2) {
+                                // Check if first part is all caps (likely surname)
+                                if (nameParts[0].equals(nameParts[0].toUpperCase()) && 
+                                    !nameParts[1].equals(nameParts[1].toUpperCase())) {
+                                    // SURNAME FIRSTNAME format
+                                    firstName = nameParts[1];
+                                    lastName = nameParts[0];
+                                } else {
+                                    // FIRSTNAME SURNAME format
+                                    firstName = nameParts[0];
+                                    lastName = nameParts[1];
+                                }
+                            } else if (nameParts.length == 1) {
+                                lastName = nameParts[0];
+                            }
+                        }
+                        
                         String studentId = getJsonText(userNode, "student_id");
+                        if (studentId == null || studentId.isEmpty()) {
+                            studentId = getJsonText(userNode, "computer_no");
+                        }
+                        if (studentId == null || studentId.isEmpty()) {
+                            studentId = getJsonText(userNode, "studentId");
+                        }
                         
                         System.out.println("Extracted - Email: " + email + ", FirstName: " + firstName + ", LastName: " + lastName + ", StudentId: " + studentId);
                         
@@ -167,12 +264,98 @@ public class SisAuthenticationService implements ExternalAuthenticationService {
                     JsonNode dataNode = responseNode.get("data");
                     JsonNode userNode = dataNode.get("user");
                     
+                    // Also check dataNode directly for user info (some APIs put user data at data level)
+                    if (userNode == null) {
+                        userNode = dataNode;
+                        System.out.println("Old format: No 'user' node found, using dataNode as userNode");
+                    }
+                    
                     if (userNode != null) {
                         // Old format uses computer_no as student identifier
                         String computerNo = getJsonText(userNode, "computer_no");
+                        if (computerNo == null || computerNo.isEmpty()) {
+                            computerNo = getJsonText(userNode, "student_id");
+                        }
+                        
+                        // Try multiple field names for first name
                         String firstName = getJsonText(userNode, "first_name");
+                        if (firstName == null || firstName.isEmpty()) {
+                            firstName = getJsonText(userNode, "firstname");
+                        }
+                        if (firstName == null || firstName.isEmpty()) {
+                            firstName = getJsonText(userNode, "given_name");
+                        }
+                        if (firstName == null || firstName.isEmpty()) {
+                            firstName = getJsonText(userNode, "fname");
+                        }
+                        
+                        // Try multiple field names for last name
                         String lastName = getJsonText(userNode, "last_name");
+                        if (lastName == null || lastName.isEmpty()) {
+                            lastName = getJsonText(userNode, "lastname");
+                        }
+                        if (lastName == null || lastName.isEmpty()) {
+                            lastName = getJsonText(userNode, "surname");
+                        }
+                        if (lastName == null || lastName.isEmpty()) {
+                            lastName = getJsonText(userNode, "family_name");
+                        }
+                        if (lastName == null || lastName.isEmpty()) {
+                            lastName = getJsonText(userNode, "lname");
+                        }
+                        
+                        // Try to get full name and split if first/last are empty
+                        String fullName = getJsonText(userNode, "full_name");
+                        if (fullName == null || fullName.isEmpty()) {
+                            fullName = getJsonText(userNode, "fullname");
+                        }
+                        if (fullName == null || fullName.isEmpty()) {
+                            fullName = getJsonText(userNode, "name");
+                        }
+                        if (fullName == null || fullName.isEmpty()) {
+                            fullName = getJsonText(userNode, "names");
+                        }
+                        if (fullName == null || fullName.isEmpty()) {
+                            fullName = getJsonText(userNode, "student_name");
+                        }
+                        // Also check dataNode for names
+                        if (fullName == null || fullName.isEmpty()) {
+                            fullName = getJsonText(dataNode, "names");
+                        }
+                        if (fullName == null || fullName.isEmpty()) {
+                            fullName = getJsonText(dataNode, "full_name");
+                        }
+                        if (fullName == null || fullName.isEmpty()) {
+                            fullName = getJsonText(dataNode, "student_name");
+                        }
+                        
+                        if (fullName != null && !fullName.isEmpty() && 
+                            (firstName == null || firstName.isEmpty()) && 
+                            (lastName == null || lastName.isEmpty())) {
+                            // Handle "SURNAME FIRSTNAME" format (common in some systems)
+                            String[] nameParts = fullName.trim().split("\\s+", 2);
+                            if (nameParts.length >= 2) {
+                                // Check if first part is all caps (likely surname)
+                                if (nameParts[0].equals(nameParts[0].toUpperCase()) && 
+                                    !nameParts[1].equals(nameParts[1].toUpperCase())) {
+                                    // SURNAME FIRSTNAME format
+                                    firstName = nameParts[1];
+                                    lastName = nameParts[0];
+                                } else {
+                                    // FIRSTNAME SURNAME format
+                                    firstName = nameParts[0];
+                                    lastName = nameParts[1];
+                                }
+                            } else if (nameParts.length == 1) {
+                                lastName = nameParts[0];
+                            }
+                        }
+                        
                         String email = getJsonText(userNode, "email");
+                        // Fix email typo: replace comma with dot
+                        if (email != null && email.contains(",")) {
+                            email = email.replace(",", ".");
+                        }
                         
                         System.out.println("Old Format - ComputerNo: " + computerNo + ", FirstName: " + firstName + ", LastName: " + lastName);
                         
@@ -268,6 +451,14 @@ public class SisAuthenticationService implements ExternalAuthenticationService {
                                 String email, String firstName, String lastName, String studentId) {
         User user = new User();
         
+        System.out.println("=== mapSisUserData CALLED ===");
+        System.out.println("Parameters received:");
+        System.out.println("  loginUsername: " + loginUsername);
+        System.out.println("  email: " + email);
+        System.out.println("  firstName: '" + firstName + "'");
+        System.out.println("  lastName: '" + lastName + "'");
+        System.out.println("  studentId: " + studentId);
+        
         // Set username from studentId or login username
         String username = (studentId != null && !studentId.isEmpty()) ? studentId : loginUsername;
         if (username.isEmpty()) {
@@ -278,9 +469,144 @@ public class SisAuthenticationService implements ExternalAuthenticationService {
         // Set email (fallback to username if email is empty)
         user.setEmail((email != null && !email.isEmpty()) ? email : username);
         
-        // Set names
-        user.setFirstName(firstName != null ? firstName : "");
-        user.setLastName(lastName != null ? lastName : "");
+        // Debug: Log all available fields in userNode and dataNode
+        System.out.println("=== DEBUG: All fields in userNode ===");
+        if (userNode != null) {
+            userNode.fields().forEachRemaining(entry -> {
+                System.out.println("  " + entry.getKey() + ": " + entry.getValue().asText());
+            });
+        }
+        System.out.println("=== DEBUG: All fields in dataNode ===");
+        if (dataNode != null) {
+            dataNode.fields().forEachRemaining(entry -> {
+                System.out.println("  " + entry.getKey() + ": " + (entry.getValue().isContainerNode() ? "[object]" : entry.getValue().asText()));
+            });
+        }
+        
+        // Try multiple field names for first name - check both userNode and dataNode
+        String resolvedFirstName = firstName;
+        System.out.println("Initial resolvedFirstName from parameter: '" + resolvedFirstName + "'");
+        
+        // Extended list of firstName field variations
+        String[] firstNameFields = {"first_name", "firstname", "given_name", "fname", "givenname", 
+                                    "First_Name", "FirstName", "FIRST_NAME", "forename", "fore_name"};
+        
+        // First check userNode
+        if (resolvedFirstName == null || resolvedFirstName.isEmpty()) {
+            for (String field : firstNameFields) {
+                resolvedFirstName = getJsonText(userNode, field);
+                if (resolvedFirstName != null && !resolvedFirstName.isEmpty()) {
+                    System.out.println("Found firstName in userNode." + field + ": " + resolvedFirstName);
+                    break;
+                }
+            }
+        }
+        
+        // Then check dataNode if still empty
+        if (resolvedFirstName == null || resolvedFirstName.isEmpty()) {
+            for (String field : firstNameFields) {
+                resolvedFirstName = getJsonText(dataNode, field);
+                if (resolvedFirstName != null && !resolvedFirstName.isEmpty()) {
+                    System.out.println("Found firstName in dataNode." + field + ": " + resolvedFirstName);
+                    break;
+                }
+            }
+        }
+        
+        System.out.println("Final resolvedFirstName: '" + resolvedFirstName + "'");
+        
+        // Try multiple field names for last name - check both userNode and dataNode
+        String resolvedLastName = lastName;
+        System.out.println("Initial resolvedLastName from parameter: '" + resolvedLastName + "'");
+        
+        // Extended list of lastName field variations
+        String[] lastNameFields = {"last_name", "lastname", "surname", "family_name", "lname", "familyname",
+                                   "Last_Name", "LastName", "LAST_NAME", "Surname", "SURNAME"};
+        
+        // First check userNode
+        if (resolvedLastName == null || resolvedLastName.isEmpty()) {
+            for (String field : lastNameFields) {
+                resolvedLastName = getJsonText(userNode, field);
+                if (resolvedLastName != null && !resolvedLastName.isEmpty()) {
+                    System.out.println("Found lastName in userNode." + field + ": " + resolvedLastName);
+                    break;
+                }
+            }
+        }
+        
+        // Then check dataNode if still empty
+        if (resolvedLastName == null || resolvedLastName.isEmpty()) {
+            for (String field : lastNameFields) {
+                resolvedLastName = getJsonText(dataNode, field);
+                if (resolvedLastName != null && !resolvedLastName.isEmpty()) {
+                    System.out.println("Found lastName in dataNode." + field + ": " + resolvedLastName);
+                    break;
+                }
+            }
+        }
+        
+        System.out.println("Final resolvedLastName: '" + resolvedLastName + "'");
+        
+        // Try to get full name and split it if first/last names are empty
+        String fullName = null;
+        // Extended list of fullName field variations
+        String[] fullNameFields = {"full_name", "fullname", "name", "student_name", "names", 
+                                   "Full_Name", "FullName", "FULL_NAME", "Name", "NAME",
+                                   "student_fullname", "student_full_name", "studentName"};
+        
+        // Check userNode for full name
+        for (String field : fullNameFields) {
+            fullName = getJsonText(userNode, field);
+            if (fullName != null && !fullName.isEmpty()) {
+                System.out.println("Found fullName in userNode." + field + ": " + fullName);
+                break;
+            }
+        }
+        
+        // Check dataNode for full name if still empty
+        if (fullName == null || fullName.isEmpty()) {
+            for (String field : fullNameFields) {
+                fullName = getJsonText(dataNode, field);
+                if (fullName != null && !fullName.isEmpty()) {
+                    System.out.println("Found fullName in dataNode." + field + ": " + fullName);
+                    break;
+                }
+            }
+        }
+        
+        // If we have a full name but no first/last, try to split
+        if (fullName != null && !fullName.isEmpty()) {
+            if ((resolvedFirstName == null || resolvedFirstName.isEmpty()) && 
+                (resolvedLastName == null || resolvedLastName.isEmpty())) {
+                // Handle "SURNAME FIRSTNAME" format (common in some systems)
+                // Also handle "FIRSTNAME SURNAME" format
+                String[] nameParts = fullName.trim().split("\\s+", 2);
+                if (nameParts.length >= 1) {
+                    // Check if the name might be in "SURNAME FIRSTNAME" format
+                    // If the first part is all caps, it's likely a surname
+                    if (nameParts.length == 2 && nameParts[0].equals(nameParts[0].toUpperCase()) && 
+                        !nameParts[1].equals(nameParts[1].toUpperCase())) {
+                        // SURNAME FIRSTNAME format
+                        resolvedFirstName = nameParts[1];
+                        resolvedLastName = nameParts[0];
+                        System.out.println("Detected SURNAME FIRSTNAME format: firstName=" + resolvedFirstName + ", lastName=" + resolvedLastName);
+                    } else {
+                        // Default: FIRSTNAME SURNAME format
+                        resolvedFirstName = nameParts[0];
+                        resolvedLastName = nameParts[1];
+                        System.out.println("Detected FIRSTNAME SURNAME format: firstName=" + resolvedFirstName + ", lastName=" + resolvedLastName);
+                    }
+                } else if (nameParts.length == 1) {
+                    // Only one name part - use as lastName (surname) with empty firstName
+                    resolvedLastName = nameParts[0];
+                    System.out.println("Single name part found, using as lastName: " + resolvedLastName);
+                }
+            }
+        }
+        
+        // Set names with defaults if still empty
+        user.setFirstName(resolvedFirstName != null && !resolvedFirstName.isEmpty() ? resolvedFirstName : "Student");
+        user.setLastName(resolvedLastName != null && !resolvedLastName.isEmpty() ? resolvedLastName : username);
         
         // Set student ID
         user.setStudentId(studentId != null ? studentId : "");

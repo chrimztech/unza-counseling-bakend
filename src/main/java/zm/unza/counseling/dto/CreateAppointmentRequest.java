@@ -1,6 +1,5 @@
 package zm.unza.counseling.dto;
 
-import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
@@ -23,7 +22,6 @@ public class CreateAppointmentRequest {
     private String description;
     
     @NotNull(message = "Appointment date is required")
-    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime appointmentDate;
     
     private Integer duration = 60; // default 60 minutes
@@ -31,12 +29,27 @@ public class CreateAppointmentRequest {
     @NotNull(message = "Appointment type is required")
     private String type;
     
+    private String sessionMode = "IN_PERSON";
+    
+    private String meetingLink;
+    
+    private String location;
+    
     public Appointment.AppointmentType getAppointmentType() {
         if (type == null) return null;
         try {
             return Appointment.AppointmentType.valueOf(type);
         } catch (IllegalArgumentException e) {
             return null;
+        }
+    }
+    
+    public Appointment.SessionMode getSessionModeEnum() {
+        if (sessionMode == null) return Appointment.SessionMode.IN_PERSON;
+        try {
+            return Appointment.SessionMode.valueOf(sessionMode);
+        } catch (IllegalArgumentException e) {
+            return Appointment.SessionMode.IN_PERSON;
         }
     }
 }

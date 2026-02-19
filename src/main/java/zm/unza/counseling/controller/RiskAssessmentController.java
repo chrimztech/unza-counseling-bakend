@@ -16,7 +16,7 @@ import zm.unza.counseling.service.RiskAssessmentService;
 import java.util.List;
 
 @RestController
-@RequestMapping("/risk-assessments")
+@RequestMapping({"/api/v1/risk-assessments","/api/risk-assessments","/v1/risk-assessments","/risk-assessments"})
 @RequiredArgsConstructor
 @Tag(name = "Risk Assessments", description = "Risk assessment management endpoints")
 public class RiskAssessmentController {
@@ -106,7 +106,7 @@ public class RiskAssessmentController {
     }
 
     @GetMapping("/client/{clientId}/latest")
-    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'CLIENT')")
     @Operation(summary = "Get latest risk assessment for client", description = "Retrieves the most recent risk assessment for a client")
     public ResponseEntity<ApiResponse<RiskAssessment>> getLatestRiskAssessmentForClient(@PathVariable Long clientId) {
         RiskAssessment assessment = riskAssessmentService.getLatestRiskAssessmentForClient(clientId);

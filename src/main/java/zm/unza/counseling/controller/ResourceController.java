@@ -4,6 +4,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+import zm.unza.counseling.dto.request.FileUploadRequest;
 import zm.unza.counseling.entity.Resource;
 import zm.unza.counseling.service.ResourceService;
 
@@ -11,7 +13,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/v1/resources")
+@RequestMapping({"/api/v1/resources", "/api/resources", "/v1/resources", "/resources"})
 @RequiredArgsConstructor
 public class ResourceController {
     
@@ -26,6 +28,12 @@ public class ResourceController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Resource> createResource(@RequestBody Resource resource) {
         return ResponseEntity.ok(resourceService.createResource(resource));
+    }
+
+    @PostMapping("/upload")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Resource> uploadResource(@ModelAttribute FileUploadRequest request) {
+        return ResponseEntity.ok(resourceService.uploadResource(request));
     }
 
     @DeleteMapping("/{id}")
@@ -71,5 +79,10 @@ public class ResourceController {
         return ResponseEntity.ok()
                 .header("Content-Disposition", "attachment; filename=resources." + format)
                 .body(data);
+    }
+
+    @GetMapping("/download/{id}")
+    public ResponseEntity<byte[]> downloadResource(@PathVariable Long id) {
+        return resourceService.downloadResource(id);
     }
 }

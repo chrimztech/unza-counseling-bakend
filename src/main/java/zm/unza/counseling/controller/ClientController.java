@@ -3,14 +3,17 @@ package zm.unza.counseling.controller;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import zm.unza.counseling.dto.request.CreateClientRequest;
 import zm.unza.counseling.dto.response.ApiResponse;
 import zm.unza.counseling.dto.response.ClientResponse;
 import zm.unza.counseling.entity.Client;
@@ -19,13 +22,25 @@ import zm.unza.counseling.service.ClientService;
 import java.util.Map;
 
 @RestController
-@RequestMapping({"/v1/clients", "/clients"})
+@RequestMapping({"/api/v1/clients", "/api/clients", "/v1/clients", "/clients"})
 @RequiredArgsConstructor
 @Tag(name = "Clients", description = "Client management endpoints")
 @SecurityRequirement(name = "bearer-jwt")
 public class ClientController {
     
     private final ClientService clientService;
+
+    /**
+     * Create a new client with optional automatic case creation
+     * This endpoint is used by the frontend PersonalDataForm component
+     */
+    @PostMapping
+    @Operation(summary = "Create a new client with optional case creation")
+    public ResponseEntity<ClientService.ClientWithCaseResponse> createClient(
+            @Valid @RequestBody CreateClientRequest request) {
+        ClientService.ClientWithCaseResponse response = clientService.createClientWithCase(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
     
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")

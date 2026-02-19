@@ -27,7 +27,7 @@ public class MentalHealthAcademicAnalysisService {
 
     public MentalHealthAcademicAnalysis getLatestAnalysisForClient(Long clientId) {
         return repository.findTopByClientIdOrderByCreatedAtDesc(clientId)
-                .orElseThrow(() -> new RuntimeException("No analysis found for client"));
+                .orElse(null);
     }
 
     public Object getAnalysisTrendForClient(Long clientId) {

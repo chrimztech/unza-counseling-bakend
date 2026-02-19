@@ -12,7 +12,7 @@ import zm.unza.counseling.service.UserService;
 import java.util.List;
 
 @RestController
-@RequestMapping({"/notifications", "/v1/notifications"})
+@RequestMapping({"/api/v1/notifications", "/api/notifications", "/v1/notifications", "/notifications"})
 @RequiredArgsConstructor
 public class NotificationController {
 

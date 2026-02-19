@@ -14,7 +14,7 @@ import zm.unza.counseling.service.AdminService;
 import java.util.List;
 
 @RestController
-@RequestMapping("/v1/admin")
+@RequestMapping({"/api/v1/admin","/api/admin","/v1/admin","/admin"})
 @RequiredArgsConstructor
 public class AdminController {
     private final AdminService adminService;

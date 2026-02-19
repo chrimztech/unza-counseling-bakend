@@ -2,6 +2,7 @@ package zm.unza.counseling.mapper;
 
 import org.springframework.stereotype.Component;
 import zm.unza.counseling.dto.MentalHealthAcademicDtos.*;
+import zm.unza.counseling.entity.Client;
 import zm.unza.counseling.entity.MentalHealthAcademicAnalysis;
 
 @Component
@@ -29,11 +30,17 @@ public class MentalHealthAcademicMapper {
                 .interventionUrgency(analysis.getInterventionUrgency() != null ? analysis.getInterventionUrgency().name() : null)
                 .build();
 
+        Client client = analysis.getClient();
+        Long clientId = client != null ? client.getId() : null;
+        String clientName = client != null ? 
+                client.getFirstName() + " " + client.getLastName() : null;
+        String studentNumber = client != null ? client.getStudentId() : null;
+
         return MentalHealthAcademicAnalysisResponse.builder()
                 .id(analysis.getId())
-                .clientId(analysis.getClient().getId())
-                .clientName(analysis.getClient().getFirstName() + " " + analysis.getClient().getLastName())
-                .studentNumber(analysis.getClient().getStudentId())
+                .clientId(clientId)
+                .clientName(clientName)
+                .studentNumber(studentNumber)
                 .academicPerformanceId(analysis.getAcademicPerformance() != null ? analysis.getAcademicPerformance().getId() : null)
                 .selfAssessmentId(analysis.getSelfAssessment() != null ? String.valueOf(analysis.getSelfAssessment().getId()) : null)
                 .riskAssessmentId(analysis.getRiskAssessment() != null ? analysis.getRiskAssessment().getId() : null)
@@ -71,15 +78,22 @@ public class MentalHealthAcademicMapper {
 
     public StudentAnalysisSummary toSummary(MentalHealthAcademicAnalysis analysis) {
         if (analysis == null) return null;
+        
+        Client client = analysis.getClient();
+        Long clientId = client != null ? client.getId() : null;
+        String clientName = client != null ? 
+                client.getFirstName() + " " + client.getLastName() : null;
+        String studentNumber = client != null ? client.getStudentId() : null;
+        
         return StudentAnalysisSummary.builder()
-                .clientId(analysis.getClient().getId())
-                .clientName(analysis.getClient().getFirstName() + " " + analysis.getClient().getLastName())
-                .studentNumber(analysis.getClient().getStudentId())
+                .clientId(clientId)
+                .clientName(clientName)
+                .studentNumber(studentNumber)
                 .latestMentalHealthScore(analysis.getOverallMentalHealthScore())
                 .latestGpa(analysis.getCurrentGpa())
-                .mentalHealthStatus(analysis.getMentalHealthStatus().name())
-                .impactLevel(analysis.getImpactLevel().name())
-                .interventionUrgency(analysis.getInterventionUrgency().name())
+                .mentalHealthStatus(analysis.getMentalHealthStatus() != null ? analysis.getMentalHealthStatus().name() : null)
+                .impactLevel(analysis.getImpactLevel() != null ? analysis.getImpactLevel().name() : null)
+                .interventionUrgency(analysis.getInterventionUrgency() != null ? analysis.getInterventionUrgency().name() : null)
                 .lastAnalysisDate(analysis.getAnalysisDate())
                 .requiresFollowUp(analysis.isInterventionNeeded())
                 .build();

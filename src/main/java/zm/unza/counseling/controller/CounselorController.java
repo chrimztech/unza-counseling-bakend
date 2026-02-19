@@ -13,7 +13,7 @@ import zm.unza.counseling.service.CounselorService;
 import java.util.List;
 
 @RestController
-@RequestMapping("/counselors")
+@RequestMapping({"/api/v1/counselors","/api/counselors","/v1/counselors","/counselors"})
 @RequiredArgsConstructor
 public class CounselorController {
     

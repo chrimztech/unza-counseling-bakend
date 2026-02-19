@@ -17,7 +17,7 @@ import zm.unza.counseling.service.UserService;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/v1/self-assessments")
+@RequestMapping({"/api/v1/self-assessments", "/api/self-assessments", "/v1/self-assessments", "/self-assessments"})
 @RequiredArgsConstructor
 @Tag(name = "Self Assessments", description = "Self-assessment operations")
 public class SelfAssessmentController {

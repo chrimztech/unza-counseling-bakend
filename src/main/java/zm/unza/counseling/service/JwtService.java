@@ -6,6 +6,8 @@ import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import zm.unza.counseling.config.JwtConfig;
@@ -22,6 +24,8 @@ import java.util.function.Function;
 @Service
 @RequiredArgsConstructor
 public class JwtService {
+
+    private static final Logger log = LoggerFactory.getLogger(JwtService.class);
 
     private final JwtConfig jwtConfig;
 
@@ -84,6 +88,7 @@ public class JwtService {
             long expiration
     ) {
         try {
+            log.debug("Building JWT token for user: {}", userDetails.getUsername());
             return Jwts.builder()
                     .setClaims(extraClaims)
                     .setSubject(userDetails.getUsername())
@@ -92,7 +97,7 @@ public class JwtService {
                     .signWith(getSignInKey(), SignatureAlgorithm.HS256)
                     .compact();
         } catch (Exception e) {
-            System.err.println("Error generating JWT token: " + e.getMessage());
+            log.error("Error generating JWT token: {}", e.getMessage());
             throw e;
         }
     }
@@ -115,9 +120,12 @@ public class JwtService {
             boolean isNotExpired = expiration == null || 
                     !expiration.before(new Date(now.getTime() - (5 * 60 * 1000)));
             
+            log.debug("Token validation - username: {}, isUsernameValid: {}, expiration: {}, isNotExpired: {}", 
+                username, isUsernameValid, expiration, isNotExpired);
+            
             return isUsernameValid && isNotExpired;
         } catch (Exception e) {
-            System.err.println("JWT validation error: " + e.getMessage());
+            log.error("JWT validation error: {}", e.getMessage());
             return false;
         }
     }
@@ -153,6 +161,13 @@ public class JwtService {
     private Key getSignInKey() {
         String secret = jwtConfig.getSecret();
         
+        if (secret == null || secret.isEmpty()) {
+            log.error("JWT secret is null or empty!");
+            throw new IllegalStateException("JWT secret is not configured");
+        }
+        
+        log.debug("JWT secret configured (length: {})", secret.length());
+        
         // Always use UTF-8 bytes for the secret to avoid base64 decoding issues
         byte[] keyBytes = secret.getBytes(java.nio.charset.StandardCharsets.UTF_8);
         return Keys.hmacShaKeyFor(keyBytes);
@@ -168,12 +183,12 @@ public class JwtService {
     /**
      * Create UserDetails from User entity
      */
-    private UserDetails createUserDetails(zm.unza.counseling.entity.User user) {
+     private UserDetails createUserDetails(zm.unza.counseling.entity.User user) {
         return org.springframework.security.core.userdetails.User.builder()
                 .username(user.getEmail())
                 .password(user.getPassword())
                 .authorities(user.getRoles().stream()
-                        .map(role -> "ROLE_" + role.getName().name())
+                        .map(role -> role.getName().name())
                         .toArray(String[]::new))
                 .accountExpired(!user.getActive())
                 .accountLocked(!user.getActive())

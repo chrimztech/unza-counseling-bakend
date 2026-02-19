@@ -24,7 +24,7 @@ import java.math.BigDecimal;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/v1/academic-performance")
+@RequestMapping({"/api/v1/academic-performance", "/v1/academic-performance", "/academic-performance"})
 @Tag(name = "Academic Performance", description = "APIs for managing student academic performance records")
 public class AcademicPerformanceController {
 

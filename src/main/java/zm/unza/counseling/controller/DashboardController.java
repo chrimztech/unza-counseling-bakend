@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/dashboard")
+@RequestMapping({"/api/v1/dashboard","/api/dashboard","/v1/dashboard","/dashboard"})
 @RequiredArgsConstructor
 @Slf4j
 public class DashboardController {

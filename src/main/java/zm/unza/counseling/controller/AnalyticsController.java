@@ -16,7 +16,7 @@ import zm.unza.counseling.service.AnalyticsService;
 import zm.unza.counseling.service.DashboardService;
 
 @RestController
-@RequestMapping({"/v1/analytics", "/analytics"})
+@RequestMapping({"/api/v1/analytics", "/api/analytics", "/v1/analytics", "/analytics"})
 @RequiredArgsConstructor
 @Tag(name = "Analytics", description = "Business intelligence and reporting")
 public class AnalyticsController {

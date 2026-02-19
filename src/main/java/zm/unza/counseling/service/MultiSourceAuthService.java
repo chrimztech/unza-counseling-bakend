@@ -13,11 +13,9 @@ import org.springframework.transaction.annotation.Transactional;
 import zm.unza.counseling.dto.request.LoginRequest;
 import zm.unza.counseling.dto.request.RegisterRequest;
 import zm.unza.counseling.dto.response.AuthResponse;
-import zm.unza.counseling.entity.Client;
 import zm.unza.counseling.entity.Role;
 import zm.unza.counseling.entity.User;
 import zm.unza.counseling.exception.ValidationException;
-import zm.unza.counseling.repository.ClientRepository;
 import zm.unza.counseling.repository.RoleRepository;
 import zm.unza.counseling.repository.UserRepository;
 import zm.unza.counseling.security.AuthenticationSource;
@@ -41,7 +39,6 @@ public class MultiSourceAuthService {
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
-    private final ClientRepository clientRepository;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
     private final PasswordEncoder passwordEncoder;
@@ -51,7 +48,6 @@ public class MultiSourceAuthService {
     public MultiSourceAuthService(
             UserRepository userRepository,
             RoleRepository roleRepository,
-            ClientRepository clientRepository,
             JwtService jwtService,
             AuthenticationManager authenticationManager,
             PasswordEncoder passwordEncoder,
@@ -59,7 +55,6 @@ public class MultiSourceAuthService {
             @Qualifier("hrAuthenticationService") ExternalAuthenticationService hrAuthenticationService) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
-        this.clientRepository = clientRepository;
         this.jwtService = jwtService;
         this.authenticationManager = authenticationManager;
         this.passwordEncoder = passwordEncoder;
@@ -67,6 +62,7 @@ public class MultiSourceAuthService {
         this.hrAuthenticationService = hrAuthenticationService;
     }
 
+    @Transactional
     public AuthResponse login(LoginRequest request) {
         String identifier = request.getIdentifier();
 
@@ -249,7 +245,6 @@ public class MultiSourceAuthService {
         try {
             System.out.println("=== STUDENT AUTHENTICATION START ===");
             System.out.println("Identifier: " + request.getIdentifier());
-            System.out.println("SIS URL: https://devoap.unza.zm/api/v1/customers/login");
             
             ExternalAuthResponse externalResponse = sisAuthenticationService.authenticate(request.getIdentifier(), request.getPassword());
 
@@ -264,8 +259,21 @@ public class MultiSourceAuthService {
                 throw new ValidationException(externalResponse.getMessage() != null ? externalResponse.getMessage() : "Invalid student credentials");
             }
         } catch (ExternalAuthenticationException e) {
-            System.err.println("SIS Authentication failed: " + e.getMessage());
-            throw new ValidationException("SIS Authentication failed: " + e.getMessage());
+            String errorMsg = e.getMessage();
+            System.err.println("SIS Authentication failed: " + errorMsg);
+            
+            // Provide user-friendly error messages based on the error type
+            if (errorMsg != null && errorMsg.contains("500")) {
+                throw new ValidationException("Student authentication service is temporarily unavailable. Please try again later or contact support if the problem persists.");
+            } else if (errorMsg != null && errorMsg.contains("401")) {
+                throw new ValidationException("Invalid student number or password. Please check your credentials and try again.");
+            } else if (errorMsg != null && errorMsg.contains("404")) {
+                throw new ValidationException("Student not found in the system. Please verify your student number.");
+            } else if (errorMsg != null && (errorMsg.contains("timeout") || errorMsg.contains("Connection refused"))) {
+                throw new ValidationException("Unable to connect to student authentication service. Please try again later.");
+            }
+            
+            throw new ValidationException("Student authentication failed: " + (errorMsg != null ? errorMsg : "Unknown error"));
         }
     }
 
@@ -372,19 +380,41 @@ public class MultiSourceAuthService {
         // Set basic fields - use null checks to avoid validation errors
         userToSave.setUsername(safeTrim(externalUser.getUsername()));
         
-        // Handle firstName - use default if missing to satisfy @NotBlank constraint
+        // Handle firstName - ALWAYS update from external source if meaningful
         String firstName = safeTrim(externalUser.getFirstName());
-        if (firstName == null || firstName.isEmpty()) {
-            firstName = "Student"; // Default for SIS users without first name
-        }
-        userToSave.setFirstName(firstName);
+        System.out.println("DEBUG provisionUser: external firstName='" + firstName + "', isNewUser=" + isNewUser);
         
-        // Handle lastName - use default if missing to satisfy @NotBlank constraint
-        String lastName = safeTrim(externalUser.getLastName());
-        if (lastName == null || lastName.isEmpty()) {
-            lastName = externalUser.getUsername() != null ? externalUser.getUsername() : "User";
+        // Check if the firstName is a meaningful value (not "Student" placeholder)
+        boolean isMeaningfulFirstName = firstName != null && !firstName.isEmpty() 
+                && !firstName.equals("Student") && !firstName.equals("User");
+        
+        if (isMeaningfulFirstName) {
+            userToSave.setFirstName(firstName);
+            System.out.println("DEBUG provisionUser: Setting firstName to '" + firstName + "'");
+        } else if (isNewUser) {
+            userToSave.setFirstName("Student"); // Default for SIS users without first name
+            System.out.println("DEBUG provisionUser: Setting default firstName 'Student' for new user");
         }
-        userToSave.setLastName(lastName);
+        // For existing users, only update if external source provides a meaningful value
+        // This ensures we always get the latest name from SIS when it's available
+        
+        // Handle lastName - ALWAYS update from external source if meaningful
+        String lastName = safeTrim(externalUser.getLastName());
+        System.out.println("DEBUG provisionUser: external lastName='" + lastName + "'");
+        
+        // Check if the lastName is a meaningful value (not the username as placeholder)
+        boolean isMeaningfulLastName = lastName != null && !lastName.isEmpty() 
+                && !lastName.equals(externalUser.getUsername()) && !lastName.equals("User");
+        
+        if (isMeaningfulLastName) {
+            userToSave.setLastName(lastName);
+            System.out.println("DEBUG provisionUser: Setting lastName to '" + lastName + "'");
+        } else if (isNewUser) {
+            userToSave.setLastName(externalUser.getUsername() != null ? externalUser.getUsername() : "User");
+            System.out.println("DEBUG provisionUser: Setting default lastName '" + userToSave.getLastName() + "' for new user");
+        }
+        // For existing users, only update if external source provides a meaningful value
+        // This ensures we always get the latest name from SIS when it's available
         
         // Handle email - use username@unza.zm as default if null or empty
         String email = safeTrim(externalUser.getEmail());
@@ -449,13 +479,13 @@ public class MultiSourceAuthService {
             userToSave.setRoles(roles);
         }
         
-        // For SIS users, also create/update Client record
-        if (externalUser.getAuthenticationSource() == AuthenticationSource.SIS && isNewUser) {
-            createClientRecord(userToSave);
-        }
-
         // Save using repository (handles both insert and update)
         userToSave = userRepository.save(userToSave);
+        
+        // Note: Client record creation is disabled because Client extends User with SINGLE_TABLE
+        // inheritance, which means they share the same table. Creating a separate Client record
+        // would cause unique constraint violations on username/email columns.
+        // The User entity already contains all necessary student information.
         
         System.out.println("Provisioned user: " + userToSave.getUsername() + " (isNewUser=" + isNewUser + ")");
         
@@ -472,54 +502,60 @@ public class MultiSourceAuthService {
         String trimmed = value.trim();
         return trimmed.isEmpty() ? null : trimmed;
     }
-    
-    /**
-     * Create a Client record for SIS users
-     */
-    private void createClientRecord(User user) {
-        try {
-            Client client = new Client();
-            client.setUsername(user.getUsername());
-            client.setEmail(user.getEmail());
-            client.setPassword(user.getPassword());
-            client.setFirstName(user.getFirstName());
-            client.setLastName(user.getLastName());
-            client.setStudentId(user.getStudentId());
-            client.setPhoneNumber(user.getPhoneNumber());
-            client.setProgram(user.getProgram());
-            client.setDepartment(user.getDepartment());
-            client.setYearOfStudy(user.getYearOfStudy());
-            client.setActive(true);
-            client.setEmailVerified(true);
-            client.setAuthenticationSource(user.getAuthenticationSource());
-            client.setRoles(user.getRoles());
-            
-            clientRepository.save(client);
-            System.out.println("Created Client record for user: " + user.getUsername());
-        } catch (Exception e) {
-            System.err.println("Failed to create Client record: " + e.getMessage());
-        }
-    }
 
     private AuthResponse createAuthResponse(User user) {
-        // Fetch user with roles loaded
-        User userWithRoles = userRepository.findByEmailWithRoles(user.getEmail())
-                .or(() -> userRepository.findByUsername(user.getUsername()))
-                .orElseThrow(() -> new ValidationException("User not found when creating auth response"));
+        // Use the provided user directly - it's already loaded with roles from provisionUser
+        // Re-fetching from database can cause issues within the same transaction
+        User userForToken = user;
+        
+        // Only re-fetch if roles are not loaded (lazy loading check)
+        if (user.getRoles() == null || user.getRoles().isEmpty()) {
+            userForToken = userRepository.findByEmailWithRoles(user.getEmail())
+                    .or(() -> userRepository.findByUsernameWithRoles(user.getUsername()))
+                    .orElse(user);
+        }
 
-        String token = jwtService.generateToken(userWithRoles);
-        String refreshToken = jwtService.generateRefreshToken(userWithRoles);
+        String token = jwtService.generateToken(userForToken);
+        String refreshToken = jwtService.generateRefreshToken(userForToken);
+
+        // Check if this is the user's first login (lastLogin is null)
+        boolean isFirstLogin = userForToken.getLastLogin() == null;
 
         // Update last login time
-        userWithRoles.setLastLogin(LocalDateTime.now());
-        userRepository.save(userWithRoles);
+        userForToken.setLastLogin(LocalDateTime.now());
+        userRepository.save(userForToken);
+
+        // Check if user requires consent (clients/students/staff who haven't signed)
+        boolean requiresConsent = isClientRequiringConsent(userForToken);
 
         AuthResponse response = new AuthResponse();
         response.setToken(token);
         response.setRefreshToken(refreshToken);
-        response.setUser(userWithRoles);
+        response.setUser(userForToken);
         response.setExpiresIn((int) jwtService.getExpirationTime());
+        response.setFirstLogin(isFirstLogin);
+        response.setRequiresConsent(requiresConsent);
 
         return response;
+    }
+
+    /**
+     * Check if user is a client (student/staff) who needs to sign consent form
+     * @param user the user to check
+     * @return true if user requires consent, false otherwise
+     */
+    private boolean isClientRequiringConsent(User user) {
+        // Check if user has CLIENT role (students and staff)
+        boolean isClient = user.getRoles().stream()
+                .anyMatch(role -> role.getName() == Role.ERole.ROLE_CLIENT || 
+                                  role.getName() == Role.ERole.ROLE_STUDENT);
+        
+        if (!isClient) {
+            // Not a client, no consent required
+            return false;
+        }
+        
+        // Check if user has already signed consent
+        return !Boolean.TRUE.equals(user.getHasSignedConsent());
     }
 }

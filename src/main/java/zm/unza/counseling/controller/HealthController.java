@@ -13,7 +13,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @RestController
-@RequestMapping({"/v1/health", "/health"})
+@RequestMapping({"/api/v1/health", "/api/health", "/v1/health", "/health"})
 @RequiredArgsConstructor
 @Tag(name = "Health", description = "System health and status endpoints")
 public class HealthController {
