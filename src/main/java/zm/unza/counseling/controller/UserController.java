@@ -25,7 +25,7 @@ public class UserController {
     private final UserService userService;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'STUDENT', 'CLIENT')")
     public ResponseEntity<ApiResponse<Page<User>>> getAllUsers(Pageable pageable) {
         return ResponseEntity.ok(ApiResponse.success(userService.getAllUsers(pageable)));
     }

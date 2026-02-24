@@ -127,6 +127,7 @@ public class ResourceService {
             resource.setFileSize(file.getSize());
             resource.setFileUrl("/api/v1/resources/download/" + uniqueFilename);
             resource.setFileKey(uniqueFilename);
+            resource.setTags(request.getTags());
 
             return resourceRepository.save(resource);
         } catch (IOException e) {

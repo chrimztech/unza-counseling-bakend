@@ -26,8 +26,10 @@ public class MessageService {
 
     @Transactional
     public Message sendMessage(Long senderId, MessageRequest request) {
-        User sender = userRepository.findById(senderId).orElseThrow();
-        User recipient = userRepository.findById(request.getRecipientId()).orElseThrow();
+        User sender = userRepository.findById(senderId)
+                .orElseThrow(() -> new RuntimeException("Sender not found"));
+        User recipient = userRepository.findById(request.getRecipientId())
+                .orElseThrow(() -> new RuntimeException("Recipient not found"));
 
         Message message = new Message();
         message.setSender(sender);

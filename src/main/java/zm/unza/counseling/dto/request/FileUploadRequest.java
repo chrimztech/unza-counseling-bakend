@@ -3,6 +3,8 @@ package zm.unza.counseling.dto.request;
 import lombok.Data;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
+
 @Data
 public class FileUploadRequest {
     private MultipartFile file;
@@ -11,4 +13,5 @@ public class FileUploadRequest {
     private String type; // ARTICLE, VIDEO, DOCUMENT
     private String category;
     private boolean featured;
+    private List<String> tags;
 }

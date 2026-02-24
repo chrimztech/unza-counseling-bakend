@@ -1,8 +1,10 @@
 package zm.unza.counseling.service;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
+import zm.unza.counseling.dto.AppointmentDto;
 import zm.unza.counseling.dto.response.DashboardStatsResponse;
 import zm.unza.counseling.entity.Appointment;
 import zm.unza.counseling.entity.Client;
@@ -15,9 +17,11 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class DashboardService {
 
     private final ClientRepository clientRepository;
@@ -92,13 +96,54 @@ public class DashboardService {
         return metrics;
     }
 
-    public List<Appointment> getUpcomingAppointments() {
+    public List<AppointmentDto> getUpcomingAppointments() {
+        log.info("Fetching upcoming appointments for dashboard");
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime endOfWeek = now.plusDays(7);
-        return appointmentRepository.findByStatusAndDateRange(
+        
+        // Use the fetch query to eagerly load student and counselor
+        List<Appointment> appointments = appointmentRepository.findByStatusAndDateRangeWithFetch(
                 Appointment.AppointmentStatus.SCHEDULED,
                 now,
                 endOfWeek
         );
+        
+        // Convert to DTOs to avoid lazy-loading issues
+        return appointments.stream()
+                .map(this::convertToDto)
+                .collect(Collectors.toList());
+    }
+    
+    private AppointmentDto convertToDto(Appointment appointment) {
+        AppointmentDto dto = new AppointmentDto();
+        dto.setId(appointment.getId());
+        dto.setTitle(appointment.getTitle());
+        dto.setAppointmentDate(appointment.getAppointmentDate());
+        dto.setDuration(appointment.getDuration());
+        dto.setType(appointment.getType());
+        dto.setStatus(appointment.getStatus());
+        dto.setSessionMode(appointment.getSessionMode());
+        dto.setDescription(appointment.getDescription());
+        dto.setMeetingLink(appointment.getMeetingLink());
+        dto.setMeetingProvider(appointment.getMeetingProvider());
+        dto.setLocation(appointment.getLocation());
+        dto.setCreatedAt(appointment.getCreatedAt());
+        
+        // Safely access student information
+        if (appointment.getStudent() != null) {
+            dto.setStudentId(appointment.getStudent().getId());
+            dto.setStudentName(appointment.getStudent().getFirstName() + " " + appointment.getStudent().getLastName());
+        }
+        
+        // Safely access counselor information (may be null for unassigned appointments)
+        if (appointment.getCounselor() != null) {
+            dto.setCounselorId(appointment.getCounselor().getId());
+            dto.setCounselorName(appointment.getCounselor().getFirstName() + " " + appointment.getCounselor().getLastName());
+        } else {
+            dto.setCounselorId(null);
+            dto.setCounselorName("Unassigned");
+        }
+        
+        return dto;
     }
 }

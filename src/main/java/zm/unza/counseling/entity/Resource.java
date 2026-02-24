@@ -3,6 +3,7 @@ package zm.unza.counseling.entity;
 import jakarta.persistence.*;
 import lombok.Data;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @Entity
@@ -26,6 +27,10 @@ public class Resource {
     private Long fileSize;
     private String fileUrl;
     private String fileKey;
+
+    // Additional fields
+    @ElementCollection
+    private List<String> tags;
 
     @PrePersist
     protected void onCreate() {

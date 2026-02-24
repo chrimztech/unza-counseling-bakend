@@ -4,6 +4,7 @@ import zm.unza.counseling.entity.Appointment;
 import zm.unza.counseling.entity.Appointment.AppointmentStatus;
 import zm.unza.counseling.entity.User;
 import zm.unza.counseling.entity.Client;
+import zm.unza.counseling.entity.Case;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -160,4 +161,24 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
 
     @Query("SELECT COUNT(a) FROM Appointment a WHERE a.counselor IS NULL")
     Long countUnassignedAppointments();
+
+    // Dashboard query with eager fetching to avoid lazy-loading issues
+    @Query("SELECT DISTINCT a FROM Appointment a " +
+           "LEFT JOIN FETCH a.student " +
+           "LEFT JOIN FETCH a.counselor " +
+           "WHERE a.status = :status " +
+           "AND a.appointmentDate BETWEEN :start AND :end " +
+           "ORDER BY a.appointmentDate")
+    List<Appointment> findByStatusAndDateRangeWithFetch(
+        @Param("status") AppointmentStatus status,
+        @Param("start") LocalDateTime start,
+        @Param("end") LocalDateTime end
+    );
+
+    // Case-based queries
+    List<Appointment> findByCaseEntity(Case caseEntity);
+    
+    Page<Appointment> findByCaseEntity(Case caseEntity, Pageable pageable);
+    
+    List<Appointment> findByCaseEntityAndStatus(Case caseEntity, AppointmentStatus status);
 }

@@ -31,6 +31,11 @@ public class Appointment {
     private Client client;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "case_id", nullable = true)
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+    private Case caseEntity;
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "counselor_id")
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private User counselor;
@@ -87,6 +92,9 @@ public class Appointment {
 
     public Client getClient() { return client; }
     public void setClient(Client client) { this.client = client; }
+
+    public Case getCaseEntity() { return caseEntity; }
+    public void setCaseEntity(Case caseEntity) { this.caseEntity = caseEntity; }
 
     public User getCounselor() { return counselor; }
     public void setCounselor(User counselor) { this.counselor = counselor; }
