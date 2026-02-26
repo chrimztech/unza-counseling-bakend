@@ -46,11 +46,15 @@ spring:
     init:
       mode: never
   
+  autoconfigure:
+    exclude: 
+      - org.springframework.boot.autoconfigure.mail.MailSenderAutoConfiguration
+      
   mail:
-    host: ${MAIL_HOST}
+    host: ${MAIL_HOST:localhost}
     port: ${MAIL_PORT:587}
-    username: ${MAIL_USERNAME}
-    password: ${MAIL_PASSWORD}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
     properties:
       mail:
         smtp:
@@ -119,7 +123,7 @@ cors:
 
 # Application Configuration
 app:
-  name: ${APP_DISPLAY_NAME:UNZA Counseling Management System}
+  name: ${APP_DISPLAY_NAME:"UNZA Counseling Management System"}
   version: ${APP_VERSION:1.0.0}
   environment: ${APP_ENVIRONMENT:production}
   timezone: ${APP_TIMEZONE:Africa/Lusaka}
