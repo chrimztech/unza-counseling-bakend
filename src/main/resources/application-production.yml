@@ -37,9 +37,8 @@ spring:
         order_updates: true
         generate_statistics: false
         cache:
-          use_second_level_cache: true
-          use_query_cache: true
-          region.factory_class: org.hibernate.cache.jcache.JCacheRegionFactory
+          use_second_level_cache: false
+          use_query_cache: false
     defer-datasource-initialization: false
   
   sql:
