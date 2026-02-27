@@ -69,7 +69,8 @@ spring:
       port: ${REDIS_PORT:6379}
       password: ${REDIS_PASSWORD:}
       timeout: ${REDIS_TIMEOUT:2000}
-      ssl: ${REDIS_SSL:false}
+      ssl:
+        enabled: ${REDIS_SSL:false}
       jedis:
         pool:
           max-active: ${REDIS_POOL_MAX_ACTIVE:20}
@@ -199,10 +200,6 @@ management:
         enabled: ${ACTUATOR_HEALTH_PROBES:true}
       show-components: when-authorized
   metrics:
-    export:
-      prometheus:
-        enabled: ${METRICS_PROMETHEUS_ENABLED:true}
-        step: ${METRICS_PROMETHEUS_STEP:10s}
     distribution:
       percentiles-histogram:
         http:
@@ -215,6 +212,7 @@ management:
     metrics:
       export:
         enabled: ${METRICS_PROMETHEUS_ENABLED:true}
+        step: ${METRICS_PROMETHEUS_STEP:10s}
   jmx:
     unique-names: true
 
