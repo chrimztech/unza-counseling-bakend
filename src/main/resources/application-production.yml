@@ -188,33 +188,13 @@ logging:
 
 # Management/Actuator Configuration
 management:
+  endpoint:
+    health:
+      show-details: always
   endpoints:
     web:
       exposure:
-        include: ${ACTUATOR_ENDPOINTS:health,info,metrics,prometheus}
-      base-path: ${ACTUATOR_BASE_PATH:/actuator}
-  endpoint:
-    health:
-      show-details: ${ACTUATOR_HEALTH_DETAILS:when-authorized}
-      probes:
-        enabled: ${ACTUATOR_HEALTH_PROBES:true}
-      show-components: when-authorized
-  metrics:
-    distribution:
-      percentiles-histogram:
-        http:
-          server:
-            requests: ${METRICS_HTTP_DISTRIBUTION:true}
-    tags:
-      application: ${APP_NAME:unza-counseling-system}
-      environment: ${APP_ENVIRONMENT:production}
-  prometheus:
-    metrics:
-      export:
-        enabled: ${METRICS_PROMETHEUS_ENABLED:true}
-        step: ${METRICS_PROMETHEUS_STEP:10s}
-  jmx:
-    unique-names: true
+        include: health,info
 
 # OpenAPI Configuration
 springdoc:
