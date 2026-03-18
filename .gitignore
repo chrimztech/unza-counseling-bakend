@@ -38,3 +38,6 @@ Thumbs.db
 .env
 application-prod.yml
 application-local.yml
+BOOT-INF/
+app.pid
+*.save

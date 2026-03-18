@@ -24,8 +24,7 @@ import java.io.IOException;
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    private static final Logger log =
-        LoggerFactory.getLogger(JwtAuthenticationFilter.class);
+    private static final Logger log = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
 
     private final JwtService jwtService;
     private final UserDetailsService userDetailsService;
@@ -38,9 +37,35 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     ) throws ServletException, IOException {
 
         final String requestPath = request.getRequestURI();
-        final String authHeader = request.getHeader("Authorization");
+        final String method = request.getMethod();
 
-        log.debug("Processing request: {} {}", request.getMethod(), requestPath);
+        log.debug("Processing request: {} {}", method, requestPath);
+
+        // ✅ CRITICAL FIX: Handle OPTIONS requests immediately - return 200 OK with CORS headers
+        if ("OPTIONS".equalsIgnoreCase(method)) {
+            log.debug("OPTIONS request detected for path: {} - returning 200 OK with CORS headers", requestPath);
+            
+            // Set CORS headers for preflight response
+            response.setStatus(HttpServletResponse.SC_OK);
+            response.setHeader("Access-Control-Allow-Origin", "https://counselling.unza.ac.zm");
+            response.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, PATCH");
+            response.setHeader("Access-Control-Allow-Headers", "Authorization, Content-Type, X-Requested-With, Accept, Origin, Access-Control-Request-Method, Access-Control-Request-Headers");
+            response.setHeader("Access-Control-Allow-Credentials", "true");
+            response.setHeader("Access-Control-Max-Age", "3600");
+            response.setHeader("Content-Length", "0");
+            
+            // Don't continue the filter chain for OPTIONS requests
+            return;
+        }
+
+        // For login endpoint, we don't need token validation
+        if (requestPath.contains("/auth/login") || requestPath.contains("/api/auth/login")) {
+            log.debug("Login endpoint detected - skipping JWT authentication");
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        final String authHeader = request.getHeader("Authorization");
 
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             log.debug("No Bearer token found for request: {}", requestPath);
@@ -50,19 +75,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         try {
             final String jwt = authHeader.substring(7);
-            log.debug("JWT token received (first 20 chars): {}", 
+            log.debug("JWT token received (first 20 chars): {}",
                 jwt.length() > 20 ? jwt.substring(0, 20) + "..." : jwt);
-            
+
             final String username = jwtService.extractUsername(jwt);
             log.debug("Extracted username from token: {}", username);
 
-            if (username != null &&
-                SecurityContextHolder.getContext().getAuthentication() == null) {
+            if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
 
                 UserDetails userDetails;
                 try {
                     userDetails = userDetailsService.loadUserByUsername(username);
-                    log.debug("Loaded user details for: {}, authorities: {}", 
+                    log.debug("Loaded user details for: {}, authorities: {}",
                         username, userDetails.getAuthorities());
                 } catch (UsernameNotFoundException e) {
                     log.error("User not found in database: {}", username);
@@ -85,7 +109,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
                     SecurityContextHolder.getContext()
                         .setAuthentication(authToken);
-                    log.debug("Successfully authenticated user: {} for path: {}", 
+                    log.debug("Successfully authenticated user: {} for path: {}",
                         username, requestPath);
                 } else {
                     log.warn("Token validation failed for user: {}", username);
@@ -102,10 +126,21 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         } catch (io.jsonwebtoken.security.SignatureException e) {
             log.error("Invalid JWT signature: {}", e.getMessage());
         } catch (Exception e) {
-            log.error("JWT authentication failed: {} - {}", 
+            log.error("JWT authentication failed: {} - {}",
                 e.getClass().getSimpleName(), e.getMessage());
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String method = request.getMethod();
+        String path = request.getRequestURI();
+        
+        // Skip filter for OPTIONS requests and login endpoints
+        return "OPTIONS".equalsIgnoreCase(method) || 
+               path.contains("/auth/login") || 
+               path.contains("/api/auth/login");
     }
 }

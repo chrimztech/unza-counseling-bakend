@@ -4,6 +4,7 @@ import jakarta.servlet.DispatcherType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -11,15 +12,15 @@ import org.springframework.security.config.annotation.authentication.configurati
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.web.cors.CorsConfigurationSource;
+
 import zm.unza.counseling.security.JwtAuthenticationEntryPoint;
 import zm.unza.counseling.security.JwtAuthenticationFilter;
 
@@ -36,38 +37,71 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+
         http
+
+            // Disable CSRF because this is a stateless REST API
             .csrf(AbstractHttpConfigurer::disable)
+
+            // Enable CORS using our CorsConfig
             .cors(cors -> cors.configurationSource(corsConfigurationSource))
-            .exceptionHandling(exception -> exception.authenticationEntryPoint(unauthorizedHandler))
-            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+
+            // Handle unauthorized requests
+            .exceptionHandling(exception ->
+                exception.authenticationEntryPoint(unauthorizedHandler)
+            )
+
+            // Stateless session (JWT)
+            .sessionManagement(session ->
+                session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+            )
+
             .authorizeHttpRequests(auth -> auth
-                // Forwarded/error requests (e.g., error pages)
+
+                // Allow Spring error dispatch
                 .dispatcherTypeMatchers(DispatcherType.FORWARD, DispatcherType.ERROR).permitAll()
 
-                // Public endpoints - Authentication & Documentation (servlet paths without context path)
-                .requestMatchers(new AntPathRequestMatcher("/v1/auth/**")).permitAll()
-                .requestMatchers(new AntPathRequestMatcher("/api/v1/auth/**")).permitAll()
-                .requestMatchers(new AntPathRequestMatcher("/auth/**")).permitAll()
-                .requestMatchers(new AntPathRequestMatcher("/api/appointments/stats")).permitAll()
-                .requestMatchers(new AntPathRequestMatcher("/appointments/stats")).permitAll()
-                .requestMatchers(new AntPathRequestMatcher("/api/appointments/availability")).permitAll()
-                .requestMatchers(new AntPathRequestMatcher("/appointments/availability")).permitAll()
-                .requestMatchers(new AntPathRequestMatcher("/v3/api-docs/**")).permitAll()
-                .requestMatchers(new AntPathRequestMatcher("/swagger-ui/**")).permitAll()
-                .requestMatchers(new AntPathRequestMatcher("/swagger-ui.html")).permitAll()
-                .requestMatchers(new AntPathRequestMatcher("/api-docs/**")).permitAll()
-                .requestMatchers(new AntPathRequestMatcher("/actuator/**")).permitAll()
-                .requestMatchers(new AntPathRequestMatcher("/health")).permitAll()
+                // Allow CORS preflight requests
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                // All other requests require authentication
+                // 🔓 PUBLIC AUTH ENDPOINTS (LOGIN)
+                .requestMatchers(
+                        "/auth/**",
+                        "/api/auth/**",
+                        "/v1/auth/**",
+                        "/api/v1/auth/**"
+                ).permitAll()
+
+                // 🔓 Public appointment endpoints
+                .requestMatchers(
+                        "/api/appointments/stats",
+                        "/appointments/stats",
+                        "/api/appointments/availability",
+                        "/appointments/availability"
+                ).permitAll()
+
+                // 🔓 Swagger / documentation
+                .requestMatchers(
+                        "/v3/api-docs/**",
+                        "/swagger-ui/**",
+                        "/swagger-ui.html",
+                        "/api-docs/**"
+                ).permitAll()
+
+                // 🔓 Health check
+                .requestMatchers(
+                        "/actuator/**",
+                        "/health"
+                ).permitAll()
+
+                // 🔐 Everything else requires authentication
                 .anyRequest().authenticated()
             );
 
-        // JWT filter
+        // JWT Authentication Filter
         http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
-        // DAO-based authentication provider
+        // Authentication provider
         http.authenticationProvider(authenticationProvider());
 
         return http.build();
@@ -75,9 +109,12 @@ public class SecurityConfig {
 
     @Bean
     public AuthenticationProvider authenticationProvider() {
+
         DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
+
         authProvider.setUserDetailsService(userDetailsService);
         authProvider.setPasswordEncoder(passwordEncoder());
+
         return authProvider;
     }
 
@@ -90,4 +127,5 @@ public class SecurityConfig {
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
+
 }

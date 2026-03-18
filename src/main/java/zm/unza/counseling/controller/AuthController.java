@@ -20,6 +20,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping({"/api/v1/auth", "/api/auth", "/auth"})
+@CrossOrigin(origins = "https://counselling.unza.ac.zm", allowCredentials = "true")
 @RequiredArgsConstructor
 public class AuthController {
 
@@ -55,8 +56,7 @@ public class AuthController {
             AuthResponse response = multiSourceAuthService.register(request);
             return ResponseEntity.ok(response);
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest()
-                    .body(Map.of("error", e.getMessage()));
+            return ResponseEntity.badRequest()  .body(Map.of("error", e.getMessage()));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", "Registration failed"));
@@ -78,7 +78,7 @@ public class AuthController {
             // 1. Create a temporary anonymous user
             // 2. Generate a special anonymous JWT token
             // 3. Track the device/session for future reference
-            
+
             // For now, we'll return a special response indicating anonymous access
             return ResponseEntity.ok(Map.of(
                 "message", "Anonymous login successful",
@@ -112,8 +112,6 @@ public class AuthController {
                     .body(Map.of("error", "Invalid or expired refresh token"));
         }
     }
-
-    // Missing authentication endpoints
 
     @PostMapping("/logout-all")
     public ResponseEntity<?> logoutAllDevices() {
