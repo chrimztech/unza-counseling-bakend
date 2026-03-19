@@ -10,13 +10,10 @@ import java.util.List;
 
 /**
  * DTO for Student Information System (SIS) Results API Response
- * Based on the Flutter ResultsService implementation
+ * Based on the actual SIS API response structure
  */
 public class SisResultsDtos {
 
-    /**
-     * Main response wrapper from SIS API
-     */
     @Data
     @NoArgsConstructor
     @AllArgsConstructor
@@ -31,9 +28,6 @@ public class SisResultsDtos {
         }
     }
 
-    /**
-     * Data wrapper containing student course history
-     */
     @Data
     @NoArgsConstructor
     @AllArgsConstructor
@@ -46,51 +40,192 @@ public class SisResultsDtos {
         private StudentInfo studentInfo;
     }
 
-    /**
-     * Individual course result item
-     */
     @Data
     @NoArgsConstructor
     @AllArgsConstructor
     @Builder
     public static class StudentCourseHistory {
+        @JsonProperty("IntakeBatch")
+        private IntakeBatch intakeBatch;
+        
+        @JsonProperty("Program")
+        private Program program;
+        
+        @JsonProperty("Study")
+        private Study study;
+        
+        @JsonProperty("Course")
+        private Course course;
+        
+        @JsonProperty("Session")
+        private Session session;
+        
+        @JsonProperty("StudentCourse")
+        private StudentCourse studentCourse;
+        
+        @JsonProperty("StudentEndcomment")
+        private StudentEndcomment studentEndcomment;
+        
+        @JsonProperty("Student")
+        private Student student;
+        
+        @JsonProperty("StudentStatus")
+        private StudentStatus studentStatus;
+        
+        @JsonProperty("Comment")
+        private Comment comment;
+        
+        @JsonProperty("Grades")
+        private Grades grades;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class IntakeBatch {
+        @JsonProperty("period_name")
+        private String periodName;
+        
+        @JsonProperty("session_id")
+        private String sessionId;
+        
+        @JsonProperty("intake_id")
+        private String intakeId;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class Program {
+        @JsonProperty("program_description")
+        private String programDescription;
+        
+        @JsonProperty("program_abbrev")
+        private String programAbbrev;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class Study {
+        @JsonProperty("study_description")
+        private String studyDescription;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class Course {
         @JsonProperty("course_code")
         private String courseCode;
         
-        @JsonProperty("course_title")
-        private String courseTitle;
+        @JsonProperty("credits")
+        private String credits;
         
-        @JsonProperty("credit_hours")
-        private Integer creditHours;
-        
-        @JsonProperty("semester")
-        private String semester;
-        
-        @JsonProperty("academic_year")
-        private String academicYear;
-        
-        @JsonProperty("grade")
-        private String grade;
-        
-        @JsonProperty("grade_point")
-        private BigDecimal gradePoint;
-        
-        @JsonProperty("marks")
-        private BigDecimal marks;
-        
-        @JsonProperty("status")
-        private String status;
-        
-        @JsonProperty("course_type")
-        private String courseType;
-        
-        @JsonProperty("assessment_type")
-        private String assessmentType;
+        @JsonProperty("course_description")
+        private String courseDescription;
     }
 
-    /**
-     * Student information from SIS
-     */
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class Session {
+        @JsonProperty("session_code")
+        private String sessionCode;
+        
+        @JsonProperty("session_end")
+        private String sessionEnd;
+        
+        @JsonProperty("id")
+        private String id;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class StudentCourse {
+        @JsonProperty("session_id")
+        private String sessionId;
+        
+        @JsonProperty("intake_id")
+        private String intakeId;
+        
+        @JsonProperty("tmp_final_grade")
+        private String tmpFinalGrade;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class StudentEndcomment {
+        @JsonProperty("results_withheld")
+        private String resultsWithheld;
+        
+        @JsonProperty("results_published")
+        private String resultsPublished;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class Student {
+        @JsonProperty("student_id")
+        private String studentId;
+        
+        @JsonProperty("surname")
+        private String surname;
+        
+        @JsonProperty("middle_name")
+        private String middleName;
+        
+        @JsonProperty("first_name")
+        private String firstName;
+        
+        @JsonProperty("gender")
+        private String gender;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class StudentStatus {
+        @JsonProperty("status_id")
+        private String statusId;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class Comment {
+        @JsonProperty("comment_descr")
+        private String commentDescr;
+        
+        @JsonProperty("comment_code")
+        private String commentCode;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class Grades {
+        @JsonProperty("grade_code")
+        private String gradeCode;
+        
+        @JsonProperty("gradepoint")
+        private String gradepoint;
+    }
+
     @Data
     @NoArgsConstructor
     @AllArgsConstructor
@@ -133,9 +268,6 @@ public class SisResultsDtos {
         private String classification;
     }
 
-    /**
-     * Summary statistics calculated from results
-     */
     @Data
     @NoArgsConstructor
     @AllArgsConstructor
@@ -156,9 +288,6 @@ public class SisResultsDtos {
         private String performanceTrend;
     }
 
-    /**
-     * Request to sync results from SIS
-     */
     @Data
     @NoArgsConstructor
     @AllArgsConstructor
@@ -169,9 +298,6 @@ public class SisResultsDtos {
         private Boolean forceRefresh;
     }
 
-    /**
-     * Response after syncing results
-     */
     @Data
     @NoArgsConstructor
     @AllArgsConstructor

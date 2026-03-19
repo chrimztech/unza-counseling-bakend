@@ -313,32 +313,67 @@ public class SisResultsService {
         AcademicQualification qualification = new AcademicQualification();
         qualification.setClient(client);
         qualification.setStudentId(studentId);
-        qualification.setCourseCode(course.getCourseCode());
-        qualification.setCourseTitle(course.getCourseTitle());
-        qualification.setCreditHours(course.getCreditHours());
-        qualification.setSemester(course.getSemester());
-        qualification.setAcademicYear(course.getAcademicYear());
-        qualification.setGrade(course.getGrade());
-        qualification.setGradePoint(course.getGradePoint());
-        qualification.setMarks(course.getMarks());
         
-        // Set course status
-        if (course.getStatus() != null) {
-            try {
-                qualification.setCourseStatus(AcademicQualification.CourseStatus.valueOf(course.getStatus().toUpperCase()));
-            } catch (IllegalArgumentException e) {
+        // Extract course information from nested Course object
+        if (course.getCourse() != null) {
+            qualification.setCourseCode(course.getCourse().getCourseCode());
+            qualification.setCourseTitle(course.getCourse().getCourseDescription());
+            if (course.getCourse().getCredits() != null && !course.getCourse().getCredits().isEmpty()) {
+                try {
+                    qualification.setCreditHours(Integer.parseInt(course.getCourse().getCredits()));
+                } catch (NumberFormatException e) {
+                    qualification.setCreditHours(0);
+                }
+            }
+        }
+        
+        // Extract session/academic year information
+        if (course.getSession() != null && course.getSession().getSessionCode() != null) {
+            // Session code format: GER 20241 -> 2024 is year, 1 is semester
+            String sessionCode = course.getSession().getSessionCode();
+            if (sessionCode.matches("GER \\d{5}")) {
+                String yearPart = sessionCode.substring(4, 8);
+                String semesterPart = sessionCode.substring(8, 9);
+                qualification.setAcademicYear(yearPart);
+                qualification.setSemester(semesterPart);
+            }
+        }
+        
+        // Extract grade information
+        if (course.getGrades() != null) {
+            qualification.setGrade(course.getGrades().getGradeCode());
+            if (course.getGrades().getGradepoint() != null && !course.getGrades().getGradepoint().isEmpty()) {
+                try {
+                    qualification.setGradePoint(new BigDecimal(course.getGrades().getGradepoint()));
+                } catch (NumberFormatException e) {
+                    qualification.setGradePoint(null);
+                }
+            }
+        }
+        
+        // Also check StudentCourse for grade
+        if (qualification.getGrade() == null || qualification.getGrade().isEmpty()) {
+            qualification.setGrade(course.getStudentCourse().getTmpFinalGrade());
+        }
+        
+        // Set course status based on grade
+        String grade = qualification.getGrade();
+        if (grade != null && !grade.isEmpty() && !grade.equals("IN") && !grade.equals("")) {
+            // Determine if grade is passing or failing
+            if (grade.matches("[A-F]\\+?")) {
+                // For letter grades, consider A-F as passing (you may need to adjust this based on actual grading system)
+                qualification.setCourseStatus(AcademicQualification.CourseStatus.PASSED);
+            } else if (grade.equals("F")) {
+                qualification.setCourseStatus(AcademicQualification.CourseStatus.FAILED);
+            } else {
                 qualification.setCourseStatus(AcademicQualification.CourseStatus.INCOMPLETE);
             }
+        } else {
+            qualification.setCourseStatus(AcademicQualification.CourseStatus.INCOMPLETE);
         }
         
-        // Set course type
-        if (course.getCourseType() != null) {
-            try {
-                qualification.setCourseType(AcademicQualification.CourseType.valueOf(course.getCourseType().toUpperCase()));
-            } catch (IllegalArgumentException e) {
-                qualification.setCourseType(AcademicQualification.CourseType.GENERAL);
-            }
-        }
+        // Default course type
+        qualification.setCourseType(AcademicQualification.CourseType.GENERAL);
         
         qualification.setSisSyncDate(LocalDateTime.now());
         qualification.setIsActive(true);
@@ -399,22 +434,60 @@ public class SisResultsService {
         List<StudentCourseHistory> courses = data.getStudentCourseHistory();
         
         int totalCourses = courses.size();
-        int passedCourses = (int) courses.stream()
-                .filter(c -> "PASSED".equalsIgnoreCase(c.getStatus()))
-                .count();
-        int failedCourses = (int) courses.stream()
-                .filter(c -> "FAILED".equalsIgnoreCase(c.getStatus()))
-                .count();
-        int withdrawnCourses = (int) courses.stream()
-                .filter(c -> "WITHDRAWN".equalsIgnoreCase(c.getStatus()))
-                .count();
+        int passedCourses = 0;
+        int failedCourses = 0;
+        int withdrawnCourses = 0;
+        int incompleteCourses = 0;
         
-        Double avgGpa = courses.stream()
-                .filter(c -> c.getGradePoint() != null)
-                .mapToDouble(c -> c.getGradePoint().doubleValue())
-                .average()
-                .orElse(0.0);
+        double totalGradePoints = 0.0;
+        int coursesWithGrades = 0;
+        int totalCredits = 0;
 
+        for (StudentCourseHistory course : courses) {
+            // Calculate credits
+            if (course.getCourse() != null && course.getCourse().getCredits() != null && !course.getCourse().getCredits().isEmpty()) {
+                try {
+                    totalCredits += Integer.parseInt(course.getCourse().getCredits());
+                } catch (NumberFormatException e) {
+                    // Ignore invalid credits
+                }
+            }
+
+            // Determine course status from grade
+            String grade = null;
+            if (course.getGrades() != null) {
+                grade = course.getGrades().getGradeCode();
+            }
+            if (grade == null && course.getStudentCourse() != null) {
+                grade = course.getStudentCourse().getTmpFinalGrade();
+            }
+
+            if (grade != null && !grade.isEmpty()) {
+                if (grade.equals("IN")) {
+                    incompleteCourses++;
+                } else if (grade.matches("[A-D]\\+?")) {
+                    passedCourses++;
+                } else if (grade.equals("F")) {
+                    failedCourses++;
+                } else {
+                    incompleteCourses++;
+                }
+
+                // Calculate GPA
+                if (course.getGrades() != null && course.getGrades().getGradepoint() != null && !course.getGrades().getGradepoint().isEmpty()) {
+                    try {
+                        totalGradePoints += Double.parseDouble(course.getGrades().getGradepoint());
+                        coursesWithGrades++;
+                    } catch (NumberFormatException e) {
+                        // Ignore invalid grade points
+                    }
+                }
+            } else {
+                incompleteCourses++;
+            }
+        }
+
+        Double avgGpa = coursesWithGrades > 0 ? totalGradePoints / coursesWithGrades : 0.0;
         String academicStanding = determineAcademicStanding(avgGpa);
 
         return ResultsSummary.builder()
@@ -422,7 +495,9 @@ public class SisResultsService {
                 .passedCourses(passedCourses)
                 .failedCourses(failedCourses)
                 .withdrawnCourses(withdrawnCourses)
+                .incompleteCourses(incompleteCourses)
                 .averageGpa(avgGpa)
+                .totalCreditsAttempted(totalCredits)
                 .academicStanding(academicStanding)
                 .build();
     }
