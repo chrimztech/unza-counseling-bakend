@@ -351,10 +351,11 @@ public class SisResultsService {
             }
         }
         
-        // Also check StudentCourse for grade
-        if (qualification.getGrade() == null || qualification.getGrade().isEmpty()) {
-            qualification.setGrade(course.getStudentCourse().getTmpFinalGrade());
-        }
+       // Also check StudentCourse for grade (with null safety)
+if ((qualification.getGrade() == null || qualification.getGrade().isEmpty())
+        && course.getStudentCourse() != null) {
+    qualification.setGrade(course.getStudentCourse().getTmpFinalGrade());
+}
         
         // Set course status based on grade
         String grade = qualification.getGrade();
@@ -408,20 +409,50 @@ public class SisResultsService {
     /**
      * Convert entity to course history DTO
      */
-    private StudentCourseHistory convertToCourseHistory(AcademicQualification qualification) {
-        return StudentCourseHistory.builder()
-                .courseCode(qualification.getCourseCode())
-                .courseTitle(qualification.getCourseTitle())
-                .creditHours(qualification.getCreditHours())
-                .semester(qualification.getSemester())
-                .academicYear(qualification.getAcademicYear())
-                .grade(qualification.getGrade())
-                .gradePoint(qualification.getGradePoint())
-                .marks(qualification.getMarks())
-                .status(qualification.getCourseStatus() != null ? qualification.getCourseStatus().name() : null)
-                .courseType(qualification.getCourseType() != null ? qualification.getCourseType().name() : null)
-                .build();
-    }
+  private StudentCourseHistory convertToCourseHistory(AcademicQualification qualification) {
+    return StudentCourseHistory.builder()
+
+            .course(
+                    Course.builder()
+                            .courseCode(qualification.getCourseCode())
+                            .courseDescription(qualification.getCourseTitle())
+                            .credits(
+                                    qualification.getCreditHours() != null
+                                            ? String.valueOf(qualification.getCreditHours())
+                                            : null
+                            )
+                            .build()
+            )
+
+            .session(
+                    Session.builder()
+                            .sessionCode(
+                                    qualification.getAcademicYear() != null && qualification.getSemester() != null
+                                            ? "GER " + qualification.getAcademicYear() + qualification.getSemester()
+                                            : null
+                            )
+                            .build()
+            )
+
+            .grades(
+                    Grades.builder()
+                            .gradeCode(qualification.getGrade())
+                            .gradepoint(
+                                    qualification.getGradePoint() != null
+                                            ? qualification.getGradePoint().toString()
+                                            : null
+                            )
+                            .build()
+            )
+
+            .studentCourse(
+                    StudentCourse.builder()
+                            .tmpFinalGrade(qualification.getGrade())
+                            .build()
+            )
+
+            .build();
+}
 
     /**
      * Calculate summary from SIS data
@@ -558,32 +589,30 @@ public class SisResultsService {
     /**
      * Calculate performance trend from historical data
      */
-    private String calculatePerformanceTrend(List<AcademicQualification> qualifications) {
-        if (qualifications.size() < 2) return "STABLE";
-        
-        // Group by academic year and semester
-        Map<String, List<AcademicQualification>> grouped = qualifications.stream()
-                .collect(Collectors.groupingBy(q -> q.getAcademicYear() + "_" + q.getSemester()));
-        
-        List<Double> semesterGpas = new ArrayList<>();
-        for (List<AcademicQualification> group : grouped.values()) {
-            Double avgGpa = group.stream()
+   private String calculatePerformanceTrend(List<AcademicQualification> qualifications) {
+    if (qualifications.size() < 2) return "STABLE";
+
+    // Group and SORT to ensure correct chronological order
+    List<Double> semesterGpas = qualifications.stream()
+            .collect(Collectors.groupingBy(q -> q.getAcademicYear() + "_" + q.getSemester()))
+            .entrySet().stream()
+            .sorted(Comparator.comparing(Map.Entry::getKey)) // ensures correct order
+            .map(entry -> entry.getValue().stream()
                     .filter(q -> q.getGradePoint() != null)
                     .mapToDouble(q -> q.getGradePoint().doubleValue())
                     .average()
-                    .orElse(0.0);
-            semesterGpas.add(avgGpa);
-        }
-        
-        if (semesterGpas.size() < 2) return "STABLE";
-        
-        double recent = semesterGpas.get(0);
-        double previous = semesterGpas.get(1);
-        
-        if (recent > previous + 0.2) return "IMPROVING";
-        if (recent < previous - 0.2) return "DECLINING";
-        return "STABLE";
-    }
+                    .orElse(0.0))
+            .collect(Collectors.toList());
+
+    if (semesterGpas.size() < 2) return "STABLE";
+
+    double recent = semesterGpas.get(semesterGpas.size() - 1);
+    double previous = semesterGpas.get(semesterGpas.size() - 2);
+
+    if (recent > previous + 0.2) return "IMPROVING";
+    if (recent < previous - 0.2) return "DECLINING";
+    return "STABLE";
+}
 
     /**
      * Handle HTTP errors
