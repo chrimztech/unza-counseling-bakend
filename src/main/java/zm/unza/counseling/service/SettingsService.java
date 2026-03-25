@@ -120,4 +120,52 @@ public interface SettingsService {
      * @return true if healthy, false otherwise
      */
     boolean healthCheck();
+
+    /**
+     * Update all settings at once
+     * @param allSettings the complete settings object
+     * @return all settings DTO
+     */
+    AllSettingsDTO updateAllSettings(AllSettingsDTO allSettings);
+
+    /**
+     * Update a single setting by category and key
+     * @param category the setting category
+     * @param key the setting key
+     * @param value the new value
+     * @return the updated category settings DTO
+     */
+    Object updateSettingByCategoryAndKey(Settings.SettingCategory category, String key, Object value);
+
+    /**
+     * Update a security setting by key
+     * @param key the setting key
+     * @param value the new value
+     * @return updated security settings DTO
+     */
+    SecuritySettingsDTO updateSecuritySettingByKey(String key, Object value);
+
+    /**
+     * Update an organization setting by key
+     * @param key the setting key
+     * @param value the new value
+     * @return updated organization settings DTO
+     */
+    OrganizationSettingsDTO updateOrganizationSettingByKey(String key, Object value);
+
+    /**
+     * Update a notification setting by key
+     * @param key the setting key
+     * @param value the new value
+     * @return updated notification settings DTO
+     */
+    NotificationSettingsDTO updateNotificationSettingByKey(String key, Object value);
+
+    /**
+     * Update an appointment setting by key
+     * @param key the setting key
+     * @param value the new value
+     * @return updated appointment settings DTO
+     */
+    AppointmentSettingsDTO updateAppointmentSettingByKey(String key, Object value);
 }

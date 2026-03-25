@@ -20,6 +20,8 @@ public interface CaseRepository extends JpaRepository<Case, Long> {
 
     List<Case> findByStatus(Case.CaseStatus status);
 
+    List<Case> findByPriority(Case.CasePriority priority);
+
     List<Case> findByCounselorAndStatus(Counselor counselor, Case.CaseStatus status);
 
     long countByCounselor(Counselor counselor);

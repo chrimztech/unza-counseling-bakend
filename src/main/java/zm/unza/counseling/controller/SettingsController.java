@@ -159,4 +159,94 @@ public class SettingsController {
         boolean isHealthy = settingsService.healthCheck();
         return ResponseEntity.ok(ApiResponse.success(isHealthy));
     }
+
+    /**
+     * PUT /api/v1/settings - Update all settings at once
+     */
+    @PutMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<AllSettingsDTO>> updateAllSettings(
+            @Valid @RequestBody AllSettingsDTO request) {
+        AllSettingsDTO updated = settingsService.updateAllSettings(request);
+        return ResponseEntity.ok(ApiResponse.success(updated, "All settings updated successfully"));
+    }
+
+    /**
+     * PUT /api/v1/settings/{category}/{key} - Update setting by category and key
+     */
+    @PutMapping("/{category}/{key}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Object>> updateSettingByKey(
+            @PathVariable String category,
+            @PathVariable String key,
+            @RequestBody Map<String, Object> request) {
+        Object value = request.get("value");
+        Settings.SettingCategory categoryEnum = Settings.SettingCategory.valueOf(category.toUpperCase());
+        Object result = settingsService.updateSettingByCategoryAndKey(categoryEnum, key, value);
+        return ResponseEntity.ok(ApiResponse.success(result, "Setting updated successfully"));
+    }
+
+    /**
+     * PUT /api/v1/settings/security/{key} - Update security setting by key
+     */
+    @PutMapping("/security/{key}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<SecuritySettingsDTO>> updateSecuritySetting(
+            @PathVariable String key,
+            @RequestBody Map<String, Object> request) {
+        Object value = request.get(key);
+        if (value == null) {
+            value = request.get("value");
+        }
+        SecuritySettingsDTO updated = settingsService.updateSecuritySettingByKey(key, value);
+        return ResponseEntity.ok(ApiResponse.success(updated, "Security setting updated successfully"));
+    }
+
+    /**
+     * PUT /api/v1/settings/organization/{key} - Update organization setting by key
+     */
+    @PutMapping("/organization/{key}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<OrganizationSettingsDTO>> updateOrganizationSetting(
+            @PathVariable String key,
+            @RequestBody Map<String, Object> request) {
+        Object value = request.get(key);
+        if (value == null) {
+            value = request.get("value");
+        }
+        OrganizationSettingsDTO updated = settingsService.updateOrganizationSettingByKey(key, value);
+        return ResponseEntity.ok(ApiResponse.success(updated, "Organization setting updated successfully"));
+    }
+
+    /**
+     * PUT /api/v1/settings/notifications/{key} - Update notification setting by key
+     */
+    @PutMapping("/notifications/{key}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<NotificationSettingsDTO>> updateNotificationSetting(
+            @PathVariable String key,
+            @RequestBody Map<String, Object> request) {
+        Object value = request.get(key);
+        if (value == null) {
+            value = request.get("value");
+        }
+        NotificationSettingsDTO updated = settingsService.updateNotificationSettingByKey(key, value);
+        return ResponseEntity.ok(ApiResponse.success(updated, "Notification setting updated successfully"));
+    }
+
+    /**
+     * PUT /api/v1/settings/appointments/{key} - Update appointment setting by key
+     */
+    @PutMapping("/appointments/{key}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<AppointmentSettingsDTO>> updateAppointmentSetting(
+            @PathVariable String key,
+            @RequestBody Map<String, Object> request) {
+        Object value = request.get(key);
+        if (value == null) {
+            value = request.get("value");
+        }
+        AppointmentSettingsDTO updated = settingsService.updateAppointmentSettingByKey(key, value);
+        return ResponseEntity.ok(ApiResponse.success(updated, "Appointment setting updated successfully"));
+    }
 }

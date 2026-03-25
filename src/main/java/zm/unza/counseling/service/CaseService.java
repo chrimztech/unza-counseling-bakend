@@ -216,6 +216,29 @@ public class CaseService {
     }
 
     /**
+     * Get case statistics for dashboard
+     */
+    public Object getCaseStatistics() {
+        long totalCases = caseRepository.count();
+        long openCases = caseRepository.findByStatus(Case.CaseStatus.OPEN).size();
+        long inProgressCases = caseRepository.findByStatus(Case.CaseStatus.IN_PROGRESS).size();
+        long closedCases = caseRepository.findByStatus(Case.CaseStatus.CLOSED).size();
+        long highPriorityCases = caseRepository.findByPriority(Case.CasePriority.HIGH).size();
+        long mediumPriorityCases = caseRepository.findByPriority(Case.CasePriority.MEDIUM).size();
+        long lowPriorityCases = caseRepository.findByPriority(Case.CasePriority.LOW).size();
+        
+        return java.util.Map.of(
+            "totalCases", totalCases,
+            "openCases", openCases,
+            "inProgressCases", inProgressCases,
+            "closedCases", closedCases,
+            "highPriorityCases", highPriorityCases,
+            "mediumPriorityCases", mediumPriorityCases,
+            "lowPriorityCases", lowPriorityCases
+        );
+    }
+
+    /**
      * Create a case assignment record
      */
     private CaseAssignment createCaseAssignment(Case caseEntity, Counselor counselor, User assignedBy,

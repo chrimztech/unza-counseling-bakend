@@ -274,7 +274,7 @@ public class SettingsServiceImpl implements SettingsService {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public boolean healthCheck() {
         try {
             // Simple health check - try to fetch count of settings
@@ -283,6 +283,137 @@ public class SettingsServiceImpl implements SettingsService {
         } catch (Exception e) {
             return false;
         }
+    }
+
+    @Override
+    @Transactional
+    public AllSettingsDTO updateAllSettings(AllSettingsDTO allSettings) {
+        if (allSettings.getOrganization() != null) {
+            updateOrganizationSettings(allSettings.getOrganization());
+        }
+        if (allSettings.getAppointments() != null) {
+            updateAppointmentSettings(allSettings.getAppointments());
+        }
+        if (allSettings.getNotifications() != null) {
+            updateNotificationSettings(allSettings.getNotifications());
+        }
+        if (allSettings.getSecurity() != null) {
+            updateSecuritySettings(allSettings.getSecurity());
+        }
+        return getAllSettingsDTO();
+    }
+
+    @Override
+    @Transactional
+    public Object updateSettingByCategoryAndKey(Settings.SettingCategory category, String key, Object value) {
+        switch (category) {
+            case ORGANIZATION:
+                return updateOrganizationSettingByKey(key, value);
+            case APPOINTMENTS:
+                return updateAppointmentSettingByKey(key, value);
+            case NOTIFICATIONS:
+                return updateNotificationSettingByKey(key, value);
+            case SECURITY:
+                return updateSecuritySettingByKey(key, value);
+            default:
+                throw new IllegalArgumentException("Invalid category: " + category);
+        }
+    }
+
+    @Override
+    @Transactional
+    public SecuritySettingsDTO updateSecuritySettingByKey(String key, Object value) {
+        String strValue = value != null ? value.toString() : "false";
+        
+        switch (key) {
+            case SEC_RETENTION:
+                saveSetting(SEC_RETENTION, strValue, Settings.SettingType.INTEGER, Settings.SettingCategory.SECURITY);
+                break;
+            case SEC_ENCRYPTION:
+                saveSetting(SEC_ENCRYPTION, strValue, Settings.SettingType.BOOLEAN, Settings.SettingCategory.SECURITY);
+                break;
+            case SEC_AUDIT:
+                saveSetting(SEC_AUDIT, strValue, Settings.SettingType.BOOLEAN, Settings.SettingCategory.SECURITY);
+                break;
+            default:
+                throw new IllegalArgumentException("Invalid security setting key: " + key);
+        }
+        return getSecuritySettings();
+    }
+
+    @Override
+    @Transactional
+    public OrganizationSettingsDTO updateOrganizationSettingByKey(String key, Object value) {
+        String strValue = value != null ? value.toString() : "";
+        
+        switch (key) {
+            case "orgName":
+            case ORG_NAME:
+                saveSetting(ORG_NAME, strValue, Settings.SettingType.STRING, Settings.SettingCategory.ORGANIZATION);
+                break;
+            case "email":
+            case ORG_EMAIL:
+                saveSetting(ORG_EMAIL, strValue, Settings.SettingType.STRING, Settings.SettingCategory.ORGANIZATION);
+                break;
+            case "phone":
+            case ORG_PHONE:
+                saveSetting(ORG_PHONE, strValue, Settings.SettingType.STRING, Settings.SettingCategory.ORGANIZATION);
+                break;
+            default:
+                throw new IllegalArgumentException("Invalid organization setting key: " + key);
+        }
+        return getOrganizationSettings();
+    }
+
+    @Override
+    @Transactional
+    public NotificationSettingsDTO updateNotificationSettingByKey(String key, Object value) {
+        String strValue = value != null ? value.toString() : "false";
+        
+        switch (key) {
+            case NOTIF_APPT_REMINDERS:
+                saveSetting(NOTIF_APPT_REMINDERS, strValue, Settings.SettingType.BOOLEAN, Settings.SettingCategory.NOTIFICATIONS);
+                break;
+            case NOTIF_FOLLOW_UP:
+                saveSetting(NOTIF_FOLLOW_UP, strValue, Settings.SettingType.BOOLEAN, Settings.SettingCategory.NOTIFICATIONS);
+                break;
+            case NOTIF_WEEKLY:
+                saveSetting(NOTIF_WEEKLY, strValue, Settings.SettingType.BOOLEAN, Settings.SettingCategory.NOTIFICATIONS);
+                break;
+            case NOTIF_EMAIL:
+                saveSetting(NOTIF_EMAIL, strValue, Settings.SettingType.BOOLEAN, Settings.SettingCategory.NOTIFICATIONS);
+                break;
+            case NOTIF_SMS:
+                saveSetting(NOTIF_SMS, strValue, Settings.SettingType.BOOLEAN, Settings.SettingCategory.NOTIFICATIONS);
+                break;
+            default:
+                throw new IllegalArgumentException("Invalid notification setting key: " + key);
+        }
+        return getNotificationSettings();
+    }
+
+    @Override
+    @Transactional
+    public AppointmentSettingsDTO updateAppointmentSettingByKey(String key, Object value) {
+        String strValue = value != null ? value.toString() : "0";
+        
+        switch (key) {
+            case APPT_DURATION:
+                saveSetting(APPT_DURATION, strValue, Settings.SettingType.INTEGER, Settings.SettingCategory.APPOINTMENTS);
+                break;
+            case APPT_MAX_DAYS:
+                saveSetting(APPT_MAX_DAYS, strValue, Settings.SettingType.INTEGER, Settings.SettingCategory.APPOINTMENTS);
+                break;
+            case APPT_CANCEL_HOURS:
+                saveSetting(APPT_CANCEL_HOURS, strValue, Settings.SettingType.INTEGER, Settings.SettingCategory.APPOINTMENTS);
+                break;
+            case APPT_AUTO_CONFIRM:
+                saveSetting(APPT_AUTO_CONFIRM, strValue, Settings.SettingType.BOOLEAN, Settings.SettingCategory.APPOINTMENTS);
+                break;
+            default:
+                throw new IllegalArgumentException("Invalid appointment setting key: " + key);
+        }
+        return getAppointmentSettings();
     }
 
     // Helper methods

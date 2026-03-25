@@ -8,6 +8,7 @@ import zm.unza.counseling.entity.Case;
 import zm.unza.counseling.service.CaseService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -97,5 +98,14 @@ public class CaseController {
     @GetMapping("/counselor/{counselorId}/active-assignments")
     public ResponseEntity<List<CaseAssignmentResponse>> getActiveAssignmentsForCounselor(@PathVariable Long counselorId) {
         return ResponseEntity.ok(caseService.getActiveAssignmentsForCounselor(counselorId));
+    }
+
+    /**
+     * Get case statistics
+     */
+    @GetMapping("/stats")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
+    public ResponseEntity<?> getCaseStats() {
+        return ResponseEntity.ok(caseService.getCaseStatistics());
     }
 }
