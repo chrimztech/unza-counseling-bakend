@@ -7,6 +7,7 @@ import zm.unza.counseling.dto.settings.AppointmentSettingsDTO;
 import zm.unza.counseling.dto.settings.NotificationSettingsDTO;
 import zm.unza.counseling.dto.settings.OrganizationSettingsDTO;
 import zm.unza.counseling.dto.settings.SecuritySettingsDTO;
+import zm.unza.counseling.dto.settings.ThemeSettingsDTO;
 import zm.unza.counseling.entity.Settings;
 
 import java.util.Map;
@@ -168,4 +169,25 @@ public interface SettingsService {
      * @return updated appointment settings DTO
      */
     AppointmentSettingsDTO updateAppointmentSettingByKey(String key, Object value);
+
+    /**
+     * Get theme/appearance settings
+     * @return theme settings DTO
+     */
+    ThemeSettingsDTO getThemeSettings();
+
+    /**
+     * Update theme/appearance settings
+     * @param dto the theme settings DTO
+     * @return updated theme settings DTO
+     */
+    ThemeSettingsDTO updateThemeSettings(ThemeSettingsDTO dto);
+
+    /**
+     * Update theme setting by key
+     * @param key the setting key
+     * @param value the new value
+     * @return updated theme settings DTO
+     */
+    ThemeSettingsDTO updateThemeSettingByKey(String key, Object value);
 }

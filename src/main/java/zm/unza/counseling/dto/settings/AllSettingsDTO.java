@@ -15,4 +15,5 @@ public class AllSettingsDTO {
     private AppointmentSettingsDTO appointments;
     private NotificationSettingsDTO notifications;
     private SecuritySettingsDTO security;
+    private ThemeSettingsDTO appearance;
 }

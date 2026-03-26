@@ -13,6 +13,7 @@ import zm.unza.counseling.dto.settings.AppointmentSettingsDTO;
 import zm.unza.counseling.dto.settings.NotificationSettingsDTO;
 import zm.unza.counseling.dto.settings.OrganizationSettingsDTO;
 import zm.unza.counseling.dto.settings.SecuritySettingsDTO;
+import zm.unza.counseling.dto.settings.ThemeSettingsDTO;
 import zm.unza.counseling.entity.Settings;
 import zm.unza.counseling.service.SettingsService;
 
@@ -248,5 +249,42 @@ public class SettingsController {
         }
         AppointmentSettingsDTO updated = settingsService.updateAppointmentSettingByKey(key, value);
         return ResponseEntity.ok(ApiResponse.success(updated, "Appointment setting updated successfully"));
+    }
+
+    /**
+     * GET /api/v1/settings/appearance - Get theme/appearance settings
+     */
+    @GetMapping("/appearance")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
+    public ResponseEntity<ApiResponse<ThemeSettingsDTO>> getAppearanceSettings() {
+        ThemeSettingsDTO settings = settingsService.getThemeSettings();
+        return ResponseEntity.ok(ApiResponse.success(settings));
+    }
+
+    /**
+     * PUT /api/v1/settings/appearance - Update theme/appearance settings
+     */
+    @PutMapping("/appearance")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
+    public ResponseEntity<ApiResponse<ThemeSettingsDTO>> updateAppearanceSettings(
+            @Valid @RequestBody ThemeSettingsDTO request) {
+        ThemeSettingsDTO updated = settingsService.updateThemeSettings(request);
+        return ResponseEntity.ok(ApiResponse.success(updated, "Appearance settings updated successfully"));
+    }
+
+    /**
+     * PUT /api/v1/settings/appearance/{key} - Update theme setting by key
+     */
+    @PutMapping("/appearance/{key}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
+    public ResponseEntity<ApiResponse<ThemeSettingsDTO>> updateAppearanceSetting(
+            @PathVariable String key,
+            @RequestBody Map<String, Object> request) {
+        Object value = request.get(key);
+        if (value == null) {
+            value = request.get("value");
+        }
+        ThemeSettingsDTO updated = settingsService.updateThemeSettingByKey(key, value);
+        return ResponseEntity.ok(ApiResponse.success(updated, "Appearance setting updated successfully"));
     }
 }

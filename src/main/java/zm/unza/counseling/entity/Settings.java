@@ -36,6 +36,6 @@ public class Settings {
     }
 
     public enum SettingCategory {
-        ORGANIZATION, APPOINTMENTS, NOTIFICATIONS, SECURITY
+        ORGANIZATION, APPOINTMENTS, NOTIFICATIONS, SECURITY, APPEARANCE
     }
 }

@@ -13,6 +13,7 @@ import zm.unza.counseling.dto.settings.AppointmentSettingsDTO;
 import zm.unza.counseling.dto.settings.NotificationSettingsDTO;
 import zm.unza.counseling.dto.settings.OrganizationSettingsDTO;
 import zm.unza.counseling.dto.settings.SecuritySettingsDTO;
+import zm.unza.counseling.dto.settings.ThemeSettingsDTO;
 import zm.unza.counseling.entity.Settings;
 import zm.unza.counseling.exception.ResourceNotFoundException;
 import zm.unza.counseling.repository.SettingsRepository;
@@ -52,6 +53,19 @@ public class SettingsServiceImpl implements SettingsService {
     private static final String SEC_RETENTION = "dataRetentionPeriod";
     private static final String SEC_ENCRYPTION = "encryptionEnabled";
     private static final String SEC_AUDIT = "auditLoggingEnabled";
+    
+    // Session timeout setting keys
+    private static final String SEC_SESSION_TIMEOUT = "sessionTimeoutMinutes";
+    private static final String SEC_SESSION_TIMEOUT_ENABLED = "sessionTimeoutEnabled";
+    private static final String SEC_SESSION_WARNING = "sessionWarningMinutes";
+
+    // Theme/Appearance setting keys
+    private static final String THEME_MODE = "themeMode";
+    private static final String THEME_PRIMARY_COLOR = "primaryColor";
+    private static final String THEME_COMPACT_MODE = "compactMode";
+    private static final String THEME_REDUCED_MOTION = "reducedMotion";
+    private static final String THEME_HIGH_CONTRAST = "highContrast";
+    private static final String THEME_FONT_SIZE = "fontSize";
 
     @Override
     @Transactional(readOnly = true)
@@ -97,6 +111,7 @@ public class SettingsServiceImpl implements SettingsService {
         dto.setAppointments(getAppointmentSettings());
         dto.setNotifications(getNotificationSettings());
         dto.setSecurity(getSecuritySettings());
+        dto.setAppearance(getThemeSettings());
         return dto;
     }
 
@@ -210,6 +225,9 @@ public class SettingsServiceImpl implements SettingsService {
         dto.setDataRetentionPeriod(getIntValue(SEC_RETENTION, Settings.SettingCategory.SECURITY, 5));
         dto.setEncryptionEnabled(getBoolValue(SEC_ENCRYPTION, Settings.SettingCategory.SECURITY, true));
         dto.setAuditLoggingEnabled(getBoolValue(SEC_AUDIT, Settings.SettingCategory.SECURITY, true));
+        dto.setSessionTimeoutMinutes(getIntValue(SEC_SESSION_TIMEOUT, Settings.SettingCategory.SECURITY, 30));
+        dto.setSessionTimeoutEnabled(getBoolValue(SEC_SESSION_TIMEOUT_ENABLED, Settings.SettingCategory.SECURITY, true));
+        dto.setSessionWarningMinutes(getIntValue(SEC_SESSION_WARNING, Settings.SettingCategory.SECURITY, 5));
         return dto;
     }
 
@@ -219,6 +237,9 @@ public class SettingsServiceImpl implements SettingsService {
         saveSetting(SEC_RETENTION, String.valueOf(dto.getDataRetentionPeriod()), Settings.SettingType.INTEGER, Settings.SettingCategory.SECURITY);
         saveSetting(SEC_ENCRYPTION, String.valueOf(dto.getEncryptionEnabled()), Settings.SettingType.BOOLEAN, Settings.SettingCategory.SECURITY);
         saveSetting(SEC_AUDIT, String.valueOf(dto.getAuditLoggingEnabled()), Settings.SettingType.BOOLEAN, Settings.SettingCategory.SECURITY);
+        saveSetting(SEC_SESSION_TIMEOUT, String.valueOf(dto.getSessionTimeoutMinutes() != null ? dto.getSessionTimeoutMinutes() : 30), Settings.SettingType.INTEGER, Settings.SettingCategory.SECURITY);
+        saveSetting(SEC_SESSION_TIMEOUT_ENABLED, String.valueOf(dto.getSessionTimeoutEnabled() != null ? dto.getSessionTimeoutEnabled() : true), Settings.SettingType.BOOLEAN, Settings.SettingCategory.SECURITY);
+        saveSetting(SEC_SESSION_WARNING, String.valueOf(dto.getSessionWarningMinutes() != null ? dto.getSessionWarningMinutes() : 5), Settings.SettingType.INTEGER, Settings.SettingCategory.SECURITY);
         return getSecuritySettings();
     }
 
@@ -315,6 +336,8 @@ public class SettingsServiceImpl implements SettingsService {
                 return updateNotificationSettingByKey(key, value);
             case SECURITY:
                 return updateSecuritySettingByKey(key, value);
+            case APPEARANCE:
+                return updateThemeSettingByKey(key, value);
             default:
                 throw new IllegalArgumentException("Invalid category: " + category);
         }
@@ -414,6 +437,85 @@ public class SettingsServiceImpl implements SettingsService {
                 throw new IllegalArgumentException("Invalid appointment setting key: " + key);
         }
         return getAppointmentSettings();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ThemeSettingsDTO getThemeSettings() {
+        ThemeSettingsDTO dto = new ThemeSettingsDTO();
+        dto.setThemeMode(getStringValue(THEME_MODE, Settings.SettingCategory.APPEARANCE, "LIGHT"));
+        dto.setPrimaryColor(getStringValue(THEME_PRIMARY_COLOR, Settings.SettingCategory.APPEARANCE, "#3B82F6"));
+        dto.setCompactMode(getBoolValue(THEME_COMPACT_MODE, Settings.SettingCategory.APPEARANCE, false));
+        dto.setReducedMotion(getBoolValue(THEME_REDUCED_MOTION, Settings.SettingCategory.APPEARANCE, false));
+        dto.setHighContrast(getBoolValue(THEME_HIGH_CONTRAST, Settings.SettingCategory.APPEARANCE, false));
+        dto.setFontSize(getStringValue(THEME_FONT_SIZE, Settings.SettingCategory.APPEARANCE, "MEDIUM"));
+        return dto;
+    }
+
+    @Override
+    @Transactional
+    public ThemeSettingsDTO updateThemeSettings(ThemeSettingsDTO dto) {
+        saveSetting(THEME_MODE, dto.getThemeMode() != null ? dto.getThemeMode() : "LIGHT", 
+                Settings.SettingType.STRING, Settings.SettingCategory.APPEARANCE);
+        saveSetting(THEME_PRIMARY_COLOR, dto.getPrimaryColor() != null ? dto.getPrimaryColor() : "#3B82F6", 
+                Settings.SettingType.STRING, Settings.SettingCategory.APPEARANCE);
+        saveSetting(THEME_COMPACT_MODE, String.valueOf(dto.getCompactMode() != null ? dto.getCompactMode() : false), 
+                Settings.SettingType.BOOLEAN, Settings.SettingCategory.APPEARANCE);
+        saveSetting(THEME_REDUCED_MOTION, String.valueOf(dto.getReducedMotion() != null ? dto.getReducedMotion() : false), 
+                Settings.SettingType.BOOLEAN, Settings.SettingCategory.APPEARANCE);
+        saveSetting(THEME_HIGH_CONTRAST, String.valueOf(dto.getHighContrast() != null ? dto.getHighContrast() : false), 
+                Settings.SettingType.BOOLEAN, Settings.SettingCategory.APPEARANCE);
+        saveSetting(THEME_FONT_SIZE, dto.getFontSize() != null ? dto.getFontSize() : "MEDIUM", 
+                Settings.SettingType.STRING, Settings.SettingCategory.APPEARANCE);
+        return getThemeSettings();
+    }
+
+    @Override
+    @Transactional
+    public ThemeSettingsDTO updateThemeSettingByKey(String key, Object value) {
+        String strValue = value != null ? value.toString() : "";
+        
+        switch (key) {
+            case THEME_MODE:
+            case "themeMode":
+            case "mode":
+                saveSetting(THEME_MODE, strValue.isEmpty() ? "LIGHT" : strValue, 
+                        Settings.SettingType.STRING, Settings.SettingCategory.APPEARANCE);
+                break;
+            case THEME_PRIMARY_COLOR:
+            case "primaryColor":
+            case "color":
+                saveSetting(THEME_PRIMARY_COLOR, strValue.isEmpty() ? "#3B82F6" : strValue, 
+                        Settings.SettingType.STRING, Settings.SettingCategory.APPEARANCE);
+                break;
+            case THEME_COMPACT_MODE:
+            case "compactMode":
+            case "compact":
+                saveSetting(THEME_COMPACT_MODE, strValue.isEmpty() ? "false" : strValue, 
+                        Settings.SettingType.BOOLEAN, Settings.SettingCategory.APPEARANCE);
+                break;
+            case THEME_REDUCED_MOTION:
+            case "reducedMotion":
+            case "reduced":
+                saveSetting(THEME_REDUCED_MOTION, strValue.isEmpty() ? "false" : strValue, 
+                        Settings.SettingType.BOOLEAN, Settings.SettingCategory.APPEARANCE);
+                break;
+            case THEME_HIGH_CONTRAST:
+            case "highContrast":
+            case "contrast":
+                saveSetting(THEME_HIGH_CONTRAST, strValue.isEmpty() ? "false" : strValue, 
+                        Settings.SettingType.BOOLEAN, Settings.SettingCategory.APPEARANCE);
+                break;
+            case THEME_FONT_SIZE:
+            case "fontSize":
+            case "font":
+                saveSetting(THEME_FONT_SIZE, strValue.isEmpty() ? "MEDIUM" : strValue, 
+                        Settings.SettingType.STRING, Settings.SettingCategory.APPEARANCE);
+                break;
+            default:
+                throw new IllegalArgumentException("Invalid theme setting key: " + key);
+        }
+        return getThemeSettings();
     }
 
     // Helper methods
