@@ -33,9 +33,14 @@ public class Message {
     private boolean isDelivered;
     private boolean isArchived;
     private boolean isStarred;
+    private boolean deletedBySender;
+    private boolean deletedByRecipient;
     
     @Column(name = "read_at")
     private LocalDateTime readAt;
+
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
 
     @PrePersist
     protected void onCreate() {

@@ -1,8 +1,10 @@
 package zm.unza.counseling.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.validation.constraints.NotNull;
 import jakarta.persistence.*;
+import org.hibernate.annotations.Where;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
@@ -11,6 +13,7 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "appointments")
 @EntityListeners(AuditingEntityListener.class)
+@Where(clause = "deleted_at IS NULL")
 public class Appointment {
     
     @Id
@@ -73,6 +76,20 @@ public class Appointment {
 
     private Boolean reminderSent = false;
 
+    @Lob
+    @Column(name = "intake_data_json")
+    @JsonIgnore
+    private String intakeDataJson;
+
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+
+    @Column(name = "deleted_by_user_id")
+    private Long deletedByUserId;
+
+    @Column(name = "deletion_reason", length = 2000)
+    private String deletionReason;
+
     @CreatedDate
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -131,6 +148,18 @@ public class Appointment {
 
     public Boolean getReminderSent() { return reminderSent; }
     public void setReminderSent(Boolean reminderSent) { this.reminderSent = reminderSent; }
+
+    public String getIntakeDataJson() { return intakeDataJson; }
+    public void setIntakeDataJson(String intakeDataJson) { this.intakeDataJson = intakeDataJson; }
+
+    public LocalDateTime getDeletedAt() { return deletedAt; }
+    public void setDeletedAt(LocalDateTime deletedAt) { this.deletedAt = deletedAt; }
+
+    public Long getDeletedByUserId() { return deletedByUserId; }
+    public void setDeletedByUserId(Long deletedByUserId) { this.deletedByUserId = deletedByUserId; }
+
+    public String getDeletionReason() { return deletionReason; }
+    public void setDeletionReason(String deletionReason) { this.deletionReason = deletionReason; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

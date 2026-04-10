@@ -6,6 +6,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import zm.unza.counseling.dto.request.RegisterRequest;
 import zm.unza.counseling.dto.response.ApiResponse;
@@ -50,6 +51,12 @@ public class UserController {
             @PathVariable Long userId,
             @RequestBody Map<String, Object> settings) {
         return ResponseEntity.ok(ApiResponse.success(settings, "Notification settings updated successfully"));
+    }
+
+    @GetMapping("/{id}/is-anonymous")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'STUDENT', 'CLIENT')")
+    public ResponseEntity<ApiResponse<Boolean>> isAnonymousUser(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.success(Boolean.TRUE.equals(userService.getUserById(id).getAnonymous())));
     }
 
     @GetMapping("/{id}")
@@ -149,6 +156,39 @@ public class UserController {
     @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'STUDENT', 'CLIENT')")
     public ResponseEntity<ApiResponse<User>> getCurrentUserProfile() {
         return ResponseEntity.ok(ApiResponse.success(userService.getCurrentUserProfile()));
+    }
+
+    @PutMapping("/profile")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'STUDENT', 'CLIENT')")
+    public ResponseEntity<ApiResponse<User>> updateCurrentUserProfile(
+            @RequestBody Map<String, Object> payload,
+            Authentication authentication) {
+        User user = userService.getUserByEmail(authentication.getName());
+
+        if (payload.containsKey("email")) {
+            user.setEmail(String.valueOf(payload.get("email")));
+        }
+        if (payload.containsKey("firstName")) {
+            user.setFirstName(String.valueOf(payload.get("firstName")));
+        }
+        if (payload.containsKey("lastName")) {
+            user.setLastName(String.valueOf(payload.get("lastName")));
+        }
+        if (payload.containsKey("phoneNumber")) {
+            user.setPhoneNumber(String.valueOf(payload.get("phoneNumber")));
+        }
+        if (payload.containsKey("bio")) {
+            user.setBio(String.valueOf(payload.get("bio")));
+        }
+        if (payload.containsKey("department")) {
+            user.setDepartment(String.valueOf(payload.get("department")));
+        }
+        if (payload.containsKey("program")) {
+            user.setProgram(String.valueOf(payload.get("program")));
+        }
+
+        User updatedUser = userService.updateUser(user.getId(), user);
+        return ResponseEntity.ok(ApiResponse.success(updatedUser, "Profile updated successfully"));
     }
 
     @PutMapping("/{id}/password")

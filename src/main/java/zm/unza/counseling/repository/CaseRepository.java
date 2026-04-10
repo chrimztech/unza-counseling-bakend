@@ -1,6 +1,8 @@
 package zm.unza.counseling.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import zm.unza.counseling.entity.Case;
 import zm.unza.counseling.entity.Client;
@@ -27,4 +29,11 @@ public interface CaseRepository extends JpaRepository<Case, Long> {
     long countByCounselor(Counselor counselor);
 
     long countByStatus(Case.CaseStatus status);
+
+    @Query("SELECT c FROM Case c WHERE c.client = :client AND c.status IN :statuses " +
+            "ORDER BY COALESCE(c.lastActivityAt, c.updatedAt, c.createdAt) DESC")
+    List<Case> findRecentCasesByClientAndStatuses(
+            @Param("client") Client client,
+            @Param("statuses") List<Case.CaseStatus> statuses
+    );
 }

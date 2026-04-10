@@ -1,5 +1,6 @@
 package zm.unza.counseling.entity;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
@@ -137,6 +138,19 @@ public class User implements UserDetails {
     @Column(name = "has_signed_consent", nullable = false)
     private Boolean hasSignedConsent = false;
 
+    @JsonProperty("isAnonymous")
+    @Column(name = "is_anonymous", nullable = false)
+    private Boolean anonymous = false;
+
+    @Column(name = "anonymous_identifier_hash")
+    private String anonymousIdentifierHash;
+
+    @Column(name = "anonymous_display_name")
+    private String anonymousDisplayName;
+
+    @Column(name = "last_anonymous_activity_at")
+    private LocalDateTime lastAnonymousActivityAt;
+
     // Default constructor
     public User() {}
 
@@ -269,6 +283,19 @@ public class User implements UserDetails {
     public Boolean getHasSignedConsent() { return hasSignedConsent; }
     public void setHasSignedConsent(Boolean hasSignedConsent) { this.hasSignedConsent = hasSignedConsent; }
 
+    @JsonIgnore
+    public Boolean getAnonymous() { return anonymous; }
+    public void setAnonymous(Boolean anonymous) { this.anonymous = anonymous; }
+
+    public String getAnonymousIdentifierHash() { return anonymousIdentifierHash; }
+    public void setAnonymousIdentifierHash(String anonymousIdentifierHash) { this.anonymousIdentifierHash = anonymousIdentifierHash; }
+
+    public String getAnonymousDisplayName() { return anonymousDisplayName; }
+    public void setAnonymousDisplayName(String anonymousDisplayName) { this.anonymousDisplayName = anonymousDisplayName; }
+
+    public LocalDateTime getLastAnonymousActivityAt() { return lastAnonymousActivityAt; }
+    public void setLastAnonymousActivityAt(LocalDateTime lastAnonymousActivityAt) { this.lastAnonymousActivityAt = lastAnonymousActivityAt; }
+
     // Helper methods
     public String getFullName() {
         return firstName + " " + lastName;
@@ -285,6 +312,11 @@ public class User implements UserDetails {
 
     public boolean isStudent() {
         return hasRole("ROLE_STUDENT");
+    }
+
+    @JsonProperty("isAnonymous")
+    public boolean isAnonymous() {
+        return Boolean.TRUE.equals(anonymous);
     }
 
     public enum Gender {
@@ -462,6 +494,21 @@ public class User implements UserDetails {
 
         public Builder availableForAppointments(Boolean availableForAppointments) {
             user.setAvailableForAppointments(availableForAppointments);
+            return this;
+        }
+
+        public Builder anonymous(Boolean anonymous) {
+            user.setAnonymous(anonymous);
+            return this;
+        }
+
+        public Builder anonymousIdentifierHash(String anonymousIdentifierHash) {
+            user.setAnonymousIdentifierHash(anonymousIdentifierHash);
+            return this;
+        }
+
+        public Builder anonymousDisplayName(String anonymousDisplayName) {
+            user.setAnonymousDisplayName(anonymousDisplayName);
             return this;
         }
 

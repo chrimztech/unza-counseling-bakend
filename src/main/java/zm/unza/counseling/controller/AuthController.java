@@ -1,5 +1,6 @@
 package zm.unza.counseling.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -11,6 +12,7 @@ import zm.unza.counseling.dto.request.AnonymousLoginRequest;
 import zm.unza.counseling.dto.request.LoginRequest;
 import zm.unza.counseling.dto.request.RegisterRequest;
 import zm.unza.counseling.dto.response.AuthResponse;
+import zm.unza.counseling.service.AnonymousAccessService;
 import zm.unza.counseling.service.MultiSourceAuthService;
 import zm.unza.counseling.service.ConsentFormService;
 import zm.unza.counseling.exception.ValidationException;
@@ -26,6 +28,7 @@ public class AuthController {
 
     private final MultiSourceAuthService multiSourceAuthService;
     private final ConsentFormService consentFormService;
+    private final AnonymousAccessService anonymousAccessService;
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request) {
@@ -71,23 +74,25 @@ public class AuthController {
     }
 
     @PostMapping("/anonymous-login")
-    public ResponseEntity<?> anonymousLogin(@Valid @RequestBody AnonymousLoginRequest request) {
+    public ResponseEntity<?> anonymousLogin(@Valid @RequestBody AnonymousLoginRequest request, HttpServletRequest httpRequest) {
         try {
-            // For anonymous login, we need to create a temporary user or use a special anonymous user
-            // This is a simplified implementation - in production, you might want to:
-            // 1. Create a temporary anonymous user
-            // 2. Generate a special anonymous JWT token
-            // 3. Track the device/session for future reference
+            String ipAddress = request.getIpAddress();
+            if (ipAddress == null || ipAddress.isBlank()) {
+                ipAddress = httpRequest.getHeader("X-Forwarded-For");
+            }
+            if (ipAddress == null || ipAddress.isBlank()) {
+                ipAddress = httpRequest.getRemoteAddr();
+            }
 
-            // For now, we'll return a special response indicating anonymous access
-            return ResponseEntity.ok(Map.of(
-                "message", "Anonymous login successful",
-                "anonymous", true,
-                "deviceIdentifier", request.getDeviceIdentifier()
-            ));
+            if (request.getUserAgent() == null || request.getUserAgent().isBlank()) {
+                request.setUserAgent(httpRequest.getHeader("User-Agent"));
+            }
+
+            AuthResponse response = anonymousAccessService.authenticate(request, ipAddress, request.getUserAgent());
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "Anonymous login failed"));
+                    .body(Map.of("error", "Anonymous login failed: " + e.getMessage()));
         }
     }
 

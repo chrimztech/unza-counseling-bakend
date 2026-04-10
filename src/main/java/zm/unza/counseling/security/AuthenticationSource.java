@@ -18,7 +18,12 @@ public enum AuthenticationSource {
     /**
      * Human Resources system authentication - for staff
      */
-    HR("hr");
+    HR("hr"),
+
+    /**
+     * Anonymous counseling access - for privacy-preserving support sessions
+     */
+    ANONYMOUS("anonymous");
 
     private final String value;
 

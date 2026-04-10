@@ -1,16 +1,20 @@
 package zm.unza.counseling.controller;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 import zm.unza.counseling.dto.request.MessageRequest;
 import zm.unza.counseling.dto.response.ConversationDto;
+import zm.unza.counseling.dto.response.MessageAuditDto;
 import zm.unza.counseling.dto.response.UserResponse;
 import zm.unza.counseling.entity.Appointment;
 import zm.unza.counseling.entity.Message;
 import zm.unza.counseling.entity.User;
+import zm.unza.counseling.dto.response.ApiResponse;
 import zm.unza.counseling.repository.AppointmentRepository;
 import zm.unza.counseling.repository.UserRepository;
 import zm.unza.counseling.service.MessageService;
@@ -19,6 +23,7 @@ import zm.unza.counseling.service.UserService;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.time.LocalDateTime;
 import java.util.stream.Collectors;
 
 @RestController
@@ -72,7 +77,8 @@ public class MessageController {
 
     @GetMapping("/messages/conversation/{conversationId}")
     public ResponseEntity<List<Message>> getMessagesByConversation(@PathVariable Long conversationId, @AuthenticationPrincipal UserDetails userDetails) {
-        return ResponseEntity.ok(messageService.getMessagesByConversation(conversationId, null));
+        User user = userService.getUserByEmail(userDetails.getUsername());
+        return ResponseEntity.ok(messageService.getMessagesByConversation(conversationId, user.getId()));
     }
 
     @GetMapping("/messages/search")
@@ -249,17 +255,30 @@ public class MessageController {
                 .distinct()
                 .collect(Collectors.toList());
         } else {
-            // Clients see their assigned counselor
-            contacts = appointmentRepository.findByStudent(user).stream()
-                .map(Appointment::getCounselor)
-                .filter(c -> c != null)
-                .distinct()
-                .collect(Collectors.toList());
+            contacts = getClientVisibleContacts(user);
         }
         
         return ResponseEntity.ok(contacts.stream()
             .map(this::mapToUserResponse)
             .collect(Collectors.toList()));
+    }
+
+    private List<User> getClientVisibleContacts(User user) {
+        List<User> contacts = appointmentRepository.findByStudent(user).stream()
+                .map(Appointment::getCounselor)
+                .filter(c -> c != null)
+                .distinct()
+                .collect(Collectors.toList());
+
+        if (!contacts.isEmpty()) {
+            return contacts;
+        }
+
+        if (user.isAnonymous()) {
+            return userRepository.findAvailableCounselors("ROLE_COUNSELOR");
+        }
+
+        return contacts;
     }
     
     /**
@@ -270,13 +289,15 @@ public class MessageController {
             @RequestParam String query,
             @AuthenticationPrincipal UserDetails userDetails) {
         User user = userService.getUserByEmail(userDetails.getUsername());
-        List<User> contacts = getAvailableContactsList(user.getId());
+        List<User> contacts = getAvailableContactsList(user);
         
         String lowerQuery = query.toLowerCase();
         List<User> filtered = contacts.stream()
             .filter(c -> c.getFullName().toLowerCase().contains(lowerQuery) ||
                         c.getEmail().toLowerCase().contains(lowerQuery) ||
-                        (c.getStudentId() != null && c.getStudentId().toLowerCase().contains(lowerQuery)))
+                        (c.getStudentId() != null && c.getStudentId().toLowerCase().contains(lowerQuery)) ||
+                        (c.getProgram() != null && c.getProgram().toLowerCase().contains(lowerQuery)) ||
+                        (c.getSpecialization() != null && c.getSpecialization().toLowerCase().contains(lowerQuery)))
             .collect(Collectors.toList());
         
         return ResponseEntity.ok(filtered.stream()
@@ -287,8 +308,7 @@ public class MessageController {
     /**
      * Get list of users user can message
      */
-    private List<User> getAvailableContactsList(Long userId) {
-        User user = userRepository.findById(userId).orElseThrow();
+    private List<User> getAvailableContactsList(User user) {
         if (user.isCounselor()) {
             return appointmentRepository.findByCounselor(user).stream()
                 .map(Appointment::getClient)
@@ -297,11 +317,7 @@ public class MessageController {
                 .distinct()
                 .collect(Collectors.toList());
         } else {
-            return appointmentRepository.findByStudent(user).stream()
-                .map(Appointment::getCounselor)
-                .filter(c -> c != null)
-                .distinct()
-                .collect(Collectors.toList());
+            return getClientVisibleContacts(user);
         }
     }
     
@@ -315,7 +331,33 @@ public class MessageController {
         response.setEmail(user.getEmail());
         response.setFirstName(user.getFirstName());
         response.setLastName(user.getLastName());
+        response.setPhoneNumber(user.getPhoneNumber());
         response.setActive(user.getActive());
+        response.setRoles(user.getRoles());
+        response.setDepartment(user.getDepartment());
+        response.setProfilePicture(user.getProfilePicture());
+        response.setSpecialization(user.getSpecialization());
+        response.setStudentId(user.getStudentId());
+        response.setProgram(user.getProgram());
         return response;
+    }
+
+    @GetMapping("/admin/messages/audit")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<List<MessageAuditDto>>> getMessageAuditRecords(
+            @RequestParam(required = false) String query,
+            @RequestParam(required = false) Long senderId,
+            @RequestParam(required = false) Long recipientId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime start,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime end) {
+        return ResponseEntity.ok(ApiResponse.success(
+                messageService.getMessagesForAudit(query, senderId, recipientId, start, end)
+        ));
+    }
+
+    @GetMapping("/admin/messages/audit/stats")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Map<String, Long>>> getMessageAuditStats() {
+        return ResponseEntity.ok(ApiResponse.success(messageService.getMessageAuditStats()));
     }
 }

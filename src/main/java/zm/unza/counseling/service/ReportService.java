@@ -6,6 +6,7 @@ import zm.unza.counseling.entity.Report.ReportType;
 import zm.unza.counseling.entity.Report.ReportStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import zm.unza.counseling.dto.request.CounselorReportRequest;
 
 import java.util.List;
 
@@ -86,6 +87,10 @@ public interface ReportService {
      * @return the generated report
      */
     Report generateReport(String type, String format, String period);
+
+    Report createCounselorReport(CounselorReportRequest request);
+
+    Report updateCounselorReport(Long id, CounselorReportRequest request);
 
     /**
      * Get report types

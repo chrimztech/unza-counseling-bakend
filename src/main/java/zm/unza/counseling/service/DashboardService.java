@@ -113,6 +113,66 @@ public class DashboardService {
                 .map(this::convertToDto)
                 .collect(Collectors.toList());
     }
+
+    public Map<String, Object> getAnalyticsOverview() {
+        DashboardStatsResponse stats = getStats();
+        Map<String, Object> performanceMetrics = getPerformanceMetrics();
+        long totalAppointments = ((Number) performanceMetrics.getOrDefault("totalAppointments", 0L)).longValue();
+        long scheduledAppointments = ((Number) performanceMetrics.getOrDefault("scheduledAppointments", 0L)).longValue();
+        double completionRate = ((Number) performanceMetrics.getOrDefault("completionRate", 0.0)).doubleValue();
+
+        Map<String, Object> overview = new HashMap<>();
+        overview.put("totalClients", stats.getTotalClients());
+        overview.put("activeClients", stats.getActiveClients());
+        overview.put("newClientsThisMonth", getRecentClients().size());
+        overview.put("totalSessions", stats.getTotalSessions());
+        overview.put("sessionsThisMonth", stats.getTotalSessions());
+        overview.put("totalAppointments", totalAppointments);
+        overview.put("upcomingAppointments", getUpcomingAppointments().size());
+        overview.put("pendingAppointments", scheduledAppointments);
+        overview.put("highRiskClients", stats.getHighRiskClients());
+        overview.put("atRiskClients", stats.getHighRiskClients());
+        overview.put("totalCounselors", stats.getTotalCounselors());
+        overview.put("activeCounselors", stats.getTotalCounselors());
+        overview.put("averageSatisfaction", stats.getAverageSatisfaction());
+        overview.put("completionRate", completionRate);
+        return overview;
+    }
+
+    public List<Map<String, Object>> getRecentActivity(int limit) {
+        return getUpcomingAppointments().stream()
+                .limit(Math.max(limit, 0))
+                .map(appointment -> {
+                    Map<String, Object> activity = new HashMap<>();
+                    activity.put("id", String.valueOf(appointment.getId()));
+                    activity.put("type", "APPOINTMENT");
+                    activity.put("description", "Upcoming appointment: " + appointment.getTitle());
+                    activity.put("userName", appointment.getStudentName());
+                    activity.put("timestamp", appointment.getAppointmentDate());
+                    activity.put("metadata", Map.of(
+                            "counselorName", appointment.getCounselorName(),
+                            "status", appointment.getStatus() != null ? appointment.getStatus().name() : "UNKNOWN"
+                    ));
+                    return activity;
+                })
+                .collect(Collectors.toList());
+    }
+
+    public List<Map<String, Object>> getAtRiskStudents(int limit) {
+        return getHighRiskClients().stream()
+                .limit(Math.max(limit, 0))
+                .map(client -> {
+                    Map<String, Object> student = new HashMap<>();
+                    student.put("id", String.valueOf(client.getId()));
+                    student.put("name", client.getFirstName() + " " + client.getLastName());
+                    student.put("riskLevel", client.getRiskLevel() != null ? client.getRiskLevel().name() : "UNKNOWN");
+                    student.put("lastSession", client.getUpdatedAt());
+                    student.put("nextAppointment", null);
+                    student.put("riskFactors", List.of("High risk score", "Requires counselor follow-up"));
+                    return student;
+                })
+                .collect(Collectors.toList());
+    }
     
     private AppointmentDto convertToDto(Appointment appointment) {
         AppointmentDto dto = new AppointmentDto();

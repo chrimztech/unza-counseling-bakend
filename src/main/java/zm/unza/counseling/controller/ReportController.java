@@ -7,8 +7,11 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 import zm.unza.counseling.dto.response.ApiResponse;
+import zm.unza.counseling.dto.request.CounselorReportRequest;
 import zm.unza.counseling.entity.Report;
 import zm.unza.counseling.service.ReportService;
 
@@ -44,6 +47,24 @@ public class ReportController {
                                                               @RequestParam(required = false) String endDate) {
         Report report = reportService.generateReport(reportType, startDate, endDate);
         return ResponseEntity.ok(ApiResponse.success(report, "Report generated successfully"));
+    }
+
+    @PostMapping("/counselor")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
+    @Operation(summary = "Create counselor report", description = "Create a counselor report linked to case, appointment, and session data")
+    public ResponseEntity<ApiResponse<Report>> createCounselorReport(@Valid @RequestBody CounselorReportRequest request) {
+        Report report = reportService.createCounselorReport(request);
+        return ResponseEntity.ok(ApiResponse.success(report, "Counselor report created successfully"));
+    }
+
+    @PutMapping("/counselor/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
+    @Operation(summary = "Update counselor report", description = "Update a counselor report and its linked case context")
+    public ResponseEntity<ApiResponse<Report>> updateCounselorReport(
+            @PathVariable Long id,
+            @Valid @RequestBody CounselorReportRequest request) {
+        Report report = reportService.updateCounselorReport(id, request);
+        return ResponseEntity.ok(ApiResponse.success(report, "Counselor report updated successfully"));
     }
 
     @PutMapping("/{id}")

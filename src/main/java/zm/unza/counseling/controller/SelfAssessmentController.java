@@ -9,6 +9,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 import zm.unza.counseling.dto.request.AssessmentSubmissionRequest;
 import zm.unza.counseling.dto.response.ApiResponse;
+import zm.unza.counseling.dto.response.SavedSelfAssessmentDto;
 import zm.unza.counseling.entity.SelfAssessment;
 import zm.unza.counseling.entity.User;
 import zm.unza.counseling.service.SelfAssessmentService;
@@ -39,22 +40,25 @@ public class SelfAssessmentController {
 
     @PostMapping("/submit")
     @PreAuthorize("hasAnyRole('STUDENT', 'CLIENT')")
-    public ResponseEntity<ApiResponse<Void>> submitAssessment(@RequestBody AssessmentSubmissionRequest request) {
-        selfAssessmentService.submitAssessment(request);
-        return ResponseEntity.ok(ApiResponse.success(null, "Assessment submitted successfully"));
+    public ResponseEntity<ApiResponse<SavedSelfAssessmentDto>> submitAssessment(
+            @RequestBody AssessmentSubmissionRequest request,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        User user = userService.getUserByEmail(userDetails.getUsername());
+        SavedSelfAssessmentDto savedAssessment = selfAssessmentService.submitAssessment(request, user);
+        return ResponseEntity.ok(ApiResponse.success(savedAssessment, "Assessment submitted successfully"));
     }
 
     @GetMapping("/client")
     @PreAuthorize("hasAnyRole('STUDENT', 'CLIENT', 'COUNSELOR', 'ADMIN')")
-    public ResponseEntity<ApiResponse<List<SelfAssessment>>> getSelfAssessmentsByClient(@AuthenticationPrincipal UserDetails userDetails) {
+    public ResponseEntity<ApiResponse<List<SavedSelfAssessmentDto>>> getSelfAssessmentsByClient(@AuthenticationPrincipal UserDetails userDetails) {
         User user = userService.getUserByEmail(userDetails.getUsername());
-        return ResponseEntity.ok(ApiResponse.success(selfAssessmentService.getSelfAssessmentsByClient(user.getId())));
+        return ResponseEntity.ok(ApiResponse.success(selfAssessmentService.getSelfAssessmentsByUser(user.getId())));
     }
 
     @GetMapping("/client/{clientId}/latest")
     @PreAuthorize("hasAnyRole('STUDENT', 'CLIENT', 'COUNSELOR', 'ADMIN')")
-    public ResponseEntity<ApiResponse<SelfAssessment>> getLatestSelfAssessmentForClient(@PathVariable Long clientId) {
-        return ResponseEntity.ok(ApiResponse.success(selfAssessmentService.getLatestSelfAssessmentForClient(clientId)));
+    public ResponseEntity<ApiResponse<SavedSelfAssessmentDto>> getLatestSelfAssessmentForClient(@PathVariable Long clientId) {
+        return ResponseEntity.ok(ApiResponse.success(selfAssessmentService.getLatestSelfAssessmentForUser(clientId)));
     }
 
     @GetMapping("/client/{clientId}/trend")

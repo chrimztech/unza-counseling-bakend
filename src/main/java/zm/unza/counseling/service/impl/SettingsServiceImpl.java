@@ -477,37 +477,31 @@ public class SettingsServiceImpl implements SettingsService {
         
         switch (key) {
             case THEME_MODE:
-            case "themeMode":
             case "mode":
                 saveSetting(THEME_MODE, strValue.isEmpty() ? "LIGHT" : strValue, 
                         Settings.SettingType.STRING, Settings.SettingCategory.APPEARANCE);
                 break;
             case THEME_PRIMARY_COLOR:
-            case "primaryColor":
             case "color":
                 saveSetting(THEME_PRIMARY_COLOR, strValue.isEmpty() ? "#3B82F6" : strValue, 
                         Settings.SettingType.STRING, Settings.SettingCategory.APPEARANCE);
                 break;
             case THEME_COMPACT_MODE:
-            case "compactMode":
             case "compact":
                 saveSetting(THEME_COMPACT_MODE, strValue.isEmpty() ? "false" : strValue, 
                         Settings.SettingType.BOOLEAN, Settings.SettingCategory.APPEARANCE);
                 break;
             case THEME_REDUCED_MOTION:
-            case "reducedMotion":
             case "reduced":
                 saveSetting(THEME_REDUCED_MOTION, strValue.isEmpty() ? "false" : strValue, 
                         Settings.SettingType.BOOLEAN, Settings.SettingCategory.APPEARANCE);
                 break;
             case THEME_HIGH_CONTRAST:
-            case "highContrast":
             case "contrast":
                 saveSetting(THEME_HIGH_CONTRAST, strValue.isEmpty() ? "false" : strValue, 
                         Settings.SettingType.BOOLEAN, Settings.SettingCategory.APPEARANCE);
                 break;
             case THEME_FONT_SIZE:
-            case "fontSize":
             case "font":
                 saveSetting(THEME_FONT_SIZE, strValue.isEmpty() ? "MEDIUM" : strValue, 
                         Settings.SettingType.STRING, Settings.SettingCategory.APPEARANCE);

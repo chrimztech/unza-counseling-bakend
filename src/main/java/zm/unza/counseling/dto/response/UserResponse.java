@@ -13,6 +13,10 @@ public class UserResponse {
     private boolean active;
     private Set<Role> roles;
     private String department;
+    private String profilePicture;
+    private String specialization;
+    private String studentId;
+    private String program;
 
     public Long getId() {
         return id;
@@ -84,5 +88,37 @@ public class UserResponse {
 
     public void setDepartment(String department) {
         this.department = department;
+    }
+
+    public String getProfilePicture() {
+        return profilePicture;
+    }
+
+    public void setProfilePicture(String profilePicture) {
+        this.profilePicture = profilePicture;
+    }
+
+    public String getSpecialization() {
+        return specialization;
+    }
+
+    public void setSpecialization(String specialization) {
+        this.specialization = specialization;
+    }
+
+    public String getStudentId() {
+        return studentId;
+    }
+
+    public void setStudentId(String studentId) {
+        this.studentId = studentId;
+    }
+
+    public String getProgram() {
+        return program;
+    }
+
+    public void setProgram(String program) {
+        this.program = program;
     }
 }

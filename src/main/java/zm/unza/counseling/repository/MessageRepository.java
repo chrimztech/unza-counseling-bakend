@@ -17,10 +17,22 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
     List<Message> findBySenderOrderBySentAtDesc(User sender);
     
     List<Message> findByConversationIdOrderBySentAtDesc(Long conversationId);
+
+    @Query("SELECT m FROM Message m WHERE m.conversationId = :conversationId " +
+           "AND (m.sender.id = :userId OR m.recipient.id = :userId) " +
+           "ORDER BY m.sentAt DESC")
+    List<Message> findByConversationIdAndUserAccess(@Param("conversationId") Long conversationId, @Param("userId") Long userId);
     
     List<Message> findBySenderIdOrRecipientId(Long senderId, Long recipientId);
     
     List<Message> findByContentContaining(String content);
+
+    @Query("SELECT m FROM Message m WHERE (m.sender.id = :userId OR m.recipient.id = :userId) " +
+           "AND (" +
+           "LOWER(COALESCE(m.subject, '')) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
+           "LOWER(COALESCE(m.content, '')) LIKE LOWER(CONCAT('%', :query, '%'))" +
+           ") ORDER BY m.sentAt DESC")
+    List<Message> searchUserMessages(@Param("query") String query, @Param("userId") Long userId);
     
     // Conversation queries
     @Query("SELECT m FROM Message m WHERE m.sender.id = :userId OR m.recipient.id = :userId " +
@@ -37,11 +49,10 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
            "ORDER BY m.sentAt DESC")
     List<Message> findConversationMessages(@Param("userId") Long userId, @Param("partnerId") Long partnerId);
     
-    @Query("SELECT m FROM Message m WHERE " +
-           "(m.sender.id = :userId AND m.recipient.id = :partnerId) OR " +
-           "(m.sender.id = :partnerId AND m.recipient.id = :userId) " +
-           "ORDER BY m.sentAt DESC LIMIT 1")
-    Optional<Message> findLastMessageInConversation(@Param("userId") Long userId, @Param("partnerId") Long partnerId);
+    default Optional<Message> findLastMessageInConversation(Long userId, Long partnerId) {
+        List<Message> messages = findConversationMessages(userId, partnerId);
+        return messages.isEmpty() ? Optional.empty() : Optional.of(messages.get(0));
+    }
     
     @Query("SELECT COUNT(m) FROM Message m WHERE m.recipient.id = :userId AND m.sender.id = :partnerId AND m.isRead = false")
     long countUnreadMessagesFromPartner(@Param("userId") Long userId, @Param("partnerId") Long partnerId);

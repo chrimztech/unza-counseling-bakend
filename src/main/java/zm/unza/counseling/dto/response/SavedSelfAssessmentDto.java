@@ -1,4 +1,4 @@
-package zm.unza.counseling.dto.request;
+package zm.unza.counseling.dto.response;
 
 import lombok.Data;
 
@@ -6,14 +6,9 @@ import java.time.LocalDateTime;
 import java.util.Map;
 
 @Data
-public class AssessmentSubmissionRequest {
-    private Long assessmentId;
+public class SavedSelfAssessmentDto {
+    private Long id;
     private Long clientId;
-    private Map<String, Object> answers;
-    private Map<String, Object> responses;
-    private String title;
-    private String description;
-    private String assessmentType;
     private LocalDateTime assessmentDate;
     private Integer phq9Score;
     private Integer gad7Score;
@@ -24,5 +19,11 @@ public class AssessmentSubmissionRequest {
     private Boolean concentrationDifficulty;
     private Boolean socialWithdrawal;
     private Boolean followUpRequired;
+    private Boolean anonymous;
+    private String title;
+    private String description;
+    private String assessmentType;
     private String recommendations;
+    private LocalDateTime createdAt;
+    private Map<String, Object> responses;
 }

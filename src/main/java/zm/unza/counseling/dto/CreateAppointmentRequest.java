@@ -6,12 +6,16 @@ import lombok.Data;
 import zm.unza.counseling.entity.Appointment;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
 
 @Data
 public class CreateAppointmentRequest {
     // studentId is now obtained from the authenticated user
     private String studentId;
     
+    private Long caseId;
+
     private Long counselorId;
     
     @NotNull(message = "Title is required")
@@ -34,6 +38,8 @@ public class CreateAppointmentRequest {
     private String meetingLink;
     
     private String location;
+
+    private Map<String, Object> bookingDetails = new HashMap<>();
     
     public Appointment.AppointmentType getAppointmentType() {
         if (type == null) return null;

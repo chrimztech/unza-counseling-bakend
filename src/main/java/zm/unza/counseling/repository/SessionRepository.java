@@ -11,6 +11,7 @@ import zm.unza.counseling.entity.User;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface SessionRepository extends JpaRepository<Session, Long> {
@@ -40,4 +41,8 @@ public interface SessionRepository extends JpaRepository<Session, Long> {
     Page<Session> searchSessions(@Param("keyword") String keyword, Pageable pageable);
 
     Page<Session> findByStudentId(Long studentId, Pageable pageable);
+
+    Optional<Session> findFirstByAppointmentIdOrderBySessionDateDesc(Long appointmentId);
+
+    List<Session> findByStudentIdOrderBySessionDateDesc(Long studentId);
 }

@@ -61,6 +61,7 @@ public class CaseService {
         caseEntity.setSubject(request.getSubject());
         caseEntity.setDescription(request.getDescription());
         caseEntity.setNotes(request.getNotes());
+        caseEntity.setLastActivityAt(LocalDateTime.now());
 
         Case savedCase = caseRepository.save(caseEntity);
         
@@ -121,6 +122,7 @@ public class CaseService {
         caseEntity.setPriority(request.getPriority());
         caseEntity.setDescription(request.getDescription());
         caseEntity.setNotes(request.getNotes());
+        caseEntity.setLastActivityAt(LocalDateTime.now());
 
         Case updatedCase = caseRepository.save(caseEntity);
         return convertToResponse(updatedCase);
@@ -131,6 +133,7 @@ public class CaseService {
         Case caseEntity = caseRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Case not found with ID: " + id));
         caseEntity.setStatus(status);
+        caseEntity.setLastActivityAt(LocalDateTime.now());
         if (status == Case.CaseStatus.CLOSED) {
             caseEntity.setClosedAt(LocalDateTime.now());
         }
@@ -143,6 +146,7 @@ public class CaseService {
         Case caseEntity = caseRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Case not found with ID: " + id));
         caseEntity.setPriority(priority);
+        caseEntity.setLastActivityAt(LocalDateTime.now());
         Case updatedCase = caseRepository.save(caseEntity);
         return convertToResponse(updatedCase);
     }
@@ -186,6 +190,7 @@ public class CaseService {
         caseEntity.setCounselor(counselor);
         caseEntity.setAssignedAt(LocalDateTime.now());
         caseEntity.setAssignedBy(assignedBy != null ? assignedBy.getId() : null);
+        caseEntity.setLastActivityAt(LocalDateTime.now());
         caseRepository.save(caseEntity);
 
         return convertToAssignmentResponse(assignment);

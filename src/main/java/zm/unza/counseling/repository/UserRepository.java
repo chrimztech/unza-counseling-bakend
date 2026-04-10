@@ -30,6 +30,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByUsernameWithRoles(@Param("username") String username);
     
     Optional<User> findByStudentId(String studentId);
+
+    Optional<User> findByAnonymousIdentifierHash(String anonymousIdentifierHash);
     
     Boolean existsByUsername(String username);
     
@@ -76,6 +78,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     // Active/Inactive users
     List<User> findByActive(Boolean active);
+
+    List<User> findByAnonymousTrueOrderByLastAnonymousActivityAtDesc();
     
     Page<User> findByActive(Boolean active, Pageable pageable);
 

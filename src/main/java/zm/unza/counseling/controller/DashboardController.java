@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import zm.unza.counseling.dto.response.ApiResponse;
@@ -28,6 +29,15 @@ public class DashboardController {
         return ResponseEntity.ok(ApiResponse.success(stats, "Dashboard statistics retrieved successfully"));
     }
 
+    @GetMapping("/analytics")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getAnalyticsOverview() {
+        return ResponseEntity.ok(ApiResponse.success(
+                dashboardService.getAnalyticsOverview(),
+                "Dashboard analytics retrieved successfully"
+        ));
+    }
+
     @GetMapping("/high-risk-clients")
     @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
     public ResponseEntity<ApiResponse<List<?>>> getHighRiskClients() {
@@ -44,6 +54,16 @@ public class DashboardController {
         return ResponseEntity.ok(ApiResponse.success(recentClients, "Recent clients retrieved successfully"));
     }
 
+    @GetMapping("/recent-activity")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getRecentActivity(
+            @RequestParam(defaultValue = "10") int limit) {
+        return ResponseEntity.ok(ApiResponse.success(
+                dashboardService.getRecentActivity(limit),
+                "Recent activity retrieved successfully"
+        ));
+    }
+
     @GetMapping("/performance-metrics")
     @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getPerformanceMetrics() {
@@ -58,5 +78,15 @@ public class DashboardController {
         log.info("Fetching upcoming appointments for dashboard");
         List<?> appointments = dashboardService.getUpcomingAppointments();
         return ResponseEntity.ok(ApiResponse.success(appointments, "Upcoming appointments retrieved successfully"));
+    }
+
+    @GetMapping("/at-risk-students")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getAtRiskStudents(
+            @RequestParam(defaultValue = "5") int limit) {
+        return ResponseEntity.ok(ApiResponse.success(
+                dashboardService.getAtRiskStudents(limit),
+                "At-risk students retrieved successfully"
+        ));
     }
 }

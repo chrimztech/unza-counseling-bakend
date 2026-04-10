@@ -12,4 +12,6 @@ public interface SelfAssessmentRepository extends JpaRepository<SelfAssessment, 
     List<SelfAssessment> findByClientId(Long clientId);
     Optional<SelfAssessment> findTopByClientIdOrderByCreatedAtDesc(Long clientId);
     List<SelfAssessment> findByClientIdOrderByCreatedAtDesc(Long clientId);
+    List<SelfAssessment> findBySubmittedByUserIdOrderByAssessmentDateDesc(Long submittedByUserId);
+    Optional<SelfAssessment> findTopBySubmittedByUserIdOrderByAssessmentDateDesc(Long submittedByUserId);
 }

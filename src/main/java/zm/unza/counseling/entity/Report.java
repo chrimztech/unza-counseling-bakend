@@ -1,7 +1,9 @@
 package zm.unza.counseling.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
+import java.util.Map;
 
 /**
  * Report entity for system reports and analytics
@@ -37,6 +39,32 @@ public class Report {
 
     @Column(name = "file_size")
     private Long fileSize;
+
+    @Column(name = "client_id")
+    private Long clientId;
+
+    @Column(name = "counselor_id")
+    private Long counselorId;
+
+    @Column(name = "case_id")
+    private Long caseId;
+
+    @Column(name = "appointment_id")
+    private Long appointmentId;
+
+    @Column(name = "session_id")
+    private Long sessionId;
+
+    @Column(name = "report_date")
+    private LocalDateTime reportDate;
+
+    @Lob
+    @Column(name = "report_data_json")
+    @JsonIgnore
+    private String reportDataJson;
+
+    @Transient
+    private Map<String, Object> reportData;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;
@@ -129,6 +157,70 @@ public class Report {
 
     public void setFileSize(Long fileSize) {
         this.fileSize = fileSize;
+    }
+
+    public Long getClientId() {
+        return clientId;
+    }
+
+    public void setClientId(Long clientId) {
+        this.clientId = clientId;
+    }
+
+    public Long getCounselorId() {
+        return counselorId;
+    }
+
+    public void setCounselorId(Long counselorId) {
+        this.counselorId = counselorId;
+    }
+
+    public Long getCaseId() {
+        return caseId;
+    }
+
+    public void setCaseId(Long caseId) {
+        this.caseId = caseId;
+    }
+
+    public Long getAppointmentId() {
+        return appointmentId;
+    }
+
+    public void setAppointmentId(Long appointmentId) {
+        this.appointmentId = appointmentId;
+    }
+
+    public Long getSessionId() {
+        return sessionId;
+    }
+
+    public void setSessionId(Long sessionId) {
+        this.sessionId = sessionId;
+    }
+
+    public LocalDateTime getReportDate() {
+        return reportDate;
+    }
+
+    public void setReportDate(LocalDateTime reportDate) {
+        this.reportDate = reportDate;
+    }
+
+    public String getReportDataJson() {
+        return reportDataJson;
+    }
+
+    public void setReportDataJson(String reportDataJson) {
+        this.reportDataJson = reportDataJson;
+    }
+
+    public Map<String, Object> getReportData() {
+        return reportData;
+    }
+
+    public void setReportData(Map<String, Object> reportData) {
+        this.reportData = reportData;
     }
 
     public LocalDateTime getCreatedAt() {
