@@ -3,10 +3,15 @@ package zm.unza.counseling.controller;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import zm.unza.counseling.dto.MentalHealthAcademicDtos.MentalHealthAcademicAnalysisRequest;
 import zm.unza.counseling.dto.MentalHealthAcademicDtos.MentalHealthAcademicAnalysisResponse;
 import zm.unza.counseling.dto.response.ApiResponse;
 import zm.unza.counseling.entity.MentalHealthAcademicAnalysis;
@@ -83,6 +88,40 @@ public class MentalHealthAcademicAnalysisController {
         // Return intervention report
         Object report = service.getInterventionReport();
         return ResponseEntity.ok(ApiResponse.success(report));
+    }
+
+    @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
+    public ResponseEntity<ApiResponse<MentalHealthAcademicAnalysisResponse>> createAnalysis(@RequestBody MentalHealthAcademicAnalysisRequest request) {
+        MentalHealthAcademicAnalysis analysis = service.createAnalysis(request);
+        MentalHealthAcademicAnalysisResponse response = mapper.toResponse(analysis);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
+    public ResponseEntity<ApiResponse<MentalHealthAcademicAnalysisResponse>> updateAnalysis(@PathVariable Long id, @RequestBody MentalHealthAcademicAnalysisRequest request) {
+        MentalHealthAcademicAnalysis analysis = service.updateAnalysis(id, request);
+        MentalHealthAcademicAnalysisResponse response = mapper.toResponse(analysis);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'CLIENT')")
+    public ResponseEntity<ApiResponse<MentalHealthAcademicAnalysisResponse>> getAnalysisById(@PathVariable Long id) {
+        MentalHealthAcademicAnalysis analysis = service.getAnalysisById(id);
+        if (analysis == null) {
+            return ResponseEntity.ok(ApiResponse.success(null));
+        }
+        MentalHealthAcademicAnalysisResponse response = mapper.toResponse(analysis);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> deleteAnalysis(@PathVariable Long id) {
+        service.getAnalysisById(id);
+        return ResponseEntity.ok(ApiResponse.success(null));
     }
 
 }
