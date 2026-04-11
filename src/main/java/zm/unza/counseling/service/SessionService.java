@@ -63,11 +63,30 @@ public class SessionService {
             session.setCounselor(counselor);
         }
 
-        session.setTitle(sessionDto.getTitle());
+        session.setTitle(sessionDto.getTitle() != null ? sessionDto.getTitle() : "Counseling Session");
         session.setSessionDate(sessionDto.getSessionDate() != null ? sessionDto.getSessionDate() : LocalDateTime.now());
         session.setDurationMinutes(sessionDto.getDurationMinutes());
-        session.setType(sessionDto.getType());
-        session.setStatus(sessionDto.getStatus() != null ? sessionDto.getStatus() : Session.SessionStatus.COMPLETED);
+        
+        if (sessionDto.getType() != null) {
+            try {
+                session.setType(Session.SessionType.valueOf(sessionDto.getType()));
+            } catch (IllegalArgumentException e) {
+                session.setType(Session.SessionType.INDIVIDUAL);
+            }
+        } else {
+            session.setType(Session.SessionType.INDIVIDUAL);
+        }
+        
+        if (sessionDto.getStatus() != null) {
+            try {
+                session.setStatus(Session.SessionStatus.valueOf(sessionDto.getStatus()));
+            } catch (IllegalArgumentException e) {
+                session.setStatus(Session.SessionStatus.COMPLETED);
+            }
+        } else {
+            session.setStatus(Session.SessionStatus.COMPLETED);
+        }
+        
         session.setPresentingIssue(sessionDto.getPresentingIssue());
         
         if (sessionDto.getOutcome() != null) {
@@ -117,11 +136,26 @@ public class SessionService {
             session.setCounselor(counselor);
         }
         
-        session.setTitle(sessionDto.getTitle());
+        session.setTitle(sessionDto.getTitle() != null ? sessionDto.getTitle() : session.getTitle());
         session.setSessionDate(sessionDto.getSessionDate() != null ? sessionDto.getSessionDate() : session.getSessionDate());
         session.setDurationMinutes(sessionDto.getDurationMinutes() != null ? sessionDto.getDurationMinutes() : session.getDurationMinutes());
-        session.setType(sessionDto.getType() != null ? sessionDto.getType() : session.getType());
-        session.setStatus(sessionDto.getStatus() != null ? sessionDto.getStatus() : session.getStatus());
+        
+        if (sessionDto.getType() != null) {
+            try {
+                session.setType(Session.SessionType.valueOf(sessionDto.getType()));
+            } catch (IllegalArgumentException e) {
+                // keep existing
+            }
+        }
+        
+        if (sessionDto.getStatus() != null) {
+            try {
+                session.setStatus(Session.SessionStatus.valueOf(sessionDto.getStatus()));
+            } catch (IllegalArgumentException e) {
+                // keep existing
+            }
+        }
+        
         session.setPresentingIssue(sessionDto.getPresentingIssue() != null ? sessionDto.getPresentingIssue() : session.getPresentingIssue());
         
         if (sessionDto.getOutcome() != null) {

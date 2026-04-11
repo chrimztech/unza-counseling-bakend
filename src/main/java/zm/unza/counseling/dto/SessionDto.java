@@ -1,24 +1,35 @@
 package zm.unza.counseling.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import zm.unza.counseling.entity.Session;
 
 import java.time.LocalDateTime;
 
 @Data
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class SessionDto {
     private Long id;
     private Long appointmentId;
+    
+    @JsonProperty("clientId")
     private Long studentId;
+    
     private String studentName;
     private Long counselorId;
     private String counselorName;
     private LocalDateTime sessionDate;
+    
+    @JsonProperty("duration")
     private Integer durationMinutes;
-    private Session.SessionType type;
-    private Session.SessionStatus status;
+    
+    private String type;
+    private String status;
     private String title;
     private String presentingIssue;
     private String outcome;
@@ -33,8 +44,8 @@ public class SessionDto {
                 .counselorName(session.getCounselor().getFullName())
                 .sessionDate(session.getSessionDate())
                 .durationMinutes(session.getDurationMinutes())
-                .type(session.getType())
-                .status(session.getStatus())
+                .type(session.getType() != null ? session.getType().name() : null)
+                .status(session.getStatus() != null ? session.getStatus().name() : null)
                 .title(session.getTitle())
                 .presentingIssue(session.getPresentingIssue())
                 .outcome(session.getOutcome() != null ? session.getOutcome().name() : null)
@@ -46,8 +57,8 @@ public class SessionDto {
     public Long getCounselorId() { return counselorId; }
     public LocalDateTime getSessionDate() { return sessionDate; }
     public Integer getDurationMinutes() { return durationMinutes; }
-    public Session.SessionType getType() { return type; }
-    public Session.SessionStatus getStatus() { return status; }
+    public String getType() { return type; }
+    public String getStatus() { return status; }
     public String getTitle() { return title; }
     public String getPresentingIssue() { return presentingIssue; }
     public String getOutcome() { return outcome; }
