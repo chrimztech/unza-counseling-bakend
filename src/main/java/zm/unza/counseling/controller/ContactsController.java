@@ -35,7 +35,7 @@ public class ContactsController {
             
             List<User> contacts = userRepository.findAll().stream()
                 .filter(u -> !u.getId().equals(user.getId()))
-                .filter(u -> "COUNSELOR".equals(u.getUserType()) || "CLIENT".equals(u.getUserType()))
+                .filter(u -> u.isCounselor() || u.isClient())
                 .collect(Collectors.toList());
 
             List<UserResponse> responses = contacts.stream()
