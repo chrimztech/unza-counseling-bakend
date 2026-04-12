@@ -1,6 +1,7 @@
 package zm.unza.counseling.controller;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -8,10 +9,9 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import zm.unza.counseling.dto.response.ApiResponse;
 import zm.unza.counseling.dto.response.UserResponse;
-import zm.unza.counseling.entity.Appointment;
 import zm.unza.counseling.entity.User;
-import zm.unza.counseling.repository.AppointmentRepository;
 import zm.unza.counseling.repository.UserRepository;
 import zm.unza.counseling.service.UserService;
 
@@ -19,71 +19,61 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping({"/v1/contacts", "/contacts"})
+@RequestMapping({"/api/contacts", "/v1/contacts", "/contacts"})
 @RequiredArgsConstructor
+@Slf4j
 public class ContactsController {
 
     private final UserService userService;
     private final UserRepository userRepository;
-    private final AppointmentRepository appointmentRepository;
 
     @GetMapping("/available")
-    public ResponseEntity<List<UserResponse>> getAvailableContacts(@AuthenticationPrincipal UserDetails userDetails) {
-        User user = userService.getUserByUsernameOrEmail(userDetails.getUsername());
-        List<User> contacts = getAvailableContactsList(user);
+    public ResponseEntity<ApiResponse<List<UserResponse>>> getAvailableContacts(
+            @AuthenticationPrincipal UserDetails userDetails) {
+        try {
+            User user = userService.getUserByUsernameOrEmail(userDetails.getUsername());
+            
+            List<User> contacts = userRepository.findAll().stream()
+                .filter(u -> !u.getId().equals(user.getId()))
+                .filter(u -> "COUNSELOR".equals(u.getUserType()) || "CLIENT".equals(u.getUserType()))
+                .collect(Collectors.toList());
 
-        return ResponseEntity.ok(contacts.stream()
-            .map(this::mapToUserResponse)
-            .collect(Collectors.toList()));
+            List<UserResponse> responses = contacts.stream()
+                .map(this::mapToUserResponse)
+                .collect(Collectors.toList());
+
+            return ResponseEntity.ok(ApiResponse.success(responses));
+        } catch (Exception e) {
+            log.error("Error getting available contacts", e);
+            return ResponseEntity.internalServerError()
+                .body(ApiResponse.error("Failed to get contacts: " + e.getMessage()));
+        }
     }
 
     @GetMapping("/search")
-    public ResponseEntity<List<UserResponse>> searchContacts(
+    public ResponseEntity<ApiResponse<List<UserResponse>>> searchContacts(
             @RequestParam String query,
             @AuthenticationPrincipal UserDetails userDetails) {
-        User user = userService.getUserByUsernameOrEmail(userDetails.getUsername());
-        List<User> contacts = getAvailableContactsList(user);
+        try {
+            User user = userService.getUserByUsernameOrEmail(userDetails.getUsername());
+            String lowerQuery = query.toLowerCase();
 
-        String lowerQuery = query.toLowerCase();
-        List<User> filtered = contacts.stream()
-            .filter(c -> c.getFullName().toLowerCase().contains(lowerQuery) ||
-                        c.getEmail().toLowerCase().contains(lowerQuery) ||
-                        (c.getStudentId() != null && c.getStudentId().toLowerCase().contains(lowerQuery)) ||
-                        (c.getProgram() != null && c.getProgram().toLowerCase().contains(lowerQuery)) ||
-                        (c.getSpecialization() != null && c.getSpecialization().toLowerCase().contains(lowerQuery)))
-            .collect(Collectors.toList());
-
-        return ResponseEntity.ok(filtered.stream()
-            .map(this::mapToUserResponse)
-            .collect(Collectors.toList()));
-    }
-
-    private List<User> getAvailableContactsList(User user) {
-        if (user.isCounselor()) {
-            return appointmentRepository.findByCounselor(user).stream()
-                .map(Appointment::getStudent)
-                .filter(s -> s != null)
-                .distinct()
+            List<User> contacts = userRepository.findAll().stream()
+                .filter(u -> !u.getId().equals(user.getId()))
+                .filter(u -> {
+                    String name = u.getFirstName() + " " + u.getLastName();
+                    return name.toLowerCase().contains(lowerQuery) ||
+                           u.getEmail().toLowerCase().contains(lowerQuery);
+                })
                 .collect(Collectors.toList());
-        } else {
-            return getClientVisibleContacts(user);
+
+            return ResponseEntity.ok(ApiResponse.success(
+                contacts.stream().map(this::mapToUserResponse).collect(Collectors.toList())));
+        } catch (Exception e) {
+            log.error("Error searching contacts", e);
+            return ResponseEntity.internalServerError()
+                .body(ApiResponse.error("Failed to search contacts: " + e.getMessage()));
         }
-    }
-
-    private List<User> getClientVisibleContacts(User user) {
-        List<User> contacts = appointmentRepository.findByStudent(user).stream()
-                .map(Appointment::getCounselor)
-                .filter(c -> c != null)
-                .distinct()
-                .collect(Collectors.toList());
-
-        if (!contacts.isEmpty()) {
-            return contacts;
-        }
-
-        return userRepository.findByRolesName("ROLE_COUNSELOR").stream()
-                .filter(c -> Boolean.TRUE.equals(c.getAvailableForAppointments()))
-                .collect(Collectors.toList());
     }
 
     private UserResponse mapToUserResponse(User user) {
