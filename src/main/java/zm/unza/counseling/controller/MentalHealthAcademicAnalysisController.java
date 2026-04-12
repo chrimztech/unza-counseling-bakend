@@ -48,7 +48,7 @@ public class MentalHealthAcademicAnalysisController {
     }
 
     @GetMapping("/client/{clientId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'CLIENT', 'STUDENT')")
     public ResponseEntity<ApiResponse<List<MentalHealthAcademicAnalysisResponse>>> getAnalysesByClient(@PathVariable Long clientId) {
         List<MentalHealthAcademicAnalysisResponse> response = service.getAnalysesByClient(clientId).stream()
                 .map(mapper::toResponse)

@@ -1,6 +1,5 @@
 package zm.unza.counseling.entity;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -30,11 +29,6 @@ public class Goal {
     @Column(name = "client_id", nullable = false)
     private Long clientId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "client_id", insertable = false, updatable = false)
-    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
-    private Client client;
-
     @NotBlank(message = "Title is required")
     @Size(max = 200, message = "Title cannot exceed 200 characters")
     @Column(nullable = false, length = 200)
@@ -55,6 +49,9 @@ public class Goal {
     @Column(name = "current_value")
     private Integer currentValue = 0;
 
+    @Column(name = "start_date")
+    private LocalDate startDate;
+
     private Integer progress = 0;
 
     @Enumerated(EnumType.STRING)
@@ -62,7 +59,8 @@ public class Goal {
     @NotNull(message = "Status is required")
     private GoalStatus status = GoalStatus.NOT_STARTED;
 
-    private LocalDate deadline;
+    @Column(name = "target_date")
+    private LocalDate targetDate;
 
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)

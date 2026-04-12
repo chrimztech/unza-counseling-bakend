@@ -97,7 +97,7 @@ public class GoalServiceImpl implements GoalService {
         goal.setCurrentValue(request.getCurrentValue() != null ? request.getCurrentValue() : 0);
         goal.setProgress(request.getProgress() != null ? request.getProgress() : 0);
         goal.setStatus(request.getStatus() != null ? GoalStatus.valueOf(request.getStatus()) : GoalStatus.NOT_STARTED);
-        goal.setDeadline(request.getDeadline());
+        goal.setTargetDate(request.getDeadline());
         
         // Calculate progress if target and current values are set
         if (request.getTargetValue() != null && request.getTargetValue() > 0 && request.getCurrentValue() != null) {
@@ -126,7 +126,7 @@ public class GoalServiceImpl implements GoalService {
         }
         goal.setTargetValue(request.getTargetValue());
         goal.setCurrentValue(request.getCurrentValue());
-        goal.setDeadline(request.getDeadline());
+        goal.setTargetDate(request.getDeadline());
         
         if (request.getStatus() != null) {
             goal.setStatus(GoalStatus.valueOf(request.getStatus()));
@@ -254,9 +254,6 @@ public class GoalServiceImpl implements GoalService {
      */
     private GoalResponse mapToResponse(Goal goal) {
         String clientName = null;
-        if (goal.getClient() != null) {
-            clientName = goal.getClient().getFullName();
-        }
         
         return GoalResponse.builder()
                 .id(goal.getId())
@@ -269,7 +266,7 @@ public class GoalServiceImpl implements GoalService {
                 .currentValue(goal.getCurrentValue())
                 .progress(goal.getProgress())
                 .status(goal.getStatus())
-                .deadline(goal.getDeadline())
+                .deadline(goal.getTargetDate())
                 .createdAt(goal.getCreatedAt())
                 .updatedAt(goal.getUpdatedAt())
                 .build();

@@ -70,7 +70,7 @@ public interface GoalRepository extends JpaRepository<Goal, Long> {
      * @param date the deadline date
      * @return list of goals
      */
-    List<Goal> findByDeadlineBefore(LocalDate date);
+    List<Goal> findByTargetDateBefore(LocalDate date);
 
     /**
      * Find goals with deadline between two dates
@@ -78,14 +78,14 @@ public interface GoalRepository extends JpaRepository<Goal, Long> {
      * @param end end date
      * @return list of goals
      */
-    List<Goal> findByDeadlineBetween(LocalDate start, LocalDate end);
+    List<Goal> findByTargetDateBetween(LocalDate start, LocalDate end);
 
     /**
      * Find overdue goals (deadline passed and not completed)
      * @param currentDate the current date
      * @return list of overdue goals
      */
-    @Query("SELECT g FROM Goal g WHERE g.deadline < :currentDate AND g.status NOT IN ('COMPLETED', 'ABANDONED')")
+    @Query("SELECT g FROM Goal g WHERE g.targetDate < :currentDate AND g.status NOT IN ('COMPLETED', 'ABANDONED')")
     List<Goal> findOverdueGoals(@Param("currentDate") LocalDate currentDate);
 
     /**
