@@ -41,10 +41,7 @@ public class MessageService {
         message.setContent(request.getContent());
         
         // Set conversation ID based on sender and recipient
-        long convId = senderId < request.getRecipientId() ? 
-            senderId * 1000000 + request.getRecipientId() : 
-            request.getRecipientId() * 1000000 + senderId;
-        message.setConversationId(convId);
+        message.setConversationId(buildConversationId(senderId, request.getRecipientId()));
 
         Message saved = messageRepository.save(message);
         auditMessageAction("MESSAGE_SENT", saved, senderId, buildAuditDetails(saved));
@@ -324,23 +321,25 @@ public class MessageService {
      * Forward a message to recipients
      */
     @Transactional
-    public List<Message> forwardMessage(Long messageId, List<Number> recipientIds, String additionalContent, Long senderId) {
+    public List<Message> forwardMessage(Long messageId, List<?> recipientIds, String additionalContent, Long senderId) {
         Message originalMessage = getMessageById(messageId, senderId);
         User sender = userRepository.findById(senderId).orElseThrow();
+        List<Long> normalizedRecipientIds = normalizeRecipientIds(recipientIds);
         
         List<Message> forwardedMessages = new ArrayList<>();
         
-        for (Number recipientId : recipientIds) {
-            User recipient = userRepository.findById(recipientId.longValue()).orElseThrow();
+        for (Long recipientId : normalizedRecipientIds) {
+            User recipient = userRepository.findById(recipientId).orElseThrow();
             
             Message forwarded = new Message();
             forwarded.setSender(sender);
             forwarded.setRecipient(recipient);
             forwarded.setSubject("Fwd: " + originalMessage.getSubject());
+            forwarded.setConversationId(buildConversationId(senderId, recipientId));
             
-            String fullContent = additionalContent != null ? 
-                additionalContent + "\\n\\n--- Forwarded Message ---\\n" + originalMessage.getContent() :
-                "--- Forwarded Message ---\\n" + originalMessage.getContent();
+            String fullContent = additionalContent != null && !additionalContent.isBlank()
+                    ? additionalContent + "\n\n--- Forwarded Message ---\n" + originalMessage.getContent()
+                    : "--- Forwarded Message ---\n" + originalMessage.getContent();
             forwarded.setContent(fullContent);
             
             Message saved = messageRepository.save(forwarded);
@@ -501,6 +500,37 @@ public class MessageService {
             return message.isDeletedByRecipient();
         }
         return false;
+    }
+
+    private long buildConversationId(Long firstUserId, Long secondUserId) {
+        long smallerId = Math.min(firstUserId, secondUserId);
+        long largerId = Math.max(firstUserId, secondUserId);
+        return smallerId * 1000000 + largerId;
+    }
+
+    private List<Long> normalizeRecipientIds(List<?> recipientIds) {
+        if (recipientIds == null || recipientIds.isEmpty()) {
+            throw new IllegalArgumentException("recipientIds must not be empty");
+        }
+
+        return recipientIds.stream()
+                .map(this::toRecipientId)
+                .distinct()
+                .collect(Collectors.toList());
+    }
+
+    private Long toRecipientId(Object rawRecipientId) {
+        if (rawRecipientId instanceof Number number) {
+            return number.longValue();
+        }
+        if (rawRecipientId instanceof String value && !value.isBlank()) {
+            try {
+                return Long.parseLong(value.trim());
+            } catch (NumberFormatException ex) {
+                throw new IllegalArgumentException("Invalid recipientId: " + value, ex);
+            }
+        }
+        throw new IllegalArgumentException("Invalid recipientId: " + rawRecipientId);
     }
 
     private void auditMessageAction(String action, Message message, Long userId, String details) {

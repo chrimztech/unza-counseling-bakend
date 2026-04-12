@@ -53,7 +53,7 @@ public class MessageController {
     @GetMapping("/messages")
     public ResponseEntity<List<Message>> getMessages(@AuthenticationPrincipal UserDetails userDetails) {
         User user = userService.getUserByEmail(userDetails.getUsername());
-        return ResponseEntity.ok(messageService.getReceivedMessages(user.getId()));
+        return ResponseEntity.ok(messageService.getAllMessages(user.getId()));
     }
 
     @GetMapping("/messages/{id}")
@@ -139,7 +139,7 @@ public class MessageController {
             @AuthenticationPrincipal UserDetails userDetails) {
         User sender = userService.getUserByEmail(userDetails.getUsername());
         @SuppressWarnings("unchecked")
-        List<Number> recipientIds = (List<Number>) request.get("recipientIds");
+        List<?> recipientIds = (List<?>) request.get("recipientIds");
         String additionalContent = (String) request.get("additionalContent");
         return ResponseEntity.ok(messageService.forwardMessage(messageId, recipientIds, additionalContent, sender.getId()));
     }

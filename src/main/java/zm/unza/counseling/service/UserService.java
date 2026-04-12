@@ -78,6 +78,9 @@ public class UserService {
     }
 
     public List<User> getUsersByRole(String role) {
+        if (!role.startsWith("ROLE_")) {
+            role = "ROLE_" + role.toUpperCase();
+        }
         return userRepository.findByRolesName(role);
     }
 
