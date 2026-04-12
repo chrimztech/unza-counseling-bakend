@@ -22,7 +22,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping({"/api/v1/auth", "/api/auth", "/auth"})
-@CrossOrigin(origins = "https://counselling.unza.ac.zm", allowCredentials = "true")
+@CrossOrigin(origins = {"https://counselling.unza.ac.zm", "http://localhost:5173", "http://localhost:3000"}, allowCredentials = "true")
 @RequiredArgsConstructor
 public class AuthController {
 

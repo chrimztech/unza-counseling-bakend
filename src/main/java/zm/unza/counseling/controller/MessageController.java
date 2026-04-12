@@ -27,7 +27,7 @@ import java.time.LocalDateTime;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping({"/api/v1/admin", "/api/admin", "/v1/admin", "/admin"})
+@RequestMapping({"/api/v1", "/api", "/v1"})
 @RequiredArgsConstructor
 public class MessageController {
     
@@ -342,7 +342,7 @@ public class MessageController {
         return response;
     }
 
-    @GetMapping("/admin/messages/audit")
+    @GetMapping("/messages/audit")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<List<MessageAuditDto>>> getMessageAuditRecords(
             @RequestParam(required = false) String query,
@@ -355,7 +355,7 @@ public class MessageController {
         ));
     }
 
-    @GetMapping("/admin/messages/audit/stats")
+    @GetMapping("/messages/audit/stats")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Map<String, Long>>> getMessageAuditStats() {
         return ResponseEntity.ok(ApiResponse.success(messageService.getMessageAuditStats()));
