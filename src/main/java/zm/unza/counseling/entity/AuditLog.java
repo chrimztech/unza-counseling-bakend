@@ -7,6 +7,7 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
 import java.util.Map;
+import java.util.UUID;
 
 @Entity
 @Table(name = "audit_logs")
@@ -14,8 +15,8 @@ import java.util.Map;
 @Data
 public class AuditLog {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
 
     private String action;
     private String entityType;
@@ -33,8 +34,8 @@ public class AuditLog {
     @CreatedDate
     private LocalDateTime createdAt;
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
+    public UUID getId() { return id; }
+    public void setId(UUID id) { this.id = id; }
     public String getAction() { return action; }
     public void setAction(String action) { this.action = action; }
     public String getEntityType() { return entityType; }

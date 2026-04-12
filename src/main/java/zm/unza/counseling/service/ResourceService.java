@@ -77,6 +77,10 @@ public class ResourceService {
     }
 
     public Resource uploadResource(FileUploadRequest request) {
+        return uploadResource(request, null);
+    }
+
+    public Resource uploadResource(FileUploadRequest request, Long uploadedBy) {
         MultipartFile file = request.getFile();
         
         if (file == null || file.isEmpty()) {
@@ -127,7 +131,12 @@ public class ResourceService {
             resource.setFileSize(file.getSize());
             resource.setFileUrl("/api/v1/resources/download/" + uniqueFilename);
             resource.setFileKey(uniqueFilename);
-            resource.setTags(request.getTags());
+            if (uploadedBy != null) {
+                resource.setUploadedBy(uploadedBy);
+            }
+            if (request.getTags() != null && !request.getTags().isEmpty()) {
+                resource.setTags(String.join(",", request.getTags()));
+            }
 
             return resourceRepository.save(resource);
         } catch (IOException e) {

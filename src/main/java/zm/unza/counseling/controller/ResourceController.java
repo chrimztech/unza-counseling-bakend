@@ -1,14 +1,17 @@
 package zm.unza.counseling.controller;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 import zm.unza.counseling.dto.request.FileUploadRequest;
 import zm.unza.counseling.entity.Resource;
+import zm.unza.counseling.entity.User;
+import zm.unza.counseling.repository.UserRepository;
 import zm.unza.counseling.service.ResourceService;
 
+import java.security.Principal;
 import java.util.List;
 import java.util.Map;
 
@@ -18,22 +21,45 @@ import java.util.Map;
 public class ResourceController {
     
     private final ResourceService resourceService;
+    private final UserRepository userRepository;
 
     @GetMapping
     public ResponseEntity<List<Resource>> getAllResources() {
         return ResponseEntity.ok(resourceService.getAllResources());
     }
 
-    @PostMapping
+    @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Resource> createResource(@RequestBody Resource resource) {
+    public ResponseEntity<Resource> createResource(@RequestBody Resource resource, Principal principal) {
+        setUploadedByIfAuthenticated(resource, principal);
         return ResponseEntity.ok(resourceService.createResource(resource));
+    }
+
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Resource> createResourceWithFile(@ModelAttribute FileUploadRequest request, Principal principal) {
+        Long uploadedBy = getAuthenticatedUserId(principal);
+        return ResponseEntity.ok(resourceService.uploadResource(request, uploadedBy));
     }
 
     @PostMapping("/upload")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Resource> uploadResource(@ModelAttribute FileUploadRequest request) {
         return ResponseEntity.ok(resourceService.uploadResource(request));
+    }
+
+    private void setUploadedByIfAuthenticated(Resource resource, Principal principal) {
+        if (principal != null && resource.getUploadedBy() == null) {
+            userRepository.findByEmail(principal.getName())
+                    .map(User::getId)
+                    .ifPresent(resource::setUploadedBy);
+        }
+    }
+
+    private Long getAuthenticatedUserId(Principal principal) {
+        return principal == null ? null : userRepository.findByEmail(principal.getName())
+                .map(User::getId)
+                .orElse(null);
     }
 
     @DeleteMapping("/{id}")

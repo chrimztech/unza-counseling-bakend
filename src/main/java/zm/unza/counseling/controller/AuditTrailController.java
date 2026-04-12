@@ -124,7 +124,7 @@ public class AuditTrailController {
 
     private AuditLogDto convertToDto(AuditLog log) {
         return AuditLogDto.builder()
-                .id(log.getId())
+                .id(log.getId() != null ? log.getId().toString() : null)
                 .action(log.getAction())
                 .entityType(log.getEntityType())
                 .entityId(log.getEntityId())

@@ -28,7 +28,9 @@ public class SessionDto {
     @JsonProperty("duration")
     private Integer durationMinutes;
     
+    @JsonProperty("sessionType")
     private String type;
+    
     private String status;
     private String title;
     private String presentingIssue;
