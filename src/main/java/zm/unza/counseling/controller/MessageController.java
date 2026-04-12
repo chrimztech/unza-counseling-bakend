@@ -27,7 +27,7 @@ import java.time.LocalDateTime;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping({"/api/v1/messages", "/api/messages", "/v1/messages", "/messages"})
+@RequestMapping({"/api/v1/admin", "/api/admin", "/v1/admin", "/admin"})
 @RequiredArgsConstructor
 public class MessageController {
     
