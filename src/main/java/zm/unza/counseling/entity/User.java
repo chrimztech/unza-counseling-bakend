@@ -311,7 +311,7 @@ public class User implements UserDetails {
     }
 
     public boolean isStudent() {
-        return hasRole("ROLE_STUDENT");
+        return hasRole("ROLE_STUDENT") || hasRole("ROLE_CLIENT");
     }
 
     public boolean isClient() {
