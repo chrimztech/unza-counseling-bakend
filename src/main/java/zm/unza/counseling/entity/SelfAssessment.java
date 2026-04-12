@@ -16,7 +16,7 @@ public class SelfAssessment {
     private String title;
     private String description;
     
-    @Column(columnDefinition = "TEXT")
+    @Column(name = "questions_json", columnDefinition = "jsonb")
     private String questionsJson;
 
     @Column(name = "submitted_by_user_id")
@@ -25,7 +25,7 @@ public class SelfAssessment {
     @Column(name = "assessment_date")
     private LocalDateTime assessmentDate;
 
-    @Column(name = "responses_json", columnDefinition = "TEXT")
+    @Column(name = "responses_json", columnDefinition = "jsonb")
     private String responsesJson;
 
     @Column(name = "phq9_score")
@@ -58,7 +58,7 @@ public class SelfAssessment {
     private LocalDateTime createdAt;
 
     @ManyToOne
-    @JoinColumn(name = "client_id")
+    @JoinColumn(name = "client_id", nullable = true)
     private Client client;
 
     @Transient

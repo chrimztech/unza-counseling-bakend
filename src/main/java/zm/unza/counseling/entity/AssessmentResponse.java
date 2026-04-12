@@ -19,6 +19,7 @@ public class AssessmentResponse {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(columnDefinition = "VARCHAR(255)")
     private String id;
 
     private String question;

@@ -83,7 +83,8 @@ public class SelfAssessmentService {
         assessment.setSocialWithdrawal(Boolean.TRUE.equals(request.getSocialWithdrawal()));
         assessment.setSubmittedAsAnonymous(submittingUser != null && submittingUser.isAnonymous());
 
-        clientRepository.findById(userId).ifPresent(assessment::setClient);
+        Long clientIdToUse = request.getClientId() != null ? request.getClientId() : userId;
+        clientRepository.findById(clientIdToUse).ifPresent(assessment::setClient);
 
         SelfAssessment savedAssessment = selfAssessmentRepository.save(assessment);
         persistAssessmentResponses(savedAssessment, responses);
