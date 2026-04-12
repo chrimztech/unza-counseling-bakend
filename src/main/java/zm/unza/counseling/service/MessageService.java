@@ -214,15 +214,10 @@ public class MessageService {
                 User partner = partnerOpt.get();
                 
                 // Counselor-client relationship check
-                if (isCounselor && !partner.isStudent()) {
+                if (isCounselor && !partner.isClient()) {
                     continue; // Counselors should only see client conversations
                 }
-                if (!isCounselor && partner.isCounselor()) {
-                    // Clients can only message counselors they have appointments with
-                    if (!hasAppointmentRelationship(userId, partnerId)) {
-                        continue;
-                    }
-                }
+                // If there are messages between them, show the conversation (no appointment check needed)
                 
                 List<Message> conversationMessages = entry.getValue();
                 Message lastMessage = conversationMessages.isEmpty() ? null : conversationMessages.get(0);
@@ -247,9 +242,13 @@ public class MessageService {
                 }
                 
                 // Add client-specific fields
-                if (partner.isStudent()) {
-                    dto.setPartnerStudentId(partner.getStudentId());
-                    dto.setPartnerProgramme(partner.getProgram());
+                if (partner.isClient()) {
+                    if (partner.getStudentId() != null) {
+                        dto.setPartnerStudentId(partner.getStudentId());
+                    }
+                    if (partner.getProgram() != null) {
+                        dto.setPartnerProgramme(partner.getProgram());
+                    }
                 }
                 
                 if (lastMessage != null) {

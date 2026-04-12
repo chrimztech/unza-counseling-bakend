@@ -314,6 +314,10 @@ public class User implements UserDetails {
         return hasRole("ROLE_STUDENT");
     }
 
+    public boolean isClient() {
+        return hasRole("ROLE_CLIENT") || hasRole("ROLE_STUDENT");
+    }
+
     @JsonProperty("isAnonymous")
     public boolean isAnonymous() {
         return Boolean.TRUE.equals(anonymous);
