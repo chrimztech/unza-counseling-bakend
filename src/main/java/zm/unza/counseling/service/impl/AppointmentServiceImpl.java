@@ -25,6 +25,7 @@ import zm.unza.counseling.entity.Case;
 import zm.unza.counseling.entity.Client;
 import zm.unza.counseling.entity.Session;
 import zm.unza.counseling.entity.User;
+import zm.unza.counseling.exception.ValidationException;
 import zm.unza.counseling.repository.AppointmentRepository;
 import zm.unza.counseling.repository.CaseRepository;
 import zm.unza.counseling.repository.ClientRepository;
@@ -32,6 +33,7 @@ import zm.unza.counseling.repository.SessionRepository;
 import zm.unza.counseling.repository.UserRepository;
 import zm.unza.counseling.service.AppointmentService;
 import zm.unza.counseling.service.AuditLogService;
+import zm.unza.counseling.service.NotificationService;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -54,6 +56,7 @@ import java.util.UUID;
 public class AppointmentServiceImpl implements AppointmentService {
 
     private static final TypeReference<Map<String, Object>> MAP_TYPE = new TypeReference<>() {};
+    private static final DateTimeFormatter NOTIFICATION_DATE_FORMAT = DateTimeFormatter.ofPattern("dd MMM yyyy 'at' HH:mm");
 
     private final AppointmentRepository appointmentRepository;
     private final UserRepository userRepository;
@@ -61,6 +64,7 @@ public class AppointmentServiceImpl implements AppointmentService {
     private final SessionRepository sessionRepository;
     private final CaseRepository caseRepository;
     private final AuditLogService auditLogService;
+    private final NotificationService notificationService;
     private final ObjectMapper objectMapper;
 
     @Value("${app.meeting.jitsi-domain:meet.jit.si}")
@@ -154,6 +158,7 @@ public class AppointmentServiceImpl implements AppointmentService {
         }
 
         Appointment savedAppointment = appointmentRepository.save(appointment);
+        notifyStudentOnCreate(savedAppointment);
         touchCase(caseEntity);
         auditAppointment("APPOINTMENT_CREATED", savedAppointment, "Appointment created");
         return toAppointmentDto(savedAppointment);
@@ -273,6 +278,9 @@ public class AppointmentServiceImpl implements AppointmentService {
         }
 
         Appointment savedAppointment = appointmentRepository.save(appointment);
+        notifyStudent(savedAppointment,
+                "Appointment Cancelled",
+                buildCancellationMessage(savedAppointment));
         touchCase(savedAppointment.getCaseEntity());
         auditAppointment("APPOINTMENT_CANCELLED", savedAppointment, "Appointment cancelled");
         return toAppointmentDto(savedAppointment);
@@ -287,12 +295,17 @@ public class AppointmentServiceImpl implements AppointmentService {
             appointment.setCounselor(appointment.getCaseEntity().getCounselor());
         }
         if (appointment.getCounselor() == null) {
-            throw new IllegalStateException("Appointment must be assigned to a counselor before it can be confirmed");
+            throw new ValidationException("Appointment must be assigned to a counselor before it can be confirmed");
         }
 
         appointment.setStatus(Appointment.AppointmentStatus.CONFIRMED);
         appointment = appointmentRepository.save(appointment);
         ensureSessionFromAppointment(appointment);
+        notifyStudent(appointment,
+                "Appointment Confirmed",
+                String.format("Your appointment with %s on %s has been confirmed.",
+                        describeCounselor(appointment),
+                        formatAppointmentDate(appointment)));
 
         touchCase(appointment.getCaseEntity());
         auditAppointment("APPOINTMENT_CONFIRMED", appointment, "Appointment confirmed");
@@ -310,6 +323,10 @@ public class AppointmentServiceImpl implements AppointmentService {
         appointment.setStatus(Appointment.AppointmentStatus.RESCHEDULED);
 
         Appointment savedAppointment = appointmentRepository.save(appointment);
+        notifyStudent(savedAppointment,
+                "Appointment Rescheduled",
+                String.format("Your appointment has been rescheduled to %s.",
+                        formatAppointmentDate(savedAppointment)));
         touchCase(savedAppointment.getCaseEntity());
         auditAppointment("APPOINTMENT_RESCHEDULED", savedAppointment, "Appointment rescheduled");
         return toAppointmentDto(savedAppointment);
@@ -326,6 +343,10 @@ public class AppointmentServiceImpl implements AppointmentService {
         appointment.setStatus(Appointment.AppointmentStatus.RESCHEDULED);
 
         Appointment savedAppointment = appointmentRepository.save(appointment);
+        notifyStudent(savedAppointment,
+                "Appointment Rescheduled",
+                String.format("Your appointment has been rescheduled to %s.",
+                        formatAppointmentDate(savedAppointment)));
         touchCase(savedAppointment.getCaseEntity());
         auditAppointment("APPOINTMENT_RESCHEDULED", savedAppointment, "Appointment rescheduled");
         return toAppointmentDto(savedAppointment);
@@ -340,7 +361,7 @@ public class AppointmentServiceImpl implements AppointmentService {
         int duration = 60;
         LocalDateTime endTime = requestedTime.plusMinutes(duration);
 
-        List<Appointment> conflicts = appointmentRepository.findConflictingAppointments(counselor, requestedTime, endTime);
+        List<Appointment> conflicts = findConflictingAppointments(counselor, requestedTime, endTime, null);
         return conflicts.isEmpty();
     }
 
@@ -437,6 +458,17 @@ public class AppointmentServiceImpl implements AppointmentService {
         User counselor = userRepository.findById(request.getCounselorId())
                 .orElseThrow(() -> new NoSuchElementException("Counselor not found with id: " + request.getCounselorId()));
 
+        LocalDateTime appointmentEnd = appointment.getAppointmentDate().plusMinutes(resolveAppointmentDuration(appointment));
+        List<Appointment> conflicts = findConflictingAppointments(
+                counselor,
+                appointment.getAppointmentDate(),
+                appointmentEnd,
+                appointment.getId()
+        );
+        if (!conflicts.isEmpty()) {
+            throw new ValidationException("Counselor has conflicting appointments at this time");
+        }
+
         appointment.setCounselor(counselor);
         if (appointment.getStatus() == Appointment.AppointmentStatus.UNASSIGNED) {
             appointment.setStatus(Appointment.AppointmentStatus.SCHEDULED);
@@ -447,6 +479,11 @@ public class AppointmentServiceImpl implements AppointmentService {
         }
 
         Appointment savedAppointment = appointmentRepository.save(appointment);
+        notifyStudent(savedAppointment,
+                "Counselor Assigned",
+                String.format("Your appointment on %s has been assigned to %s.",
+                        formatAppointmentDate(savedAppointment),
+                        describeCounselor(savedAppointment)));
         touchCase(savedAppointment.getCaseEntity());
         auditAppointment("APPOINTMENT_ASSIGNED", savedAppointment, "Appointment assigned to counselor");
         return toAppointmentDto(savedAppointment);
@@ -461,14 +498,14 @@ public class AppointmentServiceImpl implements AppointmentService {
                 .orElseThrow(() -> new NoSuchElementException("Counselor not found with id: " + counselorId));
 
         if (appointment.getCounselor() != null) {
-            throw new IllegalStateException("Appointment is already assigned to a counselor");
+            throw new ValidationException("Appointment is already assigned to a counselor");
         }
 
         LocalDateTime appointmentTime = appointment.getAppointmentDate();
-        LocalDateTime endTime = appointmentTime.plusMinutes(appointment.getDuration());
-        List<Appointment> conflicts = appointmentRepository.findConflictingAppointments(counselor, appointmentTime, endTime);
+        LocalDateTime endTime = appointmentTime.plusMinutes(resolveAppointmentDuration(appointment));
+        List<Appointment> conflicts = findConflictingAppointments(counselor, appointmentTime, endTime, appointment.getId());
         if (!conflicts.isEmpty()) {
-            throw new IllegalStateException("Counselor has conflicting appointments at this time");
+            throw new ValidationException("Counselor has conflicting appointments at this time");
         }
 
         appointment.setCounselor(counselor);
@@ -479,6 +516,11 @@ public class AppointmentServiceImpl implements AppointmentService {
         }
 
         Appointment savedAppointment = appointmentRepository.save(appointment);
+        notifyStudent(savedAppointment,
+                "Counselor Assigned",
+                String.format("Your appointment on %s has been taken by %s.",
+                        formatAppointmentDate(savedAppointment),
+                        describeCounselor(savedAppointment)));
         touchCase(savedAppointment.getCaseEntity());
         auditAppointment("APPOINTMENT_TAKEN", savedAppointment, "Counselor self-assigned appointment");
         return toAppointmentDto(savedAppointment);
@@ -496,8 +538,32 @@ public class AppointmentServiceImpl implements AppointmentService {
         }
 
         LocalDateTime endTime = dateTime.plusHours(1);
-        List<Appointment> conflicts = appointmentRepository.findConflictingAppointments(counselor, dateTime, endTime);
+        List<Appointment> conflicts = findConflictingAppointments(counselor, dateTime, endTime, null);
         return conflicts.isEmpty();
+    }
+
+    private List<Appointment> findConflictingAppointments(
+            User counselor,
+            LocalDateTime start,
+            LocalDateTime end,
+            Long excludeAppointmentId
+    ) {
+        return appointmentRepository.findByCounselor(counselor).stream()
+                .filter(appointment -> appointment.getStatus() == Appointment.AppointmentStatus.SCHEDULED
+                        || appointment.getStatus() == Appointment.AppointmentStatus.CONFIRMED)
+                .filter(appointment -> excludeAppointmentId == null || !appointment.getId().equals(excludeAppointmentId))
+                .filter(appointment -> overlaps(appointment, start, end))
+                .toList();
+    }
+
+    private boolean overlaps(Appointment appointment, LocalDateTime start, LocalDateTime end) {
+        LocalDateTime appointmentStart = appointment.getAppointmentDate();
+        LocalDateTime appointmentEnd = appointmentStart.plusMinutes(resolveAppointmentDuration(appointment));
+        return appointmentStart.isBefore(end) && appointmentEnd.isAfter(start);
+    }
+
+    private int resolveAppointmentDuration(Appointment appointment) {
+        return appointment.getDuration() != null ? appointment.getDuration() : 60;
     }
 
     private AppointmentDto toAppointmentDto(Appointment appointment) {
@@ -578,7 +644,7 @@ public class AppointmentServiceImpl implements AppointmentService {
             return;
         }
         if (caseEntity.getClient() == null || !caseEntity.getClient().getId().equals(client.getId())) {
-            throw new IllegalStateException("Selected case does not belong to the appointment client");
+            throw new ValidationException("Selected case does not belong to the appointment client");
         }
     }
 
@@ -623,6 +689,7 @@ public class AppointmentServiceImpl implements AppointmentService {
         Session session = new Session();
         session.setAppointment(appointment);
         session.setStudent(appointment.getStudent());
+        session.setClient(appointment.getClient());
         session.setCounselor(appointment.getCounselor());
         session.setSessionDate(appointment.getAppointmentDate());
         session.setDurationMinutes(appointment.getDuration());
@@ -632,6 +699,78 @@ public class AppointmentServiceImpl implements AppointmentService {
         session.setPresentingIssue(appointment.getDescription());
         sessionRepository.save(session);
         log.info("Created session from appointment: {}", appointment.getId());
+    }
+
+    private void notifyStudentOnCreate(Appointment appointment) {
+        if (appointment.getStatus() == Appointment.AppointmentStatus.UNASSIGNED) {
+            notifyStudent(appointment,
+                    "Appointment Request Received",
+                    String.format("Your appointment request for %s has been received and is awaiting counselor assignment.",
+                            formatAppointmentDate(appointment)));
+            return;
+        }
+
+        notifyStudent(appointment,
+                "Appointment Scheduled",
+                String.format("Your appointment with %s has been scheduled for %s.",
+                        describeCounselor(appointment),
+                        formatAppointmentDate(appointment)));
+    }
+
+    private void notifyStudent(Appointment appointment, String title, String message) {
+        if (appointment.getStudent() == null || appointment.getStudent().getId() == null) {
+            return;
+        }
+
+        try {
+            notificationService.sendSystemNotification(appointment.getStudent().getId(), title, message, "MEDIUM");
+        } catch (Exception ex) {
+            log.warn("Failed to create notification for appointment {}", appointment.getId(), ex);
+        }
+    }
+
+    private String buildCancellationMessage(Appointment appointment) {
+        String reason = appointment.getCancellationReason();
+        if (reason != null && !reason.isBlank()) {
+            return String.format("Your appointment scheduled for %s has been cancelled. Reason: %s",
+                    formatAppointmentDate(appointment),
+                    reason);
+        }
+
+        return String.format("Your appointment scheduled for %s has been cancelled.",
+                formatAppointmentDate(appointment));
+    }
+
+    private String formatAppointmentDate(Appointment appointment) {
+        if (appointment.getAppointmentDate() == null) {
+            return "the scheduled time";
+        }
+
+        return appointment.getAppointmentDate().format(NOTIFICATION_DATE_FORMAT);
+    }
+
+    private String describeCounselor(Appointment appointment) {
+        User counselor = appointment.getCounselor();
+        if (counselor == null) {
+            return "your counselor";
+        }
+
+        String firstName = counselor.getFirstName();
+        String lastName = counselor.getLastName();
+        if (firstName != null && lastName != null) {
+            return firstName + " " + lastName;
+        }
+        if (firstName != null && !firstName.isBlank()) {
+            return firstName;
+        }
+        if (counselor.getUsername() != null && !counselor.getUsername().isBlank()) {
+            return counselor.getUsername();
+        }
+        if (counselor.getEmail() != null && !counselor.getEmail().isBlank()) {
+            return counselor.getEmail();
+        }
+
+        return "your counselor";
     }
 
     private Session.SessionType mapAppointmentTypeToSessionType(Appointment.AppointmentType appointmentType) {

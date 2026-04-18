@@ -3,21 +3,34 @@ package zm.unza.counseling.dto.request;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import zm.unza.counseling.entity.PersonalDataForm;
+import zm.unza.counseling.entity.User;
 
+import java.time.LocalDate;
 import java.util.List;
 
 /**
- * Request DTO for creating or updating a Personal Data Form (Client Intake Form)
- * Matches the frontend form structure exactly
+ * Request DTO for the digitized UNZA personal data form.
  */
 public class PersonalDataFormRequest {
 
-    // Basic Information
     @NotBlank(message = "Client file number is required")
     private String clientFileNo;
 
+    private LocalDate dateOfInterview;
+
+    private User.Gender sex;
+
+    private Integer yearOfBirth;
+
+    private Integer age;
+
+    @NotBlank(message = "School is required")
+    private String school;
+
     @NotBlank(message = "Computer number is required")
     private String computerNo;
+
+    private Integer yearOfStudy;
 
     @NotBlank(message = "Occupation is required")
     private String occupation;
@@ -25,28 +38,25 @@ public class PersonalDataFormRequest {
     @NotBlank(message = "Contact address is required")
     private String contactAddress;
 
+    private String phoneNumber;
+
     @NotNull(message = "Marital status is required")
     private PersonalDataForm.MaritalStatus maritalStatus;
 
-    // Previous Counselling
     @NotNull(message = "Previous counselling information is required")
     private List<PersonalDataForm.PreviousCounselling> previousCounselling;
 
     private String previousCounsellingOther;
 
-    // Referral Source
     @NotNull(message = "Referral source is required")
     private List<PersonalDataForm.ReferralSource> referralSource;
 
     private String referralSourceOther;
 
-    // Reasons for Counselling (nested object)
     private ReasonsForCounsellingRequest reasonsForCounselling;
 
-    // Family History
     private List<FamilyMemberRequest> familyHistory;
 
-    // Health Information
     @NotNull(message = "Health status is required")
     private PersonalDataForm.HealthStatus healthStatus;
 
@@ -57,18 +67,12 @@ public class PersonalDataFormRequest {
 
     private String medicationDetails;
 
-    // Additional Information
     private String additionalInfo;
 
-    // Client ID for linking
     private Long clientId;
 
-    // Case ID for linking (optional - to link form to a case)
     private Long caseId;
 
-    /**
-     * Nested DTO for Reasons for Counselling
-     */
     public static class ReasonsForCounsellingRequest {
         private List<PersonalDataForm.PersonalReason> personal;
         private String personalOther;
@@ -81,7 +85,6 @@ public class PersonalDataFormRequest {
         private List<PersonalDataForm.FinancialReason> financial;
         private String financialOther;
 
-        // Getters and Setters
         public List<PersonalDataForm.PersonalReason> getPersonal() {
             return personal;
         }
@@ -163,9 +166,6 @@ public class PersonalDataFormRequest {
         }
     }
 
-    /**
-     * Nested DTO for Family Member
-     */
     public static class FamilyMemberRequest {
         private String name;
         private String relationship;
@@ -173,7 +173,6 @@ public class PersonalDataFormRequest {
         private String education;
         private String occupation;
 
-        // Getters and Setters
         public String getName() {
             return name;
         }
@@ -215,7 +214,6 @@ public class PersonalDataFormRequest {
         }
     }
 
-    // Getters and Setters
     public String getClientFileNo() {
         return clientFileNo;
     }
@@ -224,12 +222,60 @@ public class PersonalDataFormRequest {
         this.clientFileNo = clientFileNo;
     }
 
+    public LocalDate getDateOfInterview() {
+        return dateOfInterview;
+    }
+
+    public void setDateOfInterview(LocalDate dateOfInterview) {
+        this.dateOfInterview = dateOfInterview;
+    }
+
+    public User.Gender getSex() {
+        return sex;
+    }
+
+    public void setSex(User.Gender sex) {
+        this.sex = sex;
+    }
+
+    public Integer getYearOfBirth() {
+        return yearOfBirth;
+    }
+
+    public void setYearOfBirth(Integer yearOfBirth) {
+        this.yearOfBirth = yearOfBirth;
+    }
+
+    public Integer getAge() {
+        return age;
+    }
+
+    public void setAge(Integer age) {
+        this.age = age;
+    }
+
+    public String getSchool() {
+        return school;
+    }
+
+    public void setSchool(String school) {
+        this.school = school;
+    }
+
     public String getComputerNo() {
         return computerNo;
     }
 
     public void setComputerNo(String computerNo) {
         this.computerNo = computerNo;
+    }
+
+    public Integer getYearOfStudy() {
+        return yearOfStudy;
+    }
+
+    public void setYearOfStudy(Integer yearOfStudy) {
+        this.yearOfStudy = yearOfStudy;
     }
 
     public String getOccupation() {
@@ -246,6 +292,14 @@ public class PersonalDataFormRequest {
 
     public void setContactAddress(String contactAddress) {
         this.contactAddress = contactAddress;
+    }
+
+    public String getPhoneNumber() {
+        return phoneNumber;
+    }
+
+    public void setPhoneNumber(String phoneNumber) {
+        this.phoneNumber = phoneNumber;
     }
 
     public PersonalDataForm.MaritalStatus getMaritalStatus() {

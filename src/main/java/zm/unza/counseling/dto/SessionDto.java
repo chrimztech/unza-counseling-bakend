@@ -34,6 +34,8 @@ public class SessionDto {
     private String status;
     private String title;
     private String presentingIssue;
+    @JsonProperty("notes")
+    private String sessionNotes;
     private String outcome;
 
     public static SessionDto from(Session session) {
@@ -50,6 +52,7 @@ public class SessionDto {
                 .status(session.getStatus() != null ? session.getStatus().name() : null)
                 .title(session.getTitle())
                 .presentingIssue(session.getPresentingIssue())
+                .sessionNotes(session.getSessionNotes())
                 .outcome(session.getOutcome() != null ? session.getOutcome().name() : null)
                 .build();
     }
@@ -63,5 +66,6 @@ public class SessionDto {
     public String getStatus() { return status; }
     public String getTitle() { return title; }
     public String getPresentingIssue() { return presentingIssue; }
+    public String getSessionNotes() { return sessionNotes; }
     public String getOutcome() { return outcome; }
 }

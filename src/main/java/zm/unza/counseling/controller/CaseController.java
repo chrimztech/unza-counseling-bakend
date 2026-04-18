@@ -11,7 +11,12 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping({"/api/v1/cases", "/api/cases", "/v1/cases", "/cases"})
@@ -49,8 +54,24 @@ public class CaseController {
     }
 
     @GetMapping
-    public ResponseEntity<List<CaseResponse>> getAllCases() {
-        return ResponseEntity.ok(caseService.getAllCases());
+    public ResponseEntity<List<CaseResponse>> getAllCases(
+            @RequestParam(required = false) Case.CaseStatus status,
+            @RequestParam(required = false) Case.CasePriority priority,
+            @RequestParam(required = false) Long counselorId,
+            @RequestParam(required = false) Long clientId,
+            @RequestParam(required = false) String search,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "DESC") String sortDirection
+    ) {
+        List<CaseResponse> filteredCases = caseService.getAllCases().stream()
+                .filter(caseItem -> status == null || caseItem.getStatus() == status)
+                .filter(caseItem -> priority == null || caseItem.getPriority() == priority)
+                .filter(caseItem -> counselorId == null || Objects.equals(caseItem.getCounselorId(), counselorId))
+                .filter(caseItem -> clientId == null || Objects.equals(caseItem.getClientId(), clientId))
+                .filter(caseItem -> matchesSearch(caseItem, search))
+                .sorted(buildComparator(sortBy, sortDirection))
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(filteredCases);
     }
 
     @PutMapping("/{id}")
@@ -107,5 +128,53 @@ public class CaseController {
     @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
     public ResponseEntity<?> getCaseStats() {
         return ResponseEntity.ok(caseService.getCaseStatistics());
+    }
+
+    @GetMapping("/stats/counselor")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
+    public ResponseEntity<?> getCaseStatsByCounselor(@RequestParam Long counselorId) {
+        return ResponseEntity.ok(caseService.getCaseStatisticsByCounselor(counselorId));
+    }
+
+    private boolean matchesSearch(CaseResponse caseItem, String search) {
+        if (search == null || search.isBlank()) {
+            return true;
+        }
+
+        String normalized = search.toLowerCase(Locale.ROOT);
+        return contains(caseItem.getCaseNumber(), normalized)
+                || contains(caseItem.getSubject(), normalized)
+                || contains(caseItem.getDescription(), normalized)
+                || contains(caseItem.getClientName(), normalized)
+                || contains(caseItem.getClientEmail(), normalized)
+                || contains(caseItem.getCounselorName(), normalized);
+    }
+
+    private boolean contains(String value, String normalizedSearch) {
+        return value != null && value.toLowerCase(Locale.ROOT).contains(normalizedSearch);
+    }
+
+    private Comparator<CaseResponse> buildComparator(String sortBy, String sortDirection) {
+        Comparator<CaseResponse> comparator = switch (sortBy) {
+            case "updatedAt" -> Comparator.comparing(CaseResponse::getUpdatedAt, Comparator.nullsLast(LocalDateTime::compareTo));
+            case "caseNumber" -> Comparator.comparing(
+                    caseItem -> caseItem.getCaseNumber() != null ? caseItem.getCaseNumber().toLowerCase(Locale.ROOT) : "",
+                    String::compareTo
+            );
+            case "priority" -> Comparator.comparing(
+                    caseItem -> caseItem.getPriority() != null ? caseItem.getPriority().name() : "",
+                    String::compareTo
+            );
+            case "status" -> Comparator.comparing(
+                    caseItem -> caseItem.getStatus() != null ? caseItem.getStatus().name() : "",
+                    String::compareTo
+            );
+            default -> Comparator.comparing(CaseResponse::getCreatedAt, Comparator.nullsLast(LocalDateTime::compareTo));
+        };
+
+        if ("DESC".equalsIgnoreCase(sortDirection)) {
+            comparator = comparator.reversed();
+        }
+        return comparator;
     }
 }

@@ -66,14 +66,54 @@ public class NotificationController {
 
     @GetMapping
     public ResponseEntity<List<Notification>> getCurrentUserNotifications(@AuthenticationPrincipal UserDetails userDetails) {
-        // Get the current user's ID
-        Long userId = userService.getUserByEmail(userDetails.getUsername()).getId();
-        return ResponseEntity.ok(notificationService.getUserNotifications(userId));
+        return ResponseEntity.ok(notificationService.getUserNotifications(resolveCurrentUserId(userDetails)));
     }
 
     @PutMapping("/{id}/read")
-    public ResponseEntity<Void> markAsRead(@PathVariable Long id) {
-        notificationService.markAsRead(id);
+    public ResponseEntity<Void> markAsRead(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        notificationService.markAsRead(id, resolveCurrentUserId(userDetails));
         return ResponseEntity.ok().build();
+    }
+
+    @PutMapping({"/read-all", "/user/{userId}/mark-all-read"})
+    public ResponseEntity<Void> markAllAsRead(
+            @PathVariable(required = false) String userId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        notificationService.markAllAsRead(resolveUserId(userId, userDetails));
+        return ResponseEntity.ok().build();
+    }
+
+    @GetMapping({"/unread-count", "/user/{userId}/unread-count"})
+    public ResponseEntity<Long> getUnreadCount(
+            @PathVariable(required = false) String userId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        return ResponseEntity.ok(notificationService.getUnreadCount(resolveUserId(userId, userDetails)));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteNotification(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        notificationService.deleteNotification(id, resolveCurrentUserId(userDetails));
+        return ResponseEntity.ok().build();
+    }
+
+    private Long resolveCurrentUserId(UserDetails userDetails) {
+        return userService.getUserByEmail(userDetails.getUsername()).getId();
+    }
+
+    private Long resolveUserId(String userId, UserDetails userDetails) {
+        if (userId == null || userId.isBlank()) {
+            return resolveCurrentUserId(userDetails);
+        }
+
+        if (userId.equals("admin-user-id") || userId.equals("current-user") ||
+            userId.equals("me") || userId.equals("user-id") || !isNumeric(userId)) {
+            return resolveCurrentUserId(userDetails);
+        }
+
+        return Long.parseLong(userId);
     }
 }

@@ -1,17 +1,34 @@
 package zm.unza.counseling.entity;
 
-import jakarta.persistence.*;
+import jakarta.persistence.CollectionTable;
+import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
+import jakarta.persistence.Embeddable;
+import jakarta.persistence.Embedded;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EntityListeners;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OneToOne;
+import jakarta.persistence.Table;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Personal Data Form Entity - Represents the personal data form filled out by clients
- * This is the client intake form that should be linked to cases
+ * Personal Data Form Entity - Mirrors the UNZA paper personal data form used during intake.
  */
 @Entity
 @Table(name = "personal_data_forms")
@@ -29,13 +46,31 @@ public class PersonalDataForm {
     @JoinColumn(name = "client_id", nullable = false)
     private Client client;
 
-    // Link to Case - one form can be associated with a case
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "case_id")
     private Case caseEntity;
 
+    @Column(name = "date_of_interview")
+    private LocalDate dateOfInterview;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "sex")
+    private User.Gender sex;
+
+    @Column(name = "year_of_birth")
+    private Integer yearOfBirth;
+
+    @Column(name = "age")
+    private Integer age;
+
+    @Column(name = "school")
+    private String school;
+
     @Column(name = "computer_no")
     private String computerNo;
+
+    @Column(name = "year_of_study")
+    private Integer yearOfStudy;
 
     @Column(name = "occupation")
     private String occupation;
@@ -43,11 +78,13 @@ public class PersonalDataForm {
     @Column(name = "contact_address", length = 500)
     private String contactAddress;
 
+    @Column(name = "phone_number")
+    private String phoneNumber;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "marital_status")
     private MaritalStatus maritalStatus;
 
-    // Previous Counselling - stored as enum array
     @ElementCollection
     @CollectionTable(name = "form_previous_counselling", joinColumns = @JoinColumn(name = "form_id"))
     @Column(name = "counselling_type")
@@ -57,7 +94,6 @@ public class PersonalDataForm {
     @Column(name = "previous_counselling_other")
     private String previousCounsellingOther;
 
-    // Referral Source - stored as enum array
     @ElementCollection
     @CollectionTable(name = "form_referral_sources", joinColumns = @JoinColumn(name = "form_id"))
     @Column(name = "referral_source")
@@ -67,16 +103,13 @@ public class PersonalDataForm {
     @Column(name = "referral_source_other")
     private String referralSourceOther;
 
-    // Reasons for Counselling - nested object stored as separate collections
     @Embedded
     private ReasonsForCounselling reasonsForCounselling;
 
-    // Family History - stored as JSON or separate entity
-    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(cascade = jakarta.persistence.CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "form_id")
     private List<FamilyMember> familyHistory = new ArrayList<>();
 
-    // Health Information
     @Enumerated(EnumType.STRING)
     @Column(name = "health_status")
     private HealthStatus healthStatus;
@@ -101,60 +134,115 @@ public class PersonalDataForm {
     @LastModifiedDate
     private LocalDateTime updatedAt;
 
-    // Enums matching frontend exactly
     public enum MaritalStatus {
-        SINGLE, MARRIED, DIVORCED, SEPARATED, WIDOWED, LIVING_WITH_PARTNER
+        SINGLE,
+        MARRIED,
+        DIVORCED,
+        SEPARATED,
+        WIDOWED,
+        LIVING_WITH_PARTNER
     }
 
     public enum PreviousCounselling {
-        UNIVERSITY, SUBJECT_COUNSELLOR, OTHER
+        UNIVERSITY,
+        SUBJECT_COUNSELLOR,
+        SUBJECT_COUNSELLOR_TUTOR_DEAN,
+        OTHER,
+        NONE
     }
 
     public enum ReferralSource {
-        SELF, SUBJECT_COUNSELLOR, FRIEND, PARTNER, FAMILY, HEALTH_WORKER, OTHER
+        SELF,
+        SELF_REFERRAL,
+        SUBJECT_COUNSELLOR,
+        SUBJECT_COUNSELLOR_TUTOR_DEAN,
+        FRIEND,
+        PARTNER,
+        FAMILY,
+        HEALTH_WORKER,
+        HEALTH_WORKER_CLINIC,
+        OTHER
     }
 
     public enum HealthStatus {
-        YES, NO
+        YES,
+        NO
     }
 
     public enum MedicationStatus {
-        YES, NO
+        YES,
+        NO
     }
 
-    // Personal reasons enum
     public enum PersonalReason {
-        TRANSITIONS, RELATIONSHIPS, WORRY, FAMILY_ISSUES, ALCOHOL_DRUGS_ABUSE, 
-        GUILTY_FEELINGS, BEREAVEMENT, COMMUNICATION_CONFLICT, OTHER
+        TRANSITIONS,
+        RELATIONSHIPS,
+        RELATIONSHIP_COUNSELLING,
+        WORRY,
+        WORRY_ABOUT_SELF_PARTNER,
+        FAMILY_ISSUES,
+        ALCOHOL_DRUGS_ABUSE,
+        ALCOHOL_DRUGS_SEXUAL_ABUSE,
+        GUILTY_FEELINGS,
+        BEREAVEMENT,
+        BEREAVEMENT_DEATH,
+        COMMUNICATION_CONFLICT,
+        INTERPERSONAL_COMMUNICATION_CONFLICT,
+        OTHER
     }
 
-    // Health reasons enum
     public enum HealthReason {
-        HIV_STI, FAMILY_PLANNING, PREGNANT, UNWELL, OTHER
+        HIV_STI,
+        HIV_AIDS_STIS_COUNSELLING,
+        FAMILY_PLANNING,
+        PREGNANT,
+        UNWELL,
+        OTHER
     }
 
-    // Educational reasons enum
     public enum EducationalReason {
-        CHANGE_COURSE, WITHDRAWAL, EXAM_ANXIETY, MISSED_ASSIGNMENTS, EXCLUDE, 
-        LEAVE_ABSENCE, ACADEMIC_RESEARCH, LACK_CONCENTRATION, OTHER
+        CHANGE_COURSE,
+        WITHDRAWAL,
+        ACADEMIC_WITHDRAWAL_FROM_STUDIES,
+        EXAM_ANXIETY,
+        EXAM_PANIC_ANXIETY_STUDY_TECHNIQUES,
+        MISSED_ASSIGNMENTS,
+        MISSED_ASSIGNMENTS_LESSONS_LABS,
+        EXCLUDE,
+        LEAVE_ABSENCE,
+        ACADEMIC_RESEARCH,
+        INFORMATION_ON_ACADEMIC_RESEARCH,
+        LACK_CONCENTRATION,
+        LACK_CONCENTRATION_ON_STUDIES,
+        OTHER
     }
 
-    // Career reasons enum
     public enum CareerReason {
-        CAREER_PLANNING, EMPLOYMENT_SEARCH, INTERVIEW_TECHNIQUES, CV_WRITING, 
-        LACK_GOALS, INTERNSHIP, OTHER
+        CAREER_PLANNING,
+        CAREER_CHOICE_PLANNING,
+        EMPLOYMENT_SEARCH,
+        INTERVIEW_TECHNIQUES,
+        CV_WRITING,
+        CV_PREPARATION_APPLICATION_LETTER_WRITING,
+        LACK_GOALS,
+        LACK_OF_OCCUPATIONAL_GOALS,
+        INTERNSHIP,
+        VACATION_EMPLOYMENT_INTERNSHIP,
+        OTHER
     }
 
-    // Financial reasons enum
     public enum FinancialReason {
-        GRZ_BURSARY, BANKING, CAMPUS_WORK, HARDSHIP_LOAN, OTHER
+        GRZ_BURSARY,
+        GRZ_BURSARIES_SCHOLARSHIP_LOAN,
+        BANKING,
+        CAMPUS_WORK,
+        HARDSHIP_LOAN,
+        OTHER
     }
 
-    /**
-     * Embedded class for Reasons for Counselling (nested object from frontend)
-     */
     @Embeddable
     public static class ReasonsForCounselling {
+
         @ElementCollection
         @CollectionTable(name = "reasons_personal", joinColumns = @JoinColumn(name = "form_id"))
         @Column(name = "reason")
@@ -200,7 +288,6 @@ public class PersonalDataForm {
         @Column(name = "financial_other")
         private String financialOther;
 
-        // Getters and Setters
         public List<PersonalReason> getPersonal() {
             return personal;
         }
@@ -282,10 +369,9 @@ public class PersonalDataForm {
         }
     }
 
-    // Default constructor
-    public PersonalDataForm() {}
+    public PersonalDataForm() {
+    }
 
-    // Getters and Setters
     public Long getId() {
         return id;
     }
@@ -318,12 +404,60 @@ public class PersonalDataForm {
         this.caseEntity = caseEntity;
     }
 
+    public LocalDate getDateOfInterview() {
+        return dateOfInterview;
+    }
+
+    public void setDateOfInterview(LocalDate dateOfInterview) {
+        this.dateOfInterview = dateOfInterview;
+    }
+
+    public User.Gender getSex() {
+        return sex;
+    }
+
+    public void setSex(User.Gender sex) {
+        this.sex = sex;
+    }
+
+    public Integer getYearOfBirth() {
+        return yearOfBirth;
+    }
+
+    public void setYearOfBirth(Integer yearOfBirth) {
+        this.yearOfBirth = yearOfBirth;
+    }
+
+    public Integer getAge() {
+        return age;
+    }
+
+    public void setAge(Integer age) {
+        this.age = age;
+    }
+
+    public String getSchool() {
+        return school;
+    }
+
+    public void setSchool(String school) {
+        this.school = school;
+    }
+
     public String getComputerNo() {
         return computerNo;
     }
 
     public void setComputerNo(String computerNo) {
         this.computerNo = computerNo;
+    }
+
+    public Integer getYearOfStudy() {
+        return yearOfStudy;
+    }
+
+    public void setYearOfStudy(Integer yearOfStudy) {
+        this.yearOfStudy = yearOfStudy;
     }
 
     public String getOccupation() {
@@ -340,6 +474,14 @@ public class PersonalDataForm {
 
     public void setContactAddress(String contactAddress) {
         this.contactAddress = contactAddress;
+    }
+
+    public String getPhoneNumber() {
+        return phoneNumber;
+    }
+
+    public void setPhoneNumber(String phoneNumber) {
+        this.phoneNumber = phoneNumber;
     }
 
     public MaritalStatus getMaritalStatus() {

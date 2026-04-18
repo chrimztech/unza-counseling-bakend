@@ -42,6 +42,11 @@ public class Session {
     private User student;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "client_id")
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+    private Client client;
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "counselor_id", nullable = false)
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private User counselor;
@@ -124,6 +129,8 @@ public class Session {
     public void setAppointment(Appointment appointment) { this.appointment = appointment; }
     public User getStudent() { return student; }
     public void setStudent(User student) { this.student = student; }
+    public Client getClient() { return client; }
+    public void setClient(Client client) { this.client = client; }
     public User getCounselor() { return counselor; }
     public void setCounselor(User counselor) { this.counselor = counselor; }
     public LocalDateTime getSessionDate() { return sessionDate; }

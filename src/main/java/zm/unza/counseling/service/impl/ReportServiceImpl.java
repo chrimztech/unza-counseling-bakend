@@ -30,8 +30,10 @@ import zm.unza.counseling.service.ReportService;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -313,12 +315,25 @@ public class ReportServiceImpl implements ReportService {
 
     @Override
     public Object getReportStatistics() {
+        List<Report> reports = reportRepository.findAll().stream()
+                .map(this::hydrateReport)
+                .collect(Collectors.toList());
+        double averageGenerationTime = reports.stream()
+                .filter(report -> report.getCreatedAt() != null && report.getGeneratedAt() != null)
+                .mapToLong(report -> Math.max(ChronoUnit.MINUTES.between(report.getCreatedAt(), report.getGeneratedAt()), 0))
+                .average()
+                .orElse(0);
+
         Map<String, Object> stats = new LinkedHashMap<>();
-        stats.put("totalReports", reportRepository.count());
+        stats.put("totalReports", reports.size());
+        stats.put("scheduledReports", reports.stream().filter(report -> "SCHEDULED".equalsIgnoreCase(report.getStatus())).count());
+        stats.put("generatedReports", reports.stream().filter(report -> Report.ReportStatus.COMPLETED.name().equalsIgnoreCase(report.getStatus())).count());
         stats.put("completedReports", reportRepository.countByStatus(Report.ReportStatus.COMPLETED.name()));
         stats.put("pendingReports", reportRepository.countByStatus(Report.ReportStatus.PENDING.name()));
         stats.put("failedReports", reportRepository.countByStatus(Report.ReportStatus.FAILED.name()));
         stats.put("archivedReports", reportRepository.countByStatus("ARCHIVED"));
+        stats.put("totalDownloads", 0L);
+        stats.put("averageGenerationTime", Math.round(averageGenerationTime * 10.0) / 10.0);
         stats.put("reportsByType", getReportTypes().stream()
                 .collect(Collectors.toMap(type -> type, type -> Optional.ofNullable(reportRepository.countByType(type)).orElse(0L))));
         return stats;
@@ -326,11 +341,71 @@ public class ReportServiceImpl implements ReportService {
 
     @Override
     public Object getReportAnalytics() {
-        return Map.of(
-                "summary", getReportSummary(),
-                "appointmentTrends", getAppointmentTrends(),
-                "recentSessions", getRecentSessions()
-        );
+        List<Report> reports = reportRepository.findAll().stream()
+                .map(this::hydrateReport)
+                .collect(Collectors.toList());
+
+        List<Map<String, Object>> downloadsByType = reports.stream()
+                .collect(Collectors.groupingBy(
+                        report -> report.getType() != null ? report.getType() : "UNKNOWN",
+                        LinkedHashMap::new,
+                        Collectors.counting()
+                ))
+                .entrySet()
+                .stream()
+                .map(entry -> {
+                    Map<String, Object> item = new LinkedHashMap<>();
+                    item.put("type", entry.getKey());
+                    item.put("count", entry.getValue());
+                    return item;
+                })
+                .collect(Collectors.toList());
+
+        List<Map<String, Object>> mostPopularReports = reports.stream()
+                .sorted(Comparator.comparing(Report::getUpdatedAt, Comparator.nullsLast(LocalDateTime::compareTo)).reversed())
+                .limit(5)
+                .map(report -> {
+                    Map<String, Object> item = new LinkedHashMap<>();
+                    item.put("title", report.getTitle());
+                    item.put("downloads", 0L);
+                    return item;
+                })
+                .collect(Collectors.toList());
+
+        List<Map<String, Object>> generationTimes = reports.stream()
+                .filter(report -> report.getCreatedAt() != null && report.getGeneratedAt() != null)
+                .sorted(Comparator.comparing(Report::getGeneratedAt, Comparator.nullsLast(LocalDateTime::compareTo)))
+                .limit(10)
+                .map(report -> {
+                    Map<String, Object> item = new LinkedHashMap<>();
+                    item.put("date", report.getGeneratedAt());
+                    item.put("time", Math.max(ChronoUnit.MINUTES.between(report.getCreatedAt(), report.getGeneratedAt()), 0));
+                    return item;
+                })
+                .collect(Collectors.toList());
+
+        List<Map<String, Object>> userActivity = reports.stream()
+                .filter(report -> report.getCounselorId() != null)
+                .collect(Collectors.groupingBy(Report::getCounselorId, LinkedHashMap::new, Collectors.counting()))
+                .entrySet()
+                .stream()
+                .map(entry -> {
+                    Map<String, Object> item = new LinkedHashMap<>();
+                    item.put("userId", String.valueOf(entry.getKey()));
+                    item.put("userName", userRepository.findById(entry.getKey())
+                            .map(User::getFullName)
+                            .orElse("Unknown User"));
+                    item.put("downloads", entry.getValue());
+                    return item;
+                })
+                .collect(Collectors.toList());
+
+        Map<String, Object> analytics = new LinkedHashMap<>();
+        analytics.put("downloadsByType", downloadsByType);
+        analytics.put("mostPopularReports", mostPopularReports);
+        analytics.put("generationTimes", generationTimes);
+        analytics.put("userActivity", userActivity);
+        return analytics;
     }
 
     @Override
@@ -421,28 +496,58 @@ public class ReportServiceImpl implements ReportService {
 
     @Override
     public Object getPresentingConcerns() {
-        return reportRepository.findAll().stream()
+        String[] colors = {"#2E7D32", "#0288D1", "#ED6C02", "#9C27B0", "#D32F2F", "#455A64"};
+
+        Map<String, Long> concernCounts = reportRepository.findAll().stream()
                 .map(this::hydrateReport)
                 .map(Report::getReportData)
                 .filter(java.util.Objects::nonNull)
                 .map(data -> String.valueOf(data.getOrDefault("presentingProblem", "General support")))
                 .filter(concern -> concern != null && !concern.isBlank())
+                .collect(Collectors.groupingBy(
+                        concern -> concern,
+                        LinkedHashMap::new,
+                        Collectors.counting()
+                ));
+
+        List<Map<String, Object>> concerns = new ArrayList<>();
+        int index = 0;
+        for (Map.Entry<String, Long> entry : concernCounts.entrySet().stream()
+                .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
                 .limit(10)
-                .map(concern -> Map.of("concern", concern, "count", 1))
-                .collect(Collectors.toList());
+                .collect(Collectors.toList())) {
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("name", entry.getKey());
+            item.put("value", entry.getValue());
+            item.put("color", colors[index % colors.length]);
+            concerns.add(item);
+            index++;
+        }
+        return concerns;
     }
 
     @Override
     public Object getRecentSessions() {
         return sessionRepository.findAll(PageRequest.of(0, 5)).getContent().stream()
-                .map(session -> Map.of(
-                        "sessionId", session.getId(),
-                        "clientName", session.getStudent().getFullName(),
-                        "counselorName", session.getCounselor().getFullName(),
-                        "sessionDate", session.getSessionDate(),
-                        "sessionType", session.getType().name(),
-                        "outcome", session.getOutcome() != null ? session.getOutcome().name() : "UNKNOWN"
-                ))
+                .map(session -> {
+                    String clientName = session.getClient() != null
+                            ? session.getClient().getFullName()
+                            : session.getStudent() != null ? session.getStudent().getFullName() : "Unknown Client";
+                    String riskLevel = session.getClient() != null && session.getClient().getRiskLevel() != null
+                            ? toTitleCase(session.getClient().getRiskLevel().name())
+                            : "Low";
+                    String followUp = Boolean.TRUE.equals(session.getFollowUpRequired())
+                            ? session.getFollowUpDate() != null ? session.getFollowUpDate().toString() : "Required"
+                            : "Not required";
+
+                    Map<String, Object> item = new LinkedHashMap<>();
+                    item.put("client", clientName);
+                    item.put("date", session.getSessionDate());
+                    item.put("type", session.getType() != null ? session.getType().getDisplayName() : "Unknown");
+                    item.put("riskLevel", riskLevel);
+                    item.put("followUp", followUp);
+                    return item;
+                })
                 .collect(Collectors.toList());
     }
 
@@ -683,6 +788,28 @@ public class ReportServiceImpl implements ReportService {
             return "";
         }
         return "\"" + value.replace("\"", "\"\"") + "\"";
+    }
+
+    private String toTitleCase(String value) {
+        String normalized = value == null ? "" : value.toLowerCase(Locale.ROOT).replace('_', ' ');
+        if (normalized.isBlank()) {
+            return "Unknown";
+        }
+
+        StringBuilder builder = new StringBuilder();
+        for (String part : normalized.split(" ")) {
+            if (part.isBlank()) {
+                continue;
+            }
+            if (builder.length() > 0) {
+                builder.append(' ');
+            }
+            builder.append(Character.toUpperCase(part.charAt(0)));
+            if (part.length() > 1) {
+                builder.append(part.substring(1));
+            }
+        }
+        return builder.toString();
     }
 
     private void auditReport(String action, Report report, String details) {

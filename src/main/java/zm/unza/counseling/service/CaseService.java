@@ -20,7 +20,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.YearMonth;
+import java.time.temporal.ChronoUnit;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -117,9 +121,11 @@ public class CaseService {
             Counselor counselor = counselorRepository.findById(request.getCounselorId())
                     .orElseThrow(() -> new RuntimeException("Counselor not found with ID: " + request.getCounselorId()));
             caseEntity.setCounselor(counselor);
+            caseEntity.setAssignedAt(LocalDateTime.now());
         }
 
         caseEntity.setPriority(request.getPriority());
+        caseEntity.setSubject(request.getSubject());
         caseEntity.setDescription(request.getDescription());
         caseEntity.setNotes(request.getNotes());
         caseEntity.setLastActivityAt(LocalDateTime.now());
@@ -136,6 +142,8 @@ public class CaseService {
         caseEntity.setLastActivityAt(LocalDateTime.now());
         if (status == Case.CaseStatus.CLOSED) {
             caseEntity.setClosedAt(LocalDateTime.now());
+        } else {
+            caseEntity.setClosedAt(null);
         }
         Case updatedCase = caseRepository.save(caseEntity);
         return convertToResponse(updatedCase);
@@ -224,23 +232,13 @@ public class CaseService {
      * Get case statistics for dashboard
      */
     public Object getCaseStatistics() {
-        long totalCases = caseRepository.count();
-        long openCases = caseRepository.findByStatus(Case.CaseStatus.OPEN).size();
-        long inProgressCases = caseRepository.findByStatus(Case.CaseStatus.IN_PROGRESS).size();
-        long closedCases = caseRepository.findByStatus(Case.CaseStatus.CLOSED).size();
-        long highPriorityCases = caseRepository.findByPriority(Case.CasePriority.HIGH).size();
-        long mediumPriorityCases = caseRepository.findByPriority(Case.CasePriority.MEDIUM).size();
-        long lowPriorityCases = caseRepository.findByPriority(Case.CasePriority.LOW).size();
-        
-        return java.util.Map.of(
-            "totalCases", totalCases,
-            "openCases", openCases,
-            "inProgressCases", inProgressCases,
-            "closedCases", closedCases,
-            "highPriorityCases", highPriorityCases,
-            "mediumPriorityCases", mediumPriorityCases,
-            "lowPriorityCases", lowPriorityCases
-        );
+        return buildCaseStatistics(caseRepository.findAll());
+    }
+
+    public Object getCaseStatisticsByCounselor(Long counselorId) {
+        Counselor counselor = counselorRepository.findById(counselorId)
+                .orElseThrow(() -> new RuntimeException("Counselor not found with ID: " + counselorId));
+        return buildCaseStatistics(caseRepository.findByCounselor(counselor));
     }
 
     /**
@@ -265,7 +263,9 @@ public class CaseService {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication != null && authentication.isAuthenticated()) {
             String username = authentication.getName();
-            return userRepository.findByUsername(username).orElse(null);
+            return userRepository.findByUsername(username)
+                    .or(() -> userRepository.findByEmail(username))
+                    .orElse(null);
         }
         return null;
     }
@@ -314,5 +314,66 @@ public class CaseService {
         response.setUpdatedAt(caseEntity.getUpdatedAt());
         response.setClosedAt(caseEntity.getClosedAt());
         return response;
+    }
+
+    private Map<String, Object> buildCaseStatistics(List<Case> cases) {
+        long totalCases = cases.size();
+        long openCases = cases.stream().filter(caseEntity -> caseEntity.getStatus() == Case.CaseStatus.OPEN).count();
+        long inProgressCases = cases.stream().filter(caseEntity -> caseEntity.getStatus() == Case.CaseStatus.IN_PROGRESS).count();
+        long closedCases = cases.stream().filter(caseEntity -> caseEntity.getStatus() == Case.CaseStatus.CLOSED).count();
+        long onHoldCases = cases.stream().filter(caseEntity -> caseEntity.getStatus() == Case.CaseStatus.ON_HOLD).count();
+        long resolvedCases = cases.stream()
+                .filter(caseEntity -> caseEntity.getStatus() == Case.CaseStatus.RESOLVED || caseEntity.getStatus() == Case.CaseStatus.CLOSED)
+                .count();
+        long activeCases = cases.stream()
+                .filter(caseEntity -> caseEntity.getStatus() == Case.CaseStatus.OPEN || caseEntity.getStatus() == Case.CaseStatus.IN_PROGRESS)
+                .count();
+        long highPriorityCases = cases.stream()
+                .filter(caseEntity -> caseEntity.getPriority() == Case.CasePriority.HIGH || caseEntity.getPriority() == Case.CasePriority.CRITICAL)
+                .count();
+
+        Map<String, Long> casesByPriority = new LinkedHashMap<>();
+        for (Case.CasePriority priority : Case.CasePriority.values()) {
+            long count = cases.stream().filter(caseEntity -> caseEntity.getPriority() == priority).count();
+            casesByPriority.put(priority.name(), count);
+        }
+
+        Map<String, Long> casesByStatus = new LinkedHashMap<>();
+        for (Case.CaseStatus status : Case.CaseStatus.values()) {
+            long count = cases.stream().filter(caseEntity -> caseEntity.getStatus() == status).count();
+            casesByStatus.put(status.name(), count);
+        }
+
+        double averageCaseDuration = cases.stream()
+                .filter(caseEntity -> caseEntity.getCreatedAt() != null)
+                .mapToLong(caseEntity -> {
+                    LocalDateTime end = caseEntity.getClosedAt() != null
+                            ? caseEntity.getClosedAt()
+                            : caseEntity.getUpdatedAt() != null ? caseEntity.getUpdatedAt() : LocalDateTime.now();
+                    return Math.max(ChronoUnit.DAYS.between(caseEntity.getCreatedAt(), end), 0);
+                })
+                .average()
+                .orElse(0);
+
+        YearMonth currentMonth = YearMonth.now();
+        long casesCreatedThisMonth = cases.stream()
+                .filter(caseEntity -> caseEntity.getCreatedAt() != null)
+                .filter(caseEntity -> YearMonth.from(caseEntity.getCreatedAt()).equals(currentMonth))
+                .count();
+
+        Map<String, Object> stats = new LinkedHashMap<>();
+        stats.put("totalCases", totalCases);
+        stats.put("openCases", openCases);
+        stats.put("activeCases", activeCases);
+        stats.put("inProgressCases", inProgressCases);
+        stats.put("closedCases", closedCases);
+        stats.put("onHoldCases", onHoldCases);
+        stats.put("resolvedCases", resolvedCases);
+        stats.put("highPriorityCases", highPriorityCases);
+        stats.put("casesByPriority", casesByPriority);
+        stats.put("casesByStatus", casesByStatus);
+        stats.put("averageCaseDuration", Math.round(averageCaseDuration * 10.0) / 10.0);
+        stats.put("casesCreatedThisMonth", casesCreatedThisMonth);
+        return stats;
     }
 }

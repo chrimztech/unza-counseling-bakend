@@ -58,17 +58,26 @@ public class SisResultsService {
         System.out.println("Fetching results for student: " + studentId + " from SIS API");
         
         try {
-            // Validate token if not forcing refresh
-            if (!forceRefresh && (token == null || token.isEmpty())) {
+            String normalizedToken = token != null ? token.trim() : null;
+
+            // Counselors do not have the student's SIS token. In that case we should
+            // return the fullest cached dataset we already have instead of refreshing
+            // against SIS with an empty token and overwriting complete results.
+            if (normalizedToken == null || normalizedToken.isEmpty()) {
+                SyncResultsResponse cachedResponse = getCachedResultsByStudentId(studentId);
+                if (cachedResponse != null && cachedResponse.isSuccess()) {
+                    return cachedResponse;
+                }
+
                 return SyncResultsResponse.builder()
                         .success(false)
-                        .message("Authentication token is required")
+                        .message("No SIS token was provided and no cached full results were found. Ask the student to sync their results first.")
                         .errorType("auth")
                         .build();
             }
 
             // Build the request URL
-            String url = buildResultsUrl(studentId, token);
+            String url = buildResultsUrl(studentId, normalizedToken);
             System.out.println("SIS API URL: " + url);
 
             // Make the API request
@@ -134,10 +143,9 @@ public class SisResultsService {
     public SyncResultsResponse getCachedResults(Long clientId) {
         Client client = clientRepository.findById(clientId)
                 .orElseThrow(() -> new ResourceNotFoundException("Client not found with ID: " + clientId));
-        
-        List<AcademicQualification> qualifications = academicQualificationRepository
-                .findByClientIdAndIsActiveTrueOrderByAcademicYearDescSemesterDesc(clientId);
-        
+
+        List<AcademicQualification> qualifications = getEffectiveCachedQualifications(clientId);
+
         if (qualifications.isEmpty()) {
             return SyncResultsResponse.builder()
                     .success(false)
@@ -146,36 +154,7 @@ public class SisResultsService {
                     .build();
         }
 
-        // Calculate summary from cached data
-        ResultsSummary summary = calculateSummaryFromQualifications(qualifications);
-        
-        // Convert to course history list
-        List<StudentCourseHistory> courses = qualifications.stream()
-                .map(this::convertToCourseHistory)
-                .collect(Collectors.toList());
-
-        // Get latest student info
-        AcademicQualification latest = qualifications.get(0);
-        StudentInfo studentInfo = StudentInfo.builder()
-                .studentId(client.getStudentId())
-                .firstName(client.getFirstName())
-                .lastName(client.getLastName())
-                .programme(client.getProgramme())
-                .faculty(client.getFaculty())
-                .yearOfStudy(client.getYearOfStudy())
-                .currentGpa(latest.getCurrentGpa())
-                .cumulativeGpa(latest.getCumulativeGpa())
-                .totalCreditsEarned(latest.getTotalCreditsEarned())
-                .totalCreditsAttempted(latest.getTotalCreditsAttempted())
-                .build();
-
-        return SyncResultsResponse.builder()
-                .success(true)
-                .message("Cached results retrieved successfully")
-                .summary(summary)
-                .courses(courses)
-                .studentInfo(studentInfo)
-                .build();
+        return buildCachedResultsResponse(client, qualifications, "Cached results retrieved successfully");
     }
 
     // ============ Private Helper Methods ============
@@ -641,5 +620,92 @@ if ((qualification.getGrade() == null || qualification.getGrade().isEmpty())
                 .message(message)
                 .errorType(errorType)
                 .build();
+    }
+
+    private SyncResultsResponse getCachedResultsByStudentId(String studentId) {
+        return clientRepository.findByStudentId(studentId)
+                .map(client -> {
+                    List<AcademicQualification> qualifications = getEffectiveCachedQualifications(client.getId());
+                    if (qualifications.isEmpty()) {
+                        return null;
+                    }
+                    return buildCachedResultsResponse(
+                            client,
+                            qualifications,
+                            "Cached full results retrieved successfully"
+                    );
+                })
+                .orElse(null);
+    }
+
+    private SyncResultsResponse buildCachedResultsResponse(Client client,
+                                                          List<AcademicQualification> qualifications,
+                                                          String message) {
+        ResultsSummary summary = calculateSummaryFromQualifications(qualifications);
+
+        List<StudentCourseHistory> courses = qualifications.stream()
+                .map(this::convertToCourseHistory)
+                .collect(Collectors.toList());
+
+        AcademicQualification latest = qualifications.get(0);
+        StudentInfo studentInfo = StudentInfo.builder()
+                .studentId(client.getStudentId())
+                .firstName(client.getFirstName())
+                .lastName(client.getLastName())
+                .programme(client.getProgramme())
+                .faculty(client.getFaculty())
+                .yearOfStudy(client.getYearOfStudy())
+                .currentGpa(latest.getCurrentGpa())
+                .cumulativeGpa(latest.getCumulativeGpa())
+                .totalCreditsEarned(latest.getTotalCreditsEarned())
+                .totalCreditsAttempted(latest.getTotalCreditsAttempted())
+                .build();
+
+        return SyncResultsResponse.builder()
+                .success(true)
+                .message(message)
+                .summary(summary)
+                .courses(courses)
+                .studentInfo(studentInfo)
+                .build();
+    }
+
+    private List<AcademicQualification> getEffectiveCachedQualifications(Long clientId) {
+        List<AcademicQualification> allQualifications = academicQualificationRepository
+                .findByClientIdOrderByAcademicYearDescSemesterDescCourseCodeAsc(clientId);
+
+        if (allQualifications.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        Comparator<AcademicQualification> preferredRecordComparator = Comparator
+                .comparing((AcademicQualification q) -> !Boolean.TRUE.equals(q.getIsActive()))
+                .thenComparing(AcademicQualification::getSisSyncDate, Comparator.nullsLast(Comparator.reverseOrder()))
+                .thenComparing(AcademicQualification::getUpdatedAt, Comparator.nullsLast(Comparator.reverseOrder()))
+                .thenComparing(AcademicQualification::getCreatedAt, Comparator.nullsLast(Comparator.reverseOrder()));
+
+        Map<String, AcademicQualification> effectiveQualifications = new LinkedHashMap<>();
+
+        allQualifications.stream()
+                .sorted(preferredRecordComparator)
+                .forEach(qualification -> effectiveQualifications.putIfAbsent(
+                        buildQualificationCacheKey(qualification),
+                        qualification
+                ));
+
+        return effectiveQualifications.values().stream()
+                .sorted(Comparator
+                        .comparing(AcademicQualification::getAcademicYear, Comparator.nullsLast(Comparator.reverseOrder()))
+                        .thenComparing(AcademicQualification::getSemester, Comparator.nullsLast(Comparator.reverseOrder()))
+                        .thenComparing(AcademicQualification::getCourseCode, Comparator.nullsLast(Comparator.naturalOrder())))
+                .collect(Collectors.toList());
+    }
+
+    private String buildQualificationCacheKey(AcademicQualification qualification) {
+        return String.join("|",
+                qualification.getAcademicYear() != null ? qualification.getAcademicYear() : "",
+                qualification.getSemester() != null ? qualification.getSemester() : "",
+                qualification.getCourseCode() != null ? qualification.getCourseCode() : ""
+        );
     }
 }

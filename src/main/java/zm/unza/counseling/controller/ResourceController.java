@@ -6,6 +6,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import zm.unza.counseling.dto.request.FileUploadRequest;
+import zm.unza.counseling.dto.request.ResourceUpdateRequest;
 import zm.unza.counseling.entity.Resource;
 import zm.unza.counseling.entity.User;
 import zm.unza.counseling.repository.UserRepository;
@@ -28,31 +29,47 @@ public class ResourceController {
         return ResponseEntity.ok(resourceService.getAllResources());
     }
 
+    @GetMapping("/{id}")
+    public ResponseEntity<Resource> getResourceById(@PathVariable Long id) {
+        return ResponseEntity.ok(resourceService.getResourceById(id));
+    }
+
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Resource> createResource(@RequestBody Resource resource, Principal principal) {
-        setUploadedByIfAuthenticated(resource, principal);
-        return ResponseEntity.ok(resourceService.createResource(resource));
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
+    public ResponseEntity<Resource> createResource(@RequestBody ResourceUpdateRequest request, Principal principal) {
+        setUploadedByIfAuthenticated(request, principal);
+        return ResponseEntity.ok(resourceService.createResource(request));
+    }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
+    public ResponseEntity<Resource> updateResource(
+            @PathVariable Long id,
+            @RequestBody ResourceUpdateRequest request,
+            Principal principal
+    ) {
+        setUploadedByIfAuthenticated(request, principal);
+        return ResponseEntity.ok(resourceService.updateResource(id, request));
     }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
     public ResponseEntity<Resource> createResourceWithFile(@ModelAttribute FileUploadRequest request, Principal principal) {
         Long uploadedBy = getAuthenticatedUserId(principal);
         return ResponseEntity.ok(resourceService.uploadResource(request, uploadedBy));
     }
 
     @PostMapping("/upload")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Resource> uploadResource(@ModelAttribute FileUploadRequest request) {
-        return ResponseEntity.ok(resourceService.uploadResource(request));
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
+    public ResponseEntity<Resource> uploadResource(@ModelAttribute FileUploadRequest request, Principal principal) {
+        return ResponseEntity.ok(resourceService.uploadResource(request, getAuthenticatedUserId(principal)));
     }
 
-    private void setUploadedByIfAuthenticated(Resource resource, Principal principal) {
-        if (principal != null && resource.getUploadedBy() == null) {
+    private void setUploadedByIfAuthenticated(ResourceUpdateRequest request, Principal principal) {
+        if (principal != null && request.getUploadedBy() == null) {
             userRepository.findByEmail(principal.getName())
                     .map(User::getId)
-                    .ifPresent(resource::setUploadedBy);
+                    .ifPresent(request::setUploadedBy);
         }
     }
 
@@ -63,7 +80,7 @@ public class ResourceController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
     public ResponseEntity<Void> deleteResource(@PathVariable Long id) {
         resourceService.deleteResource(id);
         return ResponseEntity.ok().build();

@@ -7,10 +7,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import zm.unza.counseling.dto.SessionDto;
 import zm.unza.counseling.entity.Appointment;
+import zm.unza.counseling.entity.Client;
 import zm.unza.counseling.entity.Session;
 import zm.unza.counseling.entity.User;
 import zm.unza.counseling.exception.ResourceNotFoundException;
+import zm.unza.counseling.exception.ValidationException;
 import zm.unza.counseling.repository.AppointmentRepository;
+import zm.unza.counseling.repository.ClientRepository;
 import zm.unza.counseling.repository.SessionRepository;
 import zm.unza.counseling.repository.UserRepository;
 
@@ -22,6 +25,7 @@ public class SessionService {
 
     private final SessionRepository sessionRepository;
     private final AppointmentRepository appointmentRepository;
+    private final ClientRepository clientRepository;
     private final UserRepository userRepository;
 
     public Page<SessionDto> getAllSessions(Pageable pageable) {
@@ -39,9 +43,13 @@ public class SessionService {
         Session session = new Session();
         
         if (sessionDto.getAppointmentId() != null) {
+            if (sessionRepository.findFirstByAppointmentIdOrderBySessionDateDesc(sessionDto.getAppointmentId()).isPresent()) {
+                throw new ValidationException("A session already exists for appointment id: " + sessionDto.getAppointmentId());
+            }
             Appointment appointment = appointmentRepository.findById(sessionDto.getAppointmentId())
                     .orElseThrow(() -> new ResourceNotFoundException("Appointment not found"));
             session.setAppointment(appointment);
+            session.setClient(appointment.getClient());
             // Auto-populate from appointment if not provided
             if (sessionDto.getStudentId() == null) session.setStudent(appointment.getStudent());
             if (sessionDto.getCounselorId() == null) session.setCounselor(appointment.getCounselor());
@@ -63,9 +71,26 @@ public class SessionService {
             session.setCounselor(counselor);
         }
 
-        session.setTitle(sessionDto.getTitle() != null ? sessionDto.getTitle() : "Counseling Session");
+        if (session.getClient() == null && session.getStudent() != null) {
+            resolveClientForUser(session.getStudent()).ifPresent(session::setClient);
+        }
+
+        if (session.getStudent() == null) {
+            throw new ValidationException("Session must be linked to a client/student");
+        }
+
+        if (session.getCounselor() == null) {
+            throw new ValidationException("Session must be assigned to a counselor");
+        }
+
+        String defaultTitle = session.getAppointment() != null ? session.getAppointment().getTitle() : "Counseling Session";
+        session.setTitle(sessionDto.getTitle() != null ? sessionDto.getTitle() : defaultTitle);
         session.setSessionDate(sessionDto.getSessionDate() != null ? sessionDto.getSessionDate() : LocalDateTime.now());
-        session.setDurationMinutes(sessionDto.getDurationMinutes());
+        Integer durationMinutes = sessionDto.getDurationMinutes();
+        if (durationMinutes == null && session.getAppointment() != null) {
+            durationMinutes = session.getAppointment().getDuration();
+        }
+        session.setDurationMinutes(durationMinutes != null ? durationMinutes : 60);
         
         if (sessionDto.getType() != null) {
             try {
@@ -87,7 +112,8 @@ public class SessionService {
             session.setStatus(Session.SessionStatus.COMPLETED);
         }
         
-        session.setPresentingIssue(sessionDto.getPresentingIssue());
+        session.setPresentingIssue(sessionDto.getPresentingIssue() != null ? sessionDto.getPresentingIssue() : sessionDto.getSessionNotes());
+        session.setSessionNotes(sessionDto.getSessionNotes());
         
         if (sessionDto.getOutcome() != null) {
             try {
@@ -102,6 +128,10 @@ public class SessionService {
 
         Session savedSession = sessionRepository.save(session);
         return SessionDto.from(savedSession);
+    }
+
+    private java.util.Optional<Client> resolveClientForUser(User user) {
+        return clientRepository.findById(user.getId());
     }
 
     public void assignCounselor(Long sessionId, Long counselorId) {

@@ -1,0 +1,5 @@
+ALTER TABLE sessions
+    ALTER COLUMN start_time DROP NOT NULL;
+
+ALTER TABLE sessions
+    ALTER COLUMN end_time DROP NOT NULL;

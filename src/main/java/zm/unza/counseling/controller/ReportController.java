@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -16,6 +17,8 @@ import zm.unza.counseling.entity.Report;
 import zm.unza.counseling.service.ReportService;
 
 import java.util.List;
+import java.util.Locale;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping({"/api/v1/reports", "/api/reports", "/v1/reports", "/reports"})
@@ -28,8 +31,19 @@ public class ReportController {
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
     @Operation(summary = "Get all reports", description = "Retrieve all generated reports with pagination")
-    public ResponseEntity<ApiResponse<Page<Report>>> getAllReports(Pageable pageable) {
-        return ResponseEntity.ok(ApiResponse.success(reportService.getAllReports(pageable)));
+    public ResponseEntity<ApiResponse<Page<Report>>> getAllReports(
+            Pageable pageable,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String type,
+            @RequestParam(required = false) String dateFrom,
+            @RequestParam(required = false) String dateTo
+    ) {
+        List<Report> filteredReports = reportService.getAllReports().stream()
+                .filter(report -> matchesReportStatus(report.getStatus(), status))
+                .filter(report -> matches(report.getType(), type))
+                .filter(report -> matchesDateRange(report, dateFrom, dateTo))
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(ApiResponse.success(toPage(filteredReports, pageable)));
     }
 
     @GetMapping("/{id}")
@@ -43,9 +57,10 @@ public class ReportController {
     @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
     @Operation(summary = "Generate report", description = "Generate a new report")
     public ResponseEntity<ApiResponse<Report>> generateReport(@RequestParam String reportType,
+                                                              @RequestParam(required = false) String format,
                                                               @RequestParam(required = false) String startDate,
                                                               @RequestParam(required = false) String endDate) {
-        Report report = reportService.generateReport(reportType, startDate, endDate);
+        Report report = reportService.generateReport(reportType, format, buildPeriod(startDate, endDate));
         return ResponseEntity.ok(ApiResponse.success(report, "Report generated successfully"));
     }
 
@@ -98,7 +113,7 @@ public class ReportController {
                                                               @RequestParam String schedule,
                                                               @RequestParam(required = false) String startDate,
                                                               @RequestParam(required = false) String endDate) {
-        reportService.scheduleReport(reportType, schedule, startDate, endDate);
+        reportService.scheduleReport(reportType, null, buildPeriod(startDate, endDate), schedule);
         return ResponseEntity.ok(ApiResponse.success("Report scheduled successfully"));
     }
 
@@ -135,7 +150,7 @@ public class ReportController {
             @RequestParam String schedule,
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate) {
-        reportService.updateReportSchedule(scheduleId, schedule, startDate, endDate);
+        reportService.updateReportSchedule(scheduleId, null, buildPeriod(startDate, endDate), schedule);
         return ResponseEntity.ok(ApiResponse.success("Report schedule updated successfully"));
     }
 
@@ -235,5 +250,59 @@ public class ReportController {
         return ResponseEntity.ok()
                 .header("Content-Disposition", "attachment; filename=reports." + format)
                 .body(data);
+    }
+
+    private Page<Report> toPage(List<Report> reports, Pageable pageable) {
+        if (pageable.isUnpaged()) {
+            return new PageImpl<>(reports);
+        }
+
+        int start = (int) pageable.getOffset();
+        int end = Math.min(start + pageable.getPageSize(), reports.size());
+        List<Report> pageContent = start >= reports.size() ? List.of() : reports.subList(start, end);
+        return new PageImpl<>(pageContent, pageable, reports.size());
+    }
+
+    private boolean matches(String value, String filter) {
+        if (filter == null || filter.isBlank()) {
+            return true;
+        }
+        return value != null && value.equalsIgnoreCase(filter);
+    }
+
+    private boolean matchesReportStatus(String value, String filter) {
+        if (filter == null || filter.isBlank()) {
+            return true;
+        }
+
+        String normalizedFilter = filter.toUpperCase(Locale.ROOT);
+        if ("GENERATED".equals(normalizedFilter)) {
+            normalizedFilter = "COMPLETED";
+        } else if ("DRAFT".equals(normalizedFilter)) {
+            normalizedFilter = "PENDING";
+        }
+
+        return value != null && value.equalsIgnoreCase(normalizedFilter);
+    }
+
+    private boolean matchesDateRange(Report report, String dateFrom, String dateTo) {
+        if (report.getReportDate() == null) {
+            return dateFrom == null && dateTo == null;
+        }
+
+        String reportDate = report.getReportDate().toLocalDate().toString();
+        boolean afterStart = dateFrom == null || dateFrom.isBlank() || reportDate.compareTo(dateFrom) >= 0;
+        boolean beforeEnd = dateTo == null || dateTo.isBlank() || reportDate.compareTo(dateTo) <= 0;
+        return afterStart && beforeEnd;
+    }
+
+    private String buildPeriod(String startDate, String endDate) {
+        if ((startDate == null || startDate.isBlank()) && (endDate == null || endDate.isBlank())) {
+            return "all-time";
+        }
+        if (startDate != null && !startDate.isBlank() && endDate != null && !endDate.isBlank()) {
+            return String.format(Locale.ROOT, "%s..%s", startDate, endDate);
+        }
+        return startDate != null && !startDate.isBlank() ? startDate : endDate;
     }
 }

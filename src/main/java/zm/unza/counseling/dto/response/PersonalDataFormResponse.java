@@ -1,15 +1,15 @@
 package zm.unza.counseling.dto.response;
 
-import zm.unza.counseling.entity.FamilyMember;
 import zm.unza.counseling.entity.PersonalDataForm;
+import zm.unza.counseling.entity.User;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * Response DTO for Personal Data Form (Client Intake Form)
- * Matches the frontend form structure exactly
+ * Response DTO for the digitized UNZA personal data form.
  */
 public class PersonalDataFormResponse {
 
@@ -19,42 +19,31 @@ public class PersonalDataFormResponse {
     private String clientName;
     private Long caseId;
     private String caseNumber;
-    
-    // Basic Information
+    private LocalDate dateOfInterview;
+    private User.Gender sex;
+    private Integer yearOfBirth;
+    private Integer age;
+    private String school;
     private String computerNo;
+    private Integer yearOfStudy;
     private String occupation;
     private String contactAddress;
+    private String phoneNumber;
     private PersonalDataForm.MaritalStatus maritalStatus;
-    
-    // Previous Counselling
     private List<PersonalDataForm.PreviousCounselling> previousCounselling;
     private String previousCounsellingOther;
-    
-    // Referral Source
     private List<PersonalDataForm.ReferralSource> referralSource;
     private String referralSourceOther;
-    
-    // Reasons for Counselling (nested object)
     private ReasonsForCounsellingResponse reasonsForCounselling;
-    
-    // Family History
     private List<FamilyMemberResponse> familyHistory;
-    
-    // Health Information
     private PersonalDataForm.HealthStatus healthStatus;
     private String healthCondition;
     private PersonalDataForm.MedicationStatus takingMedication;
     private String medicationDetails;
-    
-    // Additional Information
     private String additionalInfo;
-    
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
-    /**
-     * Nested response for Reasons for Counselling
-     */
     public static class ReasonsForCounsellingResponse {
         private List<PersonalDataForm.PersonalReason> personal;
         private String personalOther;
@@ -148,9 +137,6 @@ public class PersonalDataFormResponse {
         }
     }
 
-    /**
-     * Nested response for Family Member
-     */
     public static class FamilyMemberResponse {
         private Long id;
         private String name;
@@ -208,44 +194,46 @@ public class PersonalDataFormResponse {
         }
     }
 
-    // Default constructor
-    public PersonalDataFormResponse() {}
-
-    // From entity
     public static PersonalDataFormResponse fromEntity(PersonalDataForm form) {
         PersonalDataFormResponse response = new PersonalDataFormResponse();
         response.setId(form.getId());
         response.setClientFileNo(form.getClientFileNo());
-        
+        response.setDateOfInterview(form.getDateOfInterview());
+        response.setSex(form.getSex());
+        response.setYearOfBirth(form.getYearOfBirth());
+        response.setAge(form.getAge());
+        response.setSchool(form.getSchool());
+        response.setComputerNo(form.getComputerNo());
+        response.setYearOfStudy(form.getYearOfStudy());
+        response.setOccupation(form.getOccupation());
+        response.setContactAddress(form.getContactAddress());
+        response.setPhoneNumber(form.getPhoneNumber());
+        response.setMaritalStatus(form.getMaritalStatus());
+        response.setPreviousCounselling(form.getPreviousCounselling());
+        response.setPreviousCounsellingOther(form.getPreviousCounsellingOther());
+        response.setReferralSource(form.getReferralSource());
+        response.setReferralSourceOther(form.getReferralSourceOther());
+        response.setHealthStatus(form.getHealthStatus());
+        response.setHealthCondition(form.getHealthCondition());
+        response.setTakingMedication(form.getTakingMedication());
+        response.setMedicationDetails(form.getMedicationDetails());
+        response.setAdditionalInfo(form.getAdditionalInfo());
+        response.setCreatedAt(form.getCreatedAt());
+        response.setUpdatedAt(form.getUpdatedAt());
+
         if (form.getClient() != null) {
             response.setClientId(form.getClient().getId());
             response.setClientName(form.getClient().getFullName());
         }
-        
+
         if (form.getCaseEntity() != null) {
             response.setCaseId(form.getCaseEntity().getId());
             response.setCaseNumber(form.getCaseEntity().getCaseNumber());
         }
-        
-        // Basic Information
-        response.setComputerNo(form.getComputerNo());
-        response.setOccupation(form.getOccupation());
-        response.setContactAddress(form.getContactAddress());
-        response.setMaritalStatus(form.getMaritalStatus());
-        
-        // Previous Counselling
-        response.setPreviousCounselling(form.getPreviousCounselling());
-        response.setPreviousCounsellingOther(form.getPreviousCounsellingOther());
-        
-        // Referral Source
-        response.setReferralSource(form.getReferralSource());
-        response.setReferralSourceOther(form.getReferralSourceOther());
-        
-        // Reasons for Counselling
+
         if (form.getReasonsForCounselling() != null) {
-            ReasonsForCounsellingResponse reasons = new ReasonsForCounsellingResponse();
             PersonalDataForm.ReasonsForCounselling formReasons = form.getReasonsForCounselling();
-            
+            ReasonsForCounsellingResponse reasons = new ReasonsForCounsellingResponse();
             reasons.setPersonal(formReasons.getPersonal());
             reasons.setPersonalOther(formReasons.getPersonalOther());
             reasons.setHealth(formReasons.getHealth());
@@ -256,43 +244,27 @@ public class PersonalDataFormResponse {
             reasons.setCareerOther(formReasons.getCareerOther());
             reasons.setFinancial(formReasons.getFinancial());
             reasons.setFinancialOther(formReasons.getFinancialOther());
-            
             response.setReasonsForCounselling(reasons);
         }
-        
-        // Family History
+
         if (form.getFamilyHistory() != null) {
-            List<FamilyMemberResponse> familyHistory = form.getFamilyHistory().stream()
-                    .map(fm -> {
-                        FamilyMemberResponse fmResp = new FamilyMemberResponse();
-                        fmResp.setId(fm.getId());
-                        fmResp.setName(fm.getName());
-                        fmResp.setRelationship(fm.getRelationship());
-                        fmResp.setAge(fm.getAge());
-                        fmResp.setEducation(fm.getEducation());
-                        fmResp.setOccupation(fm.getOccupation());
-                        return fmResp;
+            response.setFamilyHistory(form.getFamilyHistory().stream()
+                    .map(familyMember -> {
+                        FamilyMemberResponse item = new FamilyMemberResponse();
+                        item.setId(familyMember.getId());
+                        item.setName(familyMember.getName());
+                        item.setRelationship(familyMember.getRelationship());
+                        item.setAge(familyMember.getAge());
+                        item.setEducation(familyMember.getEducation());
+                        item.setOccupation(familyMember.getOccupation());
+                        return item;
                     })
-                    .collect(Collectors.toList());
-            response.setFamilyHistory(familyHistory);
+                    .collect(Collectors.toList()));
         }
-        
-        // Health Information
-        response.setHealthStatus(form.getHealthStatus());
-        response.setHealthCondition(form.getHealthCondition());
-        response.setTakingMedication(form.getTakingMedication());
-        response.setMedicationDetails(form.getMedicationDetails());
-        
-        // Additional Information
-        response.setAdditionalInfo(form.getAdditionalInfo());
-        
-        response.setCreatedAt(form.getCreatedAt());
-        response.setUpdatedAt(form.getUpdatedAt());
-        
+
         return response;
     }
 
-    // Getters and Setters
     public Long getId() {
         return id;
     }
@@ -341,12 +313,60 @@ public class PersonalDataFormResponse {
         this.caseNumber = caseNumber;
     }
 
+    public LocalDate getDateOfInterview() {
+        return dateOfInterview;
+    }
+
+    public void setDateOfInterview(LocalDate dateOfInterview) {
+        this.dateOfInterview = dateOfInterview;
+    }
+
+    public User.Gender getSex() {
+        return sex;
+    }
+
+    public void setSex(User.Gender sex) {
+        this.sex = sex;
+    }
+
+    public Integer getYearOfBirth() {
+        return yearOfBirth;
+    }
+
+    public void setYearOfBirth(Integer yearOfBirth) {
+        this.yearOfBirth = yearOfBirth;
+    }
+
+    public Integer getAge() {
+        return age;
+    }
+
+    public void setAge(Integer age) {
+        this.age = age;
+    }
+
+    public String getSchool() {
+        return school;
+    }
+
+    public void setSchool(String school) {
+        this.school = school;
+    }
+
     public String getComputerNo() {
         return computerNo;
     }
 
     public void setComputerNo(String computerNo) {
         this.computerNo = computerNo;
+    }
+
+    public Integer getYearOfStudy() {
+        return yearOfStudy;
+    }
+
+    public void setYearOfStudy(Integer yearOfStudy) {
+        this.yearOfStudy = yearOfStudy;
     }
 
     public String getOccupation() {
@@ -363,6 +383,14 @@ public class PersonalDataFormResponse {
 
     public void setContactAddress(String contactAddress) {
         this.contactAddress = contactAddress;
+    }
+
+    public String getPhoneNumber() {
+        return phoneNumber;
+    }
+
+    public void setPhoneNumber(String phoneNumber) {
+        this.phoneNumber = phoneNumber;
     }
 
     public PersonalDataForm.MaritalStatus getMaritalStatus() {

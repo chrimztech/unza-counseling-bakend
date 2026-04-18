@@ -12,7 +12,6 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import org.springframework.data.domain.Pageable;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -107,18 +106,6 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
            "AND a.status = 'SCHEDULED' AND a.appointmentDate > :now " +
            "ORDER BY a.appointmentDate LIMIT 1")
     Optional<Appointment> findNextAppointmentByCounselor(@Param("counselor") User counselor, @Param("now") LocalDateTime now);
-
-    // Conflict detection
-    @Query("SELECT a FROM Appointment a WHERE a.counselor = :counselor " +
-           "AND a.status IN ('SCHEDULED', 'CONFIRMED') " +
-           "AND ((a.appointmentDate <= :start AND :start < FUNCTION('ADDTIME', a.appointmentDate, CONCAT(a.duration, ':00'))) " +
-           "OR (a.appointmentDate < :end AND :end <= FUNCTION('ADDTIME', a.appointmentDate, CONCAT(a.duration, ':00'))) " +
-           "OR (:start <= a.appointmentDate AND FUNCTION('ADDTIME', a.appointmentDate, CONCAT(a.duration, ':00')) <= :end))")
-    List<Appointment> findConflictingAppointments(
-        @Param("counselor") User counselor,
-        @Param("start") LocalDateTime start,
-        @Param("end") LocalDateTime end
-    );
 
     // Reminders
     @Query("SELECT a FROM Appointment a WHERE a.status = 'SCHEDULED' " +

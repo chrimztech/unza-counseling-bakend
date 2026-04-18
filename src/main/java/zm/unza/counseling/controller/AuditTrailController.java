@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping({"/api/v1/audit", "/v1/audit", "/audit"})
+@RequestMapping({"/api/v1/audit", "/api/audit", "/v1/audit", "/audit"})
 @RequiredArgsConstructor
 public class AuditTrailController {
 

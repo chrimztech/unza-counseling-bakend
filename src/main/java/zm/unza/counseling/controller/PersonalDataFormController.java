@@ -57,6 +57,17 @@ public class PersonalDataFormController {
     }
 
     /**
+     * Gets a personal data form by case ID
+     * @param caseId the ID of the linked case
+     * @return the personal data form response
+     */
+    @GetMapping("/cases/{caseId}")
+    public ResponseEntity<PersonalDataFormResponse> getPersonalDataFormByCaseId(@PathVariable Long caseId) {
+        PersonalDataFormResponse response = personalDataFormService.getPersonalDataFormByCaseId(caseId);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
      * Updates a personal data form
      * @param clientId the ID of the client
      * @param request the request DTO
