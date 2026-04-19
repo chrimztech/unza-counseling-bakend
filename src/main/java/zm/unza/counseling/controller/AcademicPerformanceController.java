@@ -200,4 +200,52 @@ public class AcademicPerformanceController {
                     .body(ApiResponse.error(response.getMessage()));
         }
     }
+
+    /**
+     * Counselor endpoint: Fetch student results from SIS silently.
+     * This endpoint authenticates with SIS using the student ID and fetches results
+     * without requiring a pre-existing token from the student.
+     */
+    @GetMapping("/sis/student/{studentId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
+    @Operation(summary = "Get SIS results for student (counselor)", 
+               description = "Fetches academic results from SIS for a student by student ID. " +
+                           "Authenticates silently with SIS using the student ID.")
+    public ResponseEntity<ApiResponse<SyncResultsResponse>> getSisResultsForStudent(
+            @PathVariable String studentId) {
+        System.out.println("Counselor fetching SIS results for student: " + studentId);
+        SyncResultsResponse response = sisResultsService.fetchResultsForCounselor(studentId);
+        if (response.isSuccess()) {
+            return ResponseEntity.ok(ApiResponse.success(response, 
+                    "Results retrieved successfully from SIS"));
+        } else {
+            HttpStatus status = "auth".equals(response.getErrorType()) ? 
+                    HttpStatus.UNAUTHORIZED : HttpStatus.BAD_REQUEST;
+            return ResponseEntity.status(status)
+                    .body(ApiResponse.error(response.getMessage()));
+        }
+    }
+
+    /**
+     * Get SIS results for a client by internal client ID (counselor endpoint).
+     */
+    @GetMapping("/client/{clientId}/sis-results")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
+    @Operation(summary = "Get SIS results for client (counselor)", 
+               description = "Fetches academic results from SIS for a specific client. " +
+                           "Uses the client's student ID to authenticate with SIS.")
+    public ResponseEntity<ApiResponse<SyncResultsResponse>> getSisResultsForClient(
+            @PathVariable Long clientId) {
+        System.out.println("Counselor fetching SIS results for client ID: " + clientId);
+        SyncResultsResponse response = sisResultsService.fetchResultsForClient(clientId, null, true);
+        if (response.isSuccess()) {
+            return ResponseEntity.ok(ApiResponse.success(response, 
+                    "Results retrieved successfully from SIS"));
+        } else {
+            HttpStatus status = "auth".equals(response.getErrorType()) ? 
+                    HttpStatus.UNAUTHORIZED : HttpStatus.BAD_REQUEST;
+            return ResponseEntity.status(status)
+                    .body(ApiResponse.error(response.getMessage()));
+        }
+    }
 }

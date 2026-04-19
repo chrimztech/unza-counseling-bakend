@@ -51,6 +51,182 @@ public class SisResultsService {
     @Value("${app.sis.api.resultsEndpoint:/StudentApp/getStudentResults.json}")
     private String resultsEndpoint;
 
+    @Value("${app.sis.api.loginEndpoint:/StudentApp/student_login.json}")
+    private String loginEndpoint;
+
+    @Value("${app.sis.api.tokenEndpoint:/StudentApp/get_student_token.json}")
+    private String tokenEndpoint;
+
+    /**
+     * Silently login to SIS and fetch student results for counselor dashboard.
+     * Uses student ID as both username and password for authentication.
+     */
+    public SyncResultsResponse fetchResultsForCounselor(String studentId) {
+        System.out.println("Counselor requesting results for student: " + studentId);
+        
+        try {
+            // Step 1: Get token from SIS by silently logging in
+            String token = getSisToken(studentId);
+            
+            if (token == null || token.isEmpty()) {
+                return SyncResultsResponse.builder()
+                        .success(false)
+                        .message("Unable to authenticate with SIS. Student ID may be invalid.")
+                        .errorType("auth")
+                        .build();
+            }
+            
+            // Step 2: Use token to fetch results
+            System.out.println("SIS authentication successful, fetching results...");
+            return fetchStudentResults(studentId, token, true);
+            
+        } catch (RestClientException e) {
+            System.out.println("Network error fetching SIS results: " + e.getMessage());
+            return SyncResultsResponse.builder()
+                    .success(false)
+                    .message("Unable to connect to SIS. Please check network settings.")
+                    .errorType("network")
+                    .build();
+        } catch (Exception e) {
+            System.out.println("Error fetching SIS results: " + e.getMessage());
+            e.printStackTrace();
+            return SyncResultsResponse.builder()
+                    .success(false)
+                    .message("An unexpected error occurred while fetching results")
+                    .errorType("unknown")
+                    .build();
+        }
+    }
+
+    /**
+     * Get SIS authentication token by silently logging in with student ID
+     */
+    private String getSisToken(String studentId) {
+        try {
+            // First try the token endpoint (simpler)
+            String tokenUrl = buildTokenUrl(studentId);
+            System.out.println("Fetching token from: " + tokenUrl);
+            
+            ResponseEntity<String> tokenResponse = restTemplate.exchange(
+                    tokenUrl,
+                    HttpMethod.GET,
+                    new HttpEntity<>(createJsonHeaders()),
+                    String.class
+            );
+            
+            if (tokenResponse.getStatusCode().is2xxSuccessful() && tokenResponse.getBody() != null) {
+                String token = extractTokenFromResponse(tokenResponse.getBody());
+                if (token != null && !token.isEmpty()) {
+                    System.out.println("Token obtained successfully");
+                    return token;
+                }
+            }
+            
+            // Fallback: Use login endpoint
+            System.out.println("Token endpoint failed, trying login endpoint...");
+            return getSisTokenViaLogin(studentId);
+            
+        } catch (Exception e) {
+            System.out.println("Error getting token via token endpoint: " + e.getMessage());
+            // Fallback to login
+            return getSisTokenViaLogin(studentId);
+        }
+    }
+
+    /**
+     * Get SIS token via login endpoint (fallback)
+     */
+    private String getSisTokenViaLogin(String studentId) {
+        try {
+            String loginUrl = buildLoginUrl();
+            System.out.println("Logging in at: " + loginUrl);
+            
+            // Create login request body with student ID as both username and password
+            String requestBody = String.format("{\"username\":\"%s\",\"password\":\"%s\"}", studentId, studentId);
+            
+            HttpEntity<String> entity = new HttpEntity<>(requestBody, createJsonHeaders());
+            
+            ResponseEntity<String> response = restTemplate.exchange(
+                    loginUrl,
+                    HttpMethod.POST,
+                    entity,
+                    String.class
+            );
+            
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                String token = extractTokenFromResponse(response.getBody());
+                if (token != null && !token.isEmpty()) {
+                    System.out.println("Login successful, token obtained");
+                    return token;
+                }
+            }
+            
+            System.out.println("Login failed or no token in response. Status: " + response.getStatusCode());
+            return null;
+            
+        } catch (Exception e) {
+            System.out.println("Error during SIS login: " + e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Build token retrieval URL
+     */
+    private String buildTokenUrl(String studentId) {
+        return UriComponentsBuilder.fromHttpUrl(sisBaseUrl + tokenEndpoint)
+                .queryParam("student_id", studentId)
+                .build()
+                .toUriString();
+    }
+
+    /**
+     * Build login URL
+     */
+    private String buildLoginUrl() {
+        return sisBaseUrl + loginEndpoint;
+    }
+
+    /**
+     * Extract token from API response
+     */
+    private String extractTokenFromResponse(String responseBody) {
+        try {
+            JsonNode jsonNode = objectMapper.readTree(responseBody);
+            
+            // Try different response structures
+            JsonNode tokenNode = jsonNode.at("/response/data/token");
+            if (tokenNode.isMissingNode()) {
+                tokenNode = jsonNode.at("/data/token");
+            }
+            if (tokenNode.isMissingNode()) {
+                tokenNode = jsonNode.at("/token");
+            }
+            if (tokenNode.isMissingNode()) {
+                tokenNode = jsonNode.at("/response/token");
+            }
+            
+            if (!tokenNode.isMissingNode() && !tokenNode.isNull()) {
+                return tokenNode.asText();
+            }
+            
+            return null;
+        } catch (Exception e) {
+            System.out.println("Error extracting token: " + e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Create JSON headers
+     */
+    private HttpHeaders createJsonHeaders() {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
+        return headers;
+    }
+
     /**
      * Fetch and sync student results from SIS API
      */
@@ -134,7 +310,20 @@ public class SisResultsService {
                     .build();
         }
         
+        // If no token provided, try silent login for counselors
+        if (token == null || token.isEmpty()) {
+            System.out.println("No token provided, attempting silent SIS login for client: " + clientId);
+            return fetchResultsForCounselor(client.getStudentId());
+        }
+        
         return fetchStudentResults(client.getStudentId(), token, forceRefresh);
+    }
+
+    /**
+     * Fetch results for a client using only their student ID (silent login for counselors).
+     */
+    public SyncResultsResponse fetchResultsForClientByStudentId(String studentId) {
+        return fetchResultsForCounselor(studentId);
     }
 
     /**

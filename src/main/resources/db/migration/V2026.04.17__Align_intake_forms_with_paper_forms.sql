@@ -47,3 +47,7 @@ CREATE TABLE IF NOT EXISTS client_intake_forms (
 
 CREATE INDEX IF NOT EXISTS idx_client_intake_forms_case ON client_intake_forms(case_id);
 CREATE INDEX IF NOT EXISTS idx_client_intake_forms_counselor ON client_intake_forms(counselor_id);
+   
+
+
+   

@@ -124,6 +124,10 @@ app:
   # External Authentication System Configuration
   sis:
     api:
+      baseUrl: ${SIS_BASE_URL:https://sis.unza.zm}
+      resultsEndpoint: ${SIS_RESULTS_ENDPOINT:/StudentApp/getStudentResults.json}
+      loginEndpoint: ${SIS_LOGIN_ENDPOINT:/StudentApp/student_login.json}
+      tokenEndpoint: ${SIS_TOKEN_ENDPOINT:/StudentApp/get_student_token.json}
       baseUrls:
         undergraduate: ${SIS_UNDERGRADUATE_URL:https://devoap.unza.zm}
         postgraduate: ${SIS_POSTGRADUATE_URL:https://pgonline.unza.zm}
@@ -131,8 +135,6 @@ app:
         gsb: ${SIS_GSB_URL:https://gsbonline.unza.zm}
         zou: ${SIS_ZOU_URL:https://zouonline.unza.zm}
         ecampus: ${SIS_ECAMPUS_URL:https://ecampusonline.unza.zm}
-      loginEndpoint: ${SIS_LOGIN_ENDPOINT:/api/v1/customers/login}
-      tokenEndpoint: ${SIS_TOKEN_ENDPOINT:/api/v1/customers/token}
       instanceKey: ${SIS_INSTANCE_KEY:undergraduate}
   hr:
     api:
