@@ -1,4 +1,4 @@
-next we move to the consent formm, first time login for clients should prompt the consent form next we move to the consent formm, first time login for clients should prompt the consent form package zm.unza.counseling.entity;
+package zm.unza.counseling.entity;
 
 import jakarta.persistence.*;
 import org.springframework.data.annotation.CreatedDate;

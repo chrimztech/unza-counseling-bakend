@@ -8,6 +8,7 @@ import zm.unza.counseling.entity.Appointment;
 import zm.unza.counseling.entity.Client;
 import zm.unza.counseling.entity.MentalHealthAcademicAnalysis;
 import zm.unza.counseling.entity.RiskAssessment;
+import zm.unza.counseling.entity.Role;
 import zm.unza.counseling.entity.Session;
 import zm.unza.counseling.entity.User;
 import zm.unza.counseling.mapper.MentalHealthAcademicMapper;
@@ -83,7 +84,7 @@ public class AnalyticsService {
     }
 
     public Object getCounselorPerformanceAnalytics() {
-        List<User> counselors = userRepository.findByRoleName("ROLE_COUNSELOR");
+        List<User> counselors = userRepository.findByRoleName(Role.ERole.ROLE_COUNSELOR);
 
         return counselors.stream()
                 .filter(Objects::nonNull)

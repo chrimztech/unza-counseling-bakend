@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import zm.unza.counseling.dto.request.RegisterRequest;
 import zm.unza.counseling.entity.User;
+import zm.unza.counseling.entity.Role;
 import zm.unza.counseling.exception.ResourceNotFoundException;
 import zm.unza.counseling.repository.UserRepository;
 
@@ -81,7 +82,7 @@ public class UserService {
         if (!role.startsWith("ROLE_")) {
             role = "ROLE_" + role.toUpperCase();
         }
-        return userRepository.findByRolesName(role);
+        return userRepository.findByRolesName(Role.ERole.valueOf(role));
     }
 
     public Long getUserCount() {

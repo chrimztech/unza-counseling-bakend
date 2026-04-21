@@ -1,6 +1,7 @@
 package zm.unza.counseling.repository;
 
 import zm.unza.counseling.entity.User;
+import zm.unza.counseling.entity.Role;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -41,13 +42,13 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     // Role-based queries
     @Query("SELECT u FROM User u JOIN u.roles r WHERE r.name = :roleName")
-    List<User> findByRoleName(@Param("roleName") String roleName);
+    List<User> findByRoleName(@Param("roleName") Role.ERole roleName);
     
     @Query("SELECT u FROM User u JOIN u.roles r WHERE r.name = :roleName AND u.active = true")
-    List<User> findActiveByRoleName(@Param("roleName") String roleName);
+    List<User> findActiveByRoleName(@Param("roleName") Role.ERole roleName);
     
     @Query("SELECT u FROM User u JOIN u.roles r WHERE r.name = :roleName AND u.availableForAppointments = true")
-    List<User> findAvailableCounselors(@Param("roleName") String roleName);
+    List<User> findAvailableCounselors(@Param("roleName") Role.ERole roleName);
 
     // Search queries
     @Query("SELECT u FROM User u WHERE " +
@@ -117,7 +118,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     // Additional methods for enhanced user management
     @Query("SELECT u FROM User u JOIN u.roles r WHERE r.name = :roleName")
-    List<User> findByRolesName(@Param("roleName") String roleName);
+    List<User> findByRolesName(@Param("roleName") Role.ERole roleName);
     
     @Query("SELECT u FROM User u WHERE u.active = true")
     Page<User> findByActiveTrue(Pageable pageable);
