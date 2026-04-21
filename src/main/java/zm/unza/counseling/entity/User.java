@@ -31,6 +31,13 @@ import zm.unza.counseling.security.AuthenticationSource;
            @UniqueConstraint(columnNames = "username"),
            @UniqueConstraint(columnNames = "email"),
            @UniqueConstraint(columnNames = "studentId")
+       },
+       indexes = {
+           @Index(name = "idx_user_first_name", columnList = "firstName"),
+           @Index(name = "idx_user_last_name", columnList = "lastName"),
+           @Index(name = "idx_user_email", columnList = "email"),
+           @Index(name = "idx_user_student_id", columnList = "studentId"),
+           @Index(name = "idx_user_name_search", columnList = "firstName, lastName")
        })
 @EntityListeners(AuditingEntityListener.class)
 @Inheritance(strategy = InheritanceType.SINGLE_TABLE)
