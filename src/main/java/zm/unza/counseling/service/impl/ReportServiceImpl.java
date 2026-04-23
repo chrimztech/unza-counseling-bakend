@@ -27,11 +27,13 @@ import zm.unza.counseling.repository.UserRepository;
 import zm.unza.counseling.service.AuditLogService;
 import zm.unza.counseling.service.ReportService;
 
+import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -241,30 +243,16 @@ public class ReportServiceImpl implements ReportService {
     @Override
     public byte[] exportReport(Long id, String format) {
         Report report = getReportById(id);
-        String normalizedFormat = format == null ? "json" : format.toLowerCase(Locale.ROOT);
-        String payload;
+        String normalizedFormat = normalizeExportFormat(format);
+        Map<String, Object> structuredExportData = buildStructuredExportData(report);
+        LinkedHashMap<String, String> flatExportData = flattenExportData(structuredExportData);
 
-        if ("csv".equals(normalizedFormat)) {
-            payload = "id,title,type,status,reportDate\n" +
-                    report.getId() + "," +
-                    escapeCsv(report.getTitle()) + "," +
-                    escapeCsv(report.getType()) + "," +
-                    escapeCsv(report.getStatus()) + "," +
-                    (report.getReportDate() != null ? report.getReportDate() : "");
-        } else {
-            Map<String, Object> exportData = new LinkedHashMap<>();
-            exportData.put("id", report.getId());
-            exportData.put("title", report.getTitle());
-            exportData.put("description", report.getDescription());
-            exportData.put("type", report.getType());
-            exportData.put("format", report.getFormat());
-            exportData.put("status", report.getStatus());
-            exportData.put("reportDate", report.getReportDate());
-            exportData.put("reportData", report.getReportData() != null ? report.getReportData() : Collections.emptyMap());
-            payload = writeJson(exportData);
-        }
-
-        return payload.getBytes(StandardCharsets.UTF_8);
+        return switch (normalizedFormat) {
+            case "csv" -> buildDelimitedExport(flatExportData, ',').getBytes(StandardCharsets.UTF_8);
+            case "excel" -> buildDelimitedExport(flatExportData, '\t').getBytes(StandardCharsets.UTF_8);
+            case "json" -> writeJson(structuredExportData).getBytes(StandardCharsets.UTF_8);
+            default -> renderSimplePdf(buildPdfLines(report, structuredExportData));
+        };
     }
 
     @Override
@@ -573,6 +561,389 @@ public class ReportServiceImpl implements ReportService {
                     .append(report.getCreatedAt()).append("\n");
         }
         return csv.toString().getBytes(StandardCharsets.UTF_8);
+    }
+
+    private String normalizeExportFormat(String format) {
+        String normalized = format == null ? "pdf" : format.toLowerCase(Locale.ROOT);
+        return switch (normalized) {
+            case "csv" -> "csv";
+            case "excel", "xls", "xlsx" -> "excel";
+            case "json" -> "json";
+            default -> "pdf";
+        };
+    }
+
+    private Map<String, Object> buildStructuredExportData(Report report) {
+        Report hydratedReport = hydrateReport(report);
+        Map<String, Object> reportData = hydratedReport.getReportData() != null
+                ? new LinkedHashMap<>(hydratedReport.getReportData())
+                : new LinkedHashMap<>();
+
+        Client client = hydratedReport.getClientId() != null
+                ? clientRepository.findById(hydratedReport.getClientId()).orElse(null)
+                : null;
+        User counselor = hydratedReport.getCounselorId() != null
+                ? userRepository.findById(hydratedReport.getCounselorId()).orElse(null)
+                : null;
+        Case caseEntity = hydratedReport.getCaseId() != null
+                ? caseRepository.findById(hydratedReport.getCaseId()).orElse(null)
+                : null;
+        Appointment appointment = hydratedReport.getAppointmentId() != null
+                ? appointmentRepository.findById(hydratedReport.getAppointmentId()).orElse(null)
+                : null;
+        Session session = hydratedReport.getSessionId() != null
+                ? sessionRepository.findById(hydratedReport.getSessionId()).orElse(null)
+                : null;
+
+        Map<String, Object> exportData = new LinkedHashMap<>();
+        Map<String, Object> reportSection = new LinkedHashMap<>();
+        putIfMeaningful(reportSection, "id", hydratedReport.getId());
+        putIfMeaningful(reportSection, "title", hydratedReport.getTitle());
+        putIfMeaningful(reportSection, "description", hydratedReport.getDescription());
+        putIfMeaningful(reportSection, "type", hydratedReport.getType());
+        putIfMeaningful(reportSection, "storedFormat", hydratedReport.getFormat());
+        putIfMeaningful(reportSection, "status", hydratedReport.getStatus());
+        putIfMeaningful(reportSection, "reportDate", hydratedReport.getReportDate());
+        putIfMeaningful(reportSection, "generatedAt", hydratedReport.getGeneratedAt());
+        putIfMeaningful(reportSection, "createdAt", hydratedReport.getCreatedAt());
+        putIfMeaningful(reportSection, "updatedAt", hydratedReport.getUpdatedAt());
+        putIfMeaningful(reportSection, "filePath", hydratedReport.getFilePath());
+        putIfMeaningful(reportSection, "fileSize", hydratedReport.getFileSize());
+        exportData.put("report", reportSection);
+
+        Map<String, Object> clientSection = new LinkedHashMap<>();
+        putIfMeaningful(clientSection, "id", hydratedReport.getClientId());
+        putIfMeaningful(clientSection, "name", client != null ? client.getFullName() : reportData.get("clientName"));
+        putIfMeaningful(clientSection, "email", client != null ? client.getEmail() : null);
+        putIfMeaningful(clientSection, "studentId", client != null ? client.getStudentId() : null);
+        putIfMeaningful(clientSection, "programme", client != null ? client.getProgramme() : null);
+        putIfMeaningful(clientSection, "faculty", client != null ? client.getFaculty() : null);
+        putIfMeaningful(clientSection, "yearOfStudy", client != null ? client.getYearOfStudy() : null);
+        putIfMeaningful(clientSection, "riskLevel", client != null && client.getRiskLevel() != null ? client.getRiskLevel().name() : null);
+        putIfMeaningful(clientSection, "clientStatus", client != null && client.getClientStatus() != null ? client.getClientStatus().name() : null);
+        exportData.put("client", clientSection);
+
+        Map<String, Object> counselorSection = new LinkedHashMap<>();
+        putIfMeaningful(counselorSection, "id", hydratedReport.getCounselorId());
+        putIfMeaningful(counselorSection, "name", counselor != null ? counselor.getFullName() : reportData.get("counselorName"));
+        putIfMeaningful(counselorSection, "email", counselor != null ? counselor.getEmail() : null);
+        putIfMeaningful(counselorSection, "phoneNumber", counselor != null ? counselor.getPhoneNumber() : null);
+        putIfMeaningful(counselorSection, "specialization", counselor != null ? counselor.getSpecialization() : null);
+        exportData.put("counselor", counselorSection);
+
+        Map<String, Object> caseSection = new LinkedHashMap<>();
+        putIfMeaningful(caseSection, "id", hydratedReport.getCaseId());
+        putIfMeaningful(caseSection, "caseNumber", caseEntity != null ? caseEntity.getCaseNumber() : reportData.get("caseNumber"));
+        putIfMeaningful(caseSection, "status", caseEntity != null && caseEntity.getStatus() != null ? caseEntity.getStatus().name() : reportData.get("caseStatus"));
+        putIfMeaningful(caseSection, "priority", caseEntity != null && caseEntity.getPriority() != null ? caseEntity.getPriority().name() : reportData.get("casePriority"));
+        putIfMeaningful(caseSection, "subject", caseEntity != null ? caseEntity.getSubject() : reportData.get("caseSubject"));
+        putIfMeaningful(caseSection, "description", caseEntity != null ? caseEntity.getDescription() : null);
+        putIfMeaningful(caseSection, "notes", caseEntity != null ? caseEntity.getNotes() : null);
+        putIfMeaningful(caseSection, "assignedBy", caseEntity != null ? caseEntity.getAssignedBy() : null);
+        putIfMeaningful(caseSection, "assignedAt", caseEntity != null ? caseEntity.getAssignedAt() : null);
+        putIfMeaningful(caseSection, "lastActivityAt", caseEntity != null ? caseEntity.getLastActivityAt() : null);
+        putIfMeaningful(caseSection, "expectedResolutionDate", caseEntity != null ? caseEntity.getExpectedResolutionDate() : null);
+        putIfMeaningful(caseSection, "actualResolutionDate", caseEntity != null ? caseEntity.getActualResolutionDate() : null);
+        putIfMeaningful(caseSection, "closedAt", caseEntity != null ? caseEntity.getClosedAt() : null);
+        putIfMeaningful(caseSection, "escalationLevel", caseEntity != null ? caseEntity.getEscalationLevel() : null);
+        putIfMeaningful(caseSection, "tags", caseEntity != null ? caseEntity.getTags() : null);
+        putIfMeaningful(caseSection, "customFields", caseEntity != null ? caseEntity.getCustomFields() : null);
+        putIfMeaningful(caseSection, "appointmentCount", caseEntity != null ? appointmentRepository.countByCaseEntity(caseEntity) : null);
+        exportData.put("case", caseSection);
+
+        Map<String, Object> appointmentSection = new LinkedHashMap<>();
+        putIfMeaningful(appointmentSection, "id", hydratedReport.getAppointmentId());
+        putIfMeaningful(appointmentSection, "title", appointment != null ? appointment.getTitle() : null);
+        putIfMeaningful(appointmentSection, "appointmentDate", appointment != null ? appointment.getAppointmentDate() : reportData.get("appointmentDate"));
+        putIfMeaningful(appointmentSection, "durationMinutes", appointment != null ? appointment.getDuration() : null);
+        putIfMeaningful(appointmentSection, "type", appointment != null && appointment.getType() != null ? appointment.getType().name() : reportData.get("appointmentType"));
+        putIfMeaningful(appointmentSection, "status", appointment != null && appointment.getStatus() != null ? appointment.getStatus().name() : reportData.get("appointmentStatus"));
+        putIfMeaningful(appointmentSection, "sessionMode", appointment != null && appointment.getSessionMode() != null ? appointment.getSessionMode().name() : null);
+        putIfMeaningful(appointmentSection, "location", appointment != null ? appointment.getLocation() : null);
+        putIfMeaningful(appointmentSection, "meetingProvider", appointment != null ? appointment.getMeetingProvider() : null);
+        putIfMeaningful(appointmentSection, "description", appointment != null ? appointment.getDescription() : null);
+        exportData.put("appointment", appointmentSection);
+
+        Map<String, Object> sessionSection = new LinkedHashMap<>();
+        putIfMeaningful(sessionSection, "id", hydratedReport.getSessionId());
+        putIfMeaningful(sessionSection, "title", session != null ? session.getTitle() : null);
+        putIfMeaningful(sessionSection, "sessionDate", session != null ? session.getSessionDate() : reportData.get("sessionDate"));
+        putIfMeaningful(sessionSection, "type", session != null && session.getType() != null ? session.getType().name() : null);
+        putIfMeaningful(sessionSection, "status", session != null && session.getStatus() != null ? session.getStatus().name() : null);
+        putIfMeaningful(sessionSection, "outcome", session != null && session.getOutcome() != null ? session.getOutcome().name() : reportData.get("sessionOutcome"));
+        putIfMeaningful(sessionSection, "presentingIssue", session != null ? session.getPresentingIssue() : reportData.get("sessionPresentingIssue"));
+        putIfMeaningful(sessionSection, "sessionNotes", session != null ? session.getSessionNotes() : null);
+        putIfMeaningful(sessionSection, "interventions", session != null ? session.getInterventions() : null);
+        putIfMeaningful(sessionSection, "recommendations", session != null ? session.getRecommendations() : null);
+        putIfMeaningful(sessionSection, "treatmentPlan", session != null ? session.getTreatmentPlan() : null);
+        putIfMeaningful(sessionSection, "followUpRequired", session != null ? session.getFollowUpRequired() : null);
+        putIfMeaningful(sessionSection, "followUpDate", session != null ? session.getFollowUpDate() : null);
+        putIfMeaningful(sessionSection, "followUpNotes", session != null ? session.getFollowUpNotes() : null);
+        exportData.put("session", sessionSection);
+
+        exportData.put("reportData", reportData);
+        return exportData;
+    }
+
+    private LinkedHashMap<String, String> flattenExportData(Map<String, Object> structuredExportData) {
+        LinkedHashMap<String, String> flat = new LinkedHashMap<>();
+        flattenExportValue(null, structuredExportData, flat);
+        return flat;
+    }
+
+    @SuppressWarnings("unchecked")
+    private void flattenExportValue(String prefix, Object value, Map<String, String> target) {
+        if (value == null) {
+            return;
+        }
+
+        if (value instanceof Map<?, ?> mapValue) {
+            for (Map.Entry<?, ?> entry : mapValue.entrySet()) {
+                String childKey = prefix == null
+                        ? String.valueOf(entry.getKey())
+                        : prefix + "." + entry.getKey();
+                flattenExportValue(childKey, entry.getValue(), target);
+            }
+            return;
+        }
+
+        if (prefix == null || prefix.isBlank()) {
+            return;
+        }
+
+        target.put(prefix, formatExportValue(value));
+    }
+
+    private String buildDelimitedExport(Map<String, String> flatExportData, char delimiter) {
+        String separator = String.valueOf(delimiter);
+        String headerRow = flatExportData.keySet().stream()
+                .map(value -> escapeDelimitedValue(value, delimiter))
+                .collect(Collectors.joining(separator));
+        String valueRow = flatExportData.values().stream()
+                .map(value -> escapeDelimitedValue(value, delimiter))
+                .collect(Collectors.joining(separator));
+        return headerRow + "\n" + valueRow + "\n";
+    }
+
+    private List<String> buildPdfLines(Report report, Map<String, Object> structuredExportData) {
+        List<String> lines = new ArrayList<>();
+        lines.add(report.getTitle() != null && !report.getTitle().isBlank()
+                ? report.getTitle()
+                : "Counseling Report Export");
+        lines.add("Downloaded At: " + LocalDateTime.now());
+        lines.add("");
+        appendPdfSection(lines, "Report", structuredExportData.get("report"));
+        appendPdfSection(lines, "Client", structuredExportData.get("client"));
+        appendPdfSection(lines, "Counselor", structuredExportData.get("counselor"));
+        appendPdfSection(lines, "Case File", structuredExportData.get("case"));
+        appendPdfSection(lines, "Appointment", structuredExportData.get("appointment"));
+        appendPdfSection(lines, "Session", structuredExportData.get("session"));
+        appendPdfSection(lines, "Report Details", structuredExportData.get("reportData"));
+        return lines;
+    }
+
+    @SuppressWarnings("unchecked")
+    private void appendPdfSection(List<String> lines, String title, Object sectionValue) {
+        if (!(sectionValue instanceof Map<?, ?> rawSection)) {
+            return;
+        }
+
+        Map<String, Object> section = (Map<String, Object>) rawSection;
+        if (!hasMeaningfulValues(section)) {
+            return;
+        }
+
+        lines.add(title);
+        for (Map.Entry<String, Object> entry : section.entrySet()) {
+            if (!isMeaningfulValue(entry.getValue())) {
+                continue;
+            }
+
+            List<String> wrapped = wrapText(
+                    toDisplayLabel(entry.getKey()) + ": " + formatExportValue(entry.getValue()),
+                    92
+            );
+            lines.addAll(wrapped);
+        }
+        lines.add("");
+    }
+
+    private byte[] renderSimplePdf(List<String> lines) {
+        List<List<String>> pages = paginateLines(lines.isEmpty() ? List.of("Counseling Report Export") : lines, 45);
+        int pageCount = pages.size();
+        int lastObjectNumber = 3 + (pageCount * 2);
+        int[] offsets = new int[lastObjectNumber + 1];
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+
+        writePdfBytes(output, "%PDF-1.4\n");
+        writePdfObject(output, offsets, 1, "<< /Type /Catalog /Pages 2 0 R >>");
+
+        StringBuilder pageReferences = new StringBuilder();
+        for (int index = 0; index < pageCount; index++) {
+            pageReferences.append(4 + (index * 2)).append(" 0 R ");
+        }
+        writePdfObject(output, offsets, 2,
+                "<< /Type /Pages /Kids [" + pageReferences + "] /Count " + pageCount + " >>");
+        writePdfObject(output, offsets, 3,
+                "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>");
+
+        for (int index = 0; index < pageCount; index++) {
+            int pageObjectNumber = 4 + (index * 2);
+            int contentObjectNumber = 5 + (index * 2);
+            String pageContent = buildPdfPageContent(pages.get(index));
+            int contentLength = pageContent.getBytes(StandardCharsets.US_ASCII).length;
+            writePdfObject(output, offsets, contentObjectNumber,
+                    "<< /Length " + contentLength + " >>\nstream\n" + pageContent + "endstream");
+            writePdfObject(output, offsets, pageObjectNumber,
+                    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] " +
+                            "/Resources << /Font << /F1 3 0 R >> >> /Contents " +
+                            contentObjectNumber + " 0 R >>");
+        }
+
+        int startXref = output.size();
+        writePdfBytes(output, "xref\n0 " + (lastObjectNumber + 1) + "\n");
+        writePdfBytes(output, "0000000000 65535 f \n");
+        for (int objectNumber = 1; objectNumber <= lastObjectNumber; objectNumber++) {
+            writePdfBytes(output, String.format(Locale.ROOT, "%010d 00000 n \n", offsets[objectNumber]));
+        }
+
+        writePdfBytes(output,
+                "trailer\n<< /Size " + (lastObjectNumber + 1) + " /Root 1 0 R >>\nstartxref\n" +
+                        startXref + "\n%%EOF");
+        return output.toByteArray();
+    }
+
+    private String buildPdfPageContent(List<String> pageLines) {
+        StringBuilder content = new StringBuilder();
+        content.append("BT\n/F1 12 Tf\n50 790 Td\n");
+        for (int index = 0; index < pageLines.size(); index++) {
+            if (index > 0) {
+                content.append("0 -16 Td\n");
+            }
+            content.append("(")
+                    .append(sanitizePdfText(pageLines.get(index)))
+                    .append(") Tj\n");
+        }
+        content.append("ET\n");
+        return content.toString();
+    }
+
+    private List<List<String>> paginateLines(List<String> lines, int linesPerPage) {
+        List<List<String>> pages = new ArrayList<>();
+        for (int start = 0; start < lines.size(); start += linesPerPage) {
+            int end = Math.min(start + linesPerPage, lines.size());
+            pages.add(new ArrayList<>(lines.subList(start, end)));
+        }
+        return pages.isEmpty() ? List.of(new ArrayList<>()) : pages;
+    }
+
+    private void writePdfObject(ByteArrayOutputStream output, int[] offsets, int objectNumber, String body) {
+        offsets[objectNumber] = output.size();
+        writePdfBytes(output, objectNumber + " 0 obj\n" + body + "\nendobj\n");
+    }
+
+    private void writePdfBytes(ByteArrayOutputStream output, String value) {
+        output.writeBytes(value.getBytes(StandardCharsets.US_ASCII));
+    }
+
+    private String sanitizePdfText(String value) {
+        String normalized = value == null ? "" : value
+                .replace("\\", "\\\\")
+                .replace("(", "\\(")
+                .replace(")", "\\)")
+                .replace("\r", " ")
+                .replace("\n", " ")
+                .replace("\t", " ");
+        StringBuilder sanitized = new StringBuilder();
+        for (char character : normalized.toCharArray()) {
+            sanitized.append(character >= 32 && character <= 126 ? character : '?');
+        }
+        return sanitized.toString();
+    }
+
+    private List<String> wrapText(String text, int maxLength) {
+        if (text == null || text.isBlank()) {
+            return List.of("");
+        }
+
+        List<String> wrapped = new ArrayList<>();
+        String remaining = text.trim();
+        while (remaining.length() > maxLength) {
+            int breakIndex = remaining.lastIndexOf(' ', maxLength);
+            if (breakIndex <= 0) {
+                breakIndex = maxLength;
+            }
+            wrapped.add(remaining.substring(0, breakIndex).trim());
+            remaining = remaining.substring(breakIndex).trim();
+        }
+
+        if (!remaining.isEmpty()) {
+            wrapped.add(remaining);
+        }
+        return wrapped;
+    }
+
+    private String formatExportValue(Object value) {
+        if (value == null) {
+            return "";
+        }
+        if (value instanceof Collection<?> collection) {
+            return collection.stream()
+                    .map(this::formatExportValue)
+                    .filter(item -> item != null && !item.isBlank())
+                    .collect(Collectors.joining("; "));
+        }
+        if (value instanceof Map<?, ?> mapValue) {
+            return writeJson(mapValue);
+        }
+        return String.valueOf(value);
+    }
+
+    private String escapeDelimitedValue(String value, char delimiter) {
+        String safeValue = value == null ? "" : value;
+        boolean needsQuotes = safeValue.indexOf(delimiter) >= 0
+                || safeValue.contains("\"")
+                || safeValue.contains("\n")
+                || safeValue.contains("\r");
+        String escaped = safeValue.replace("\"", "\"\"");
+        return needsQuotes ? "\"" + escaped + "\"" : escaped;
+    }
+
+    private void putIfMeaningful(Map<String, Object> target, String key, Object value) {
+        if (isMeaningfulValue(value)) {
+            target.put(key, value);
+        }
+    }
+
+    private boolean hasMeaningfulValues(Map<String, Object> values) {
+        return values.values().stream().anyMatch(this::isMeaningfulValue);
+    }
+
+    private boolean isMeaningfulValue(Object value) {
+        if (value == null) {
+            return false;
+        }
+        if (value instanceof String stringValue) {
+            return !stringValue.isBlank();
+        }
+        if (value instanceof Collection<?> collectionValue) {
+            return !collectionValue.isEmpty();
+        }
+        if (value instanceof Map<?, ?> mapValue) {
+            return !mapValue.isEmpty();
+        }
+        return true;
+    }
+
+    private String toDisplayLabel(String key) {
+        if (key == null || key.isBlank()) {
+            return "Field";
+        }
+        String normalized = key
+                .replace('.', ' ')
+                .replace('_', ' ')
+                .replaceAll("([a-z])([A-Z])", "$1 $2");
+        return toTitleCase(normalized);
     }
 
     private void populateCounselorReport(

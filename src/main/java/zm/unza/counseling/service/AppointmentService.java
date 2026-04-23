@@ -58,6 +58,14 @@ public interface AppointmentService {
     Page<AppointmentDto> getAppointmentsByStudentId(String studentId, Pageable pageable);
 
     /**
+     * Get appointments linked to a case file
+     * @param caseId the case ID
+     * @param pageable pagination information
+     * @return paginated list of appointments linked to the case
+     */
+    Page<AppointmentDto> getAppointmentsByCaseId(Long caseId, Pageable pageable);
+
+    /**
      * Create appointment
      * @param request the create appointment request
      * @return the created appointment

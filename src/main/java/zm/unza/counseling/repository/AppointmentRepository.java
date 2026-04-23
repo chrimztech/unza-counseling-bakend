@@ -164,8 +164,10 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
 
     // Case-based queries
     List<Appointment> findByCaseEntity(Case caseEntity);
-    
+
     Page<Appointment> findByCaseEntity(Case caseEntity, Pageable pageable);
+
+    long countByCaseEntity(Case caseEntity);
     
     List<Appointment> findByCaseEntityAndStatus(Case caseEntity, AppointmentStatus status);
 }

@@ -9,6 +9,7 @@ import zm.unza.counseling.entity.CaseAssignment;
 import zm.unza.counseling.entity.Client;
 import zm.unza.counseling.entity.Counselor;
 import zm.unza.counseling.entity.User;
+import zm.unza.counseling.repository.AppointmentRepository;
 import zm.unza.counseling.repository.CaseAssignmentRepository;
 import zm.unza.counseling.repository.CaseRepository;
 import zm.unza.counseling.repository.ClientRepository;
@@ -33,15 +34,17 @@ public class CaseService {
     private final CaseRepository caseRepository;
     private final ClientRepository clientRepository;
     private final CounselorRepository counselorRepository;
+    private final AppointmentRepository appointmentRepository;
     private final CaseAssignmentRepository caseAssignmentRepository;
     private final UserRepository userRepository;
 
     public CaseService(CaseRepository caseRepository, ClientRepository clientRepository, 
-                       CounselorRepository counselorRepository, CaseAssignmentRepository caseAssignmentRepository,
-                       UserRepository userRepository) {
+                       CounselorRepository counselorRepository, AppointmentRepository appointmentRepository,
+                       CaseAssignmentRepository caseAssignmentRepository, UserRepository userRepository) {
         this.caseRepository = caseRepository;
         this.clientRepository = clientRepository;
         this.counselorRepository = counselorRepository;
+        this.appointmentRepository = appointmentRepository;
         this.caseAssignmentRepository = caseAssignmentRepository;
         this.userRepository = userRepository;
     }
@@ -59,6 +62,8 @@ public class CaseService {
                     .orElseThrow(() -> new RuntimeException("Counselor not found with ID: " + request.getCounselorId()));
             caseEntity.setCounselor(counselor);
             caseEntity.setAssignedAt(LocalDateTime.now());
+            User currentUser = getCurrentUser();
+            caseEntity.setAssignedBy(currentUser != null ? currentUser.getId() : null);
         }
 
         caseEntity.setPriority(request.getPriority());
@@ -122,6 +127,8 @@ public class CaseService {
                     .orElseThrow(() -> new RuntimeException("Counselor not found with ID: " + request.getCounselorId()));
             caseEntity.setCounselor(counselor);
             caseEntity.setAssignedAt(LocalDateTime.now());
+            User currentUser = getCurrentUser();
+            caseEntity.setAssignedBy(currentUser != null ? currentUser.getId() : null);
         }
 
         caseEntity.setPriority(request.getPriority());
@@ -144,6 +151,9 @@ public class CaseService {
             caseEntity.setClosedAt(LocalDateTime.now());
         } else {
             caseEntity.setClosedAt(null);
+        }
+        if (status == Case.CaseStatus.CLOSED || status == Case.CaseStatus.RESOLVED) {
+            caseEntity.setActualResolutionDate(LocalDateTime.now());
         }
         Case updatedCase = caseRepository.save(caseEntity);
         return convertToResponse(updatedCase);
@@ -305,6 +315,12 @@ public class CaseService {
             response.setCounselorId(caseEntity.getCounselor().getId());
             response.setCounselorName(caseEntity.getCounselor().getFullName());
         }
+        response.setAssignedBy(caseEntity.getAssignedBy());
+        if (caseEntity.getAssignedBy() != null) {
+            response.setAssignedByName(userRepository.findById(caseEntity.getAssignedBy())
+                    .map(User::getFullName)
+                    .orElse(null));
+        }
         response.setStatus(caseEntity.getStatus());
         response.setPriority(caseEntity.getPriority());
         response.setSubject(caseEntity.getSubject());
@@ -312,7 +328,15 @@ public class CaseService {
         response.setNotes(caseEntity.getNotes());
         response.setCreatedAt(caseEntity.getCreatedAt());
         response.setUpdatedAt(caseEntity.getUpdatedAt());
+        response.setAssignedAt(caseEntity.getAssignedAt());
+        response.setLastActivityAt(caseEntity.getLastActivityAt());
+        response.setExpectedResolutionDate(caseEntity.getExpectedResolutionDate());
+        response.setActualResolutionDate(caseEntity.getActualResolutionDate());
         response.setClosedAt(caseEntity.getClosedAt());
+        response.setEscalationLevel(caseEntity.getEscalationLevel());
+        response.setTags(caseEntity.getTags());
+        response.setCustomFields(caseEntity.getCustomFields());
+        response.setAppointmentCount(Math.toIntExact(appointmentRepository.countByCaseEntity(caseEntity)));
         return response;
     }
 

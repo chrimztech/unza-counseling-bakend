@@ -6,6 +6,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -122,9 +125,14 @@ public class ReportController {
     @Operation(summary = "Export report", description = "Export a report in specified format")
     public ResponseEntity<byte[]> exportReport(@PathVariable Long id,
                                                @RequestParam(defaultValue = "pdf") String format) {
+        Report report = reportService.getReportById(id);
         byte[] reportData = reportService.exportReport(id, format);
         return ResponseEntity.ok()
-                .header("Content-Disposition", "attachment; filename=report." + format)
+                .contentType(resolveExportContentType(format))
+                .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment()
+                        .filename(buildExportFilename(report, format))
+                        .build()
+                        .toString())
                 .body(reportData);
     }
 
@@ -250,6 +258,37 @@ public class ReportController {
         return ResponseEntity.ok()
                 .header("Content-Disposition", "attachment; filename=reports." + format)
                 .body(data);
+    }
+
+    private MediaType resolveExportContentType(String format) {
+        String normalized = format == null ? "pdf" : format.toLowerCase(Locale.ROOT);
+        return switch (normalized) {
+            case "csv" -> new MediaType("text", "csv");
+            case "excel", "xls", "xlsx" -> new MediaType("application", "vnd.ms-excel");
+            case "json" -> MediaType.APPLICATION_JSON;
+            default -> MediaType.APPLICATION_PDF;
+        };
+    }
+
+    private String buildExportFilename(Report report, String format) {
+        String baseName = report.getTitle() == null || report.getTitle().isBlank()
+                ? "report-" + report.getId()
+                : report.getTitle()
+                .trim()
+                .replaceAll("[^a-zA-Z0-9._-]+", "-")
+                .replaceAll("^-+|-+$", "");
+        if (baseName.isBlank()) {
+            baseName = "report-" + report.getId();
+        }
+
+        String extension = switch (format == null ? "pdf" : format.toLowerCase(Locale.ROOT)) {
+            case "csv" -> "csv";
+            case "excel", "xls", "xlsx" -> "xls";
+            case "json" -> "json";
+            default -> "pdf";
+        };
+
+        return baseName + "." + extension;
     }
 
     private Page<Report> toPage(List<Report> reports, Pageable pageable) {

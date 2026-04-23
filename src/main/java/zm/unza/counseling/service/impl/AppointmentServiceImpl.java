@@ -116,6 +116,13 @@ public class AppointmentServiceImpl implements AppointmentService {
     }
 
     @Override
+    public Page<AppointmentDto> getAppointmentsByCaseId(Long caseId, Pageable pageable) {
+        Case caseEntity = caseRepository.findById(caseId)
+                .orElseThrow(() -> new NoSuchElementException("Case not found with id: " + caseId));
+        return appointmentRepository.findByCaseEntity(caseEntity, pageable).map(this::toAppointmentDto);
+    }
+
+    @Override
     public AppointmentDto createAppointment(CreateAppointmentRequest request) {
         User currentUser = resolveCurrentUser();
         User student = resolveStudentForRequest(request, currentUser);

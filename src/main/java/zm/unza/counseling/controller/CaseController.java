@@ -2,11 +2,15 @@ package zm.unza.counseling.controller;
 
 import zm.unza.counseling.dto.request.CaseAssignmentRequest;
 import zm.unza.counseling.dto.request.CreateCaseRequest;
+import zm.unza.counseling.dto.AppointmentDto;
 import zm.unza.counseling.dto.response.CaseAssignmentResponse;
 import zm.unza.counseling.dto.response.CaseResponse;
 import zm.unza.counseling.entity.Case;
+import zm.unza.counseling.service.AppointmentService;
 import zm.unza.counseling.service.CaseService;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -23,9 +27,11 @@ import java.util.stream.Collectors;
 public class CaseController {
 
     private final CaseService caseService;
+    private final AppointmentService appointmentService;
 
-    public CaseController(CaseService caseService) {
+    public CaseController(CaseService caseService, AppointmentService appointmentService) {
         this.caseService = caseService;
+        this.appointmentService = appointmentService;
     }
 
     @PostMapping
@@ -36,6 +42,12 @@ public class CaseController {
     @GetMapping("/{id}")
     public ResponseEntity<CaseResponse> getCaseById(@PathVariable Long id) {
         return ResponseEntity.ok(caseService.getCaseById(id));
+    }
+
+    @GetMapping("/{caseId}/appointments")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<Page<AppointmentDto>> getAppointmentsByCase(@PathVariable Long caseId, Pageable pageable) {
+        return ResponseEntity.ok(appointmentService.getAppointmentsByCaseId(caseId, pageable));
     }
 
     @GetMapping("/number/{caseNumber}")

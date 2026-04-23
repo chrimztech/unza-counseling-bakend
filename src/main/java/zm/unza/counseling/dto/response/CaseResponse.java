@@ -20,6 +20,10 @@ public class CaseResponse {
 
     private String counselorName;
 
+    private Long assignedBy;
+
+    private String assignedByName;
+
     private Case.CaseStatus status;
 
     private Case.CasePriority priority;
@@ -34,7 +38,23 @@ public class CaseResponse {
 
     private LocalDateTime updatedAt;
 
+    private LocalDateTime assignedAt;
+
+    private LocalDateTime lastActivityAt;
+
+    private LocalDateTime expectedResolutionDate;
+
+    private LocalDateTime actualResolutionDate;
+
     private LocalDateTime closedAt;
+
+    private Integer escalationLevel;
+
+    private String tags;
+
+    private String customFields;
+
+    private Integer appointmentCount;
 
     // Getters and Setters
     public Long getId() {
@@ -93,6 +113,22 @@ public class CaseResponse {
         this.counselorName = counselorName;
     }
 
+    public Long getAssignedBy() {
+        return assignedBy;
+    }
+
+    public void setAssignedBy(Long assignedBy) {
+        this.assignedBy = assignedBy;
+    }
+
+    public String getAssignedByName() {
+        return assignedByName;
+    }
+
+    public void setAssignedByName(String assignedByName) {
+        this.assignedByName = assignedByName;
+    }
+
     public Case.CaseStatus getStatus() {
         return status;
     }
@@ -149,11 +185,75 @@ public class CaseResponse {
         this.updatedAt = updatedAt;
     }
 
+    public LocalDateTime getAssignedAt() {
+        return assignedAt;
+    }
+
+    public void setAssignedAt(LocalDateTime assignedAt) {
+        this.assignedAt = assignedAt;
+    }
+
+    public LocalDateTime getLastActivityAt() {
+        return lastActivityAt;
+    }
+
+    public void setLastActivityAt(LocalDateTime lastActivityAt) {
+        this.lastActivityAt = lastActivityAt;
+    }
+
+    public LocalDateTime getExpectedResolutionDate() {
+        return expectedResolutionDate;
+    }
+
+    public void setExpectedResolutionDate(LocalDateTime expectedResolutionDate) {
+        this.expectedResolutionDate = expectedResolutionDate;
+    }
+
+    public LocalDateTime getActualResolutionDate() {
+        return actualResolutionDate;
+    }
+
+    public void setActualResolutionDate(LocalDateTime actualResolutionDate) {
+        this.actualResolutionDate = actualResolutionDate;
+    }
+
     public LocalDateTime getClosedAt() {
         return closedAt;
     }
 
     public void setClosedAt(LocalDateTime closedAt) {
         this.closedAt = closedAt;
+    }
+
+    public Integer getEscalationLevel() {
+        return escalationLevel;
+    }
+
+    public void setEscalationLevel(Integer escalationLevel) {
+        this.escalationLevel = escalationLevel;
+    }
+
+    public String getTags() {
+        return tags;
+    }
+
+    public void setTags(String tags) {
+        this.tags = tags;
+    }
+
+    public String getCustomFields() {
+        return customFields;
+    }
+
+    public void setCustomFields(String customFields) {
+        this.customFields = customFields;
+    }
+
+    public Integer getAppointmentCount() {
+        return appointmentCount;
+    }
+
+    public void setAppointmentCount(Integer appointmentCount) {
+        this.appointmentCount = appointmentCount;
     }
 }
