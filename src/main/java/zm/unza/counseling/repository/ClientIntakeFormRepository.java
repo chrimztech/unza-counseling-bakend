@@ -18,4 +18,6 @@ public interface ClientIntakeFormRepository extends JpaRepository<ClientIntakeFo
     Optional<ClientIntakeForm> findByCaseEntity(Case caseEntity);
 
     boolean existsByClientId(Long clientId);
+
+    boolean existsByCounselor(zm.unza.counseling.entity.Counselor counselor);
 }

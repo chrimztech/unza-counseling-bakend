@@ -12,6 +12,7 @@ import java.util.Optional;
 public interface AcademicPerformanceRepository extends JpaRepository<AcademicPerformance, Long> {
     List<AcademicPerformance> findByClientIdOrderByRecordDateDesc(Long clientId);
     Optional<AcademicPerformance> findTopByClientIdOrderByRecordDateDesc(Long clientId);
+    long countByClientId(Long clientId);
     List<AcademicPerformance> findByGpaLessThan(BigDecimal threshold);
     List<AcademicPerformance> findByFaculty(String faculty);
     

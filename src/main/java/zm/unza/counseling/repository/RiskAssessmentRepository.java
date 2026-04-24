@@ -15,6 +15,8 @@ public interface RiskAssessmentRepository extends JpaRepository<RiskAssessment, 
 
     Optional<RiskAssessment> findTopByClientIdOrderByAssessmentDateDesc(Long clientId);
 
+    long countByClientId(Long clientId);
+
     List<RiskAssessment> findByFollowUpRequiredTrue();
 
     List<RiskAssessment> findByAssessorIdOrderByAssessmentDateDesc(Long assessorId);

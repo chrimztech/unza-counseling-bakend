@@ -14,4 +14,6 @@ public interface UserBookmarkRepository extends JpaRepository<UserBookmark, Long
     List<UserBookmark> findByUserIdAndCategoryOrderByUsageCountDesc(Long userId, String category);
     
     List<UserBookmark> findByUserIdOrderByUsageCountDesc(Long userId);
+
+    void deleteByUserId(Long userId);
 }

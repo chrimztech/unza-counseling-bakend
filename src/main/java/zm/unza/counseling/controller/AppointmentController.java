@@ -78,6 +78,22 @@ public class AppointmentController {
     }
 
     /**
+     * Update appointment status
+     * PUT /appointments/{id}/status
+     */
+    @PutMapping("/{id}/status")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'STUDENT', 'CLIENT')")
+    public ResponseEntity<ApiResponse<AppointmentDto>> updateAppointmentStatus(
+            @PathVariable Long id,
+            @RequestBody UpdateAppointmentRequest request) {
+        log.info("Updating appointment status with id: {}", id);
+        return ResponseEntity.ok(ApiResponse.success(
+                appointmentService.updateAppointmentStatus(id, request),
+                "Appointment status updated successfully"
+        ));
+    }
+
+    /**
      * Delete an appointment
      * DELETE /appointments/{id}
      */
@@ -97,6 +113,18 @@ public class AppointmentController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<Page<AppointmentDto>>> getAppointmentsByClient(@PathVariable Long clientId, Pageable pageable) {
         return ResponseEntity.ok(ApiResponse.success(appointmentService.getAppointmentsByClientId(clientId, pageable)));
+    }
+
+    /**
+     * Get appointments by student identifier
+     * GET /appointments/student/{studentId}
+     */
+    @GetMapping("/student/{studentId}")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<Page<AppointmentDto>>> getAppointmentsByStudent(
+            @PathVariable String studentId,
+            Pageable pageable) {
+        return ResponseEntity.ok(ApiResponse.success(appointmentService.getAppointmentsByStudentId(studentId, pageable)));
     }
 
     /**

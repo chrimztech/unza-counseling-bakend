@@ -18,9 +18,15 @@ public interface SessionRepository extends JpaRepository<Session, Long> {
 
     List<Session> findByStudent(User student);
 
+    long countByStudentId(Long studentId);
+
     Page<Session> findByStudent(User student, Pageable pageable);
 
     List<Session> findByCounselor(User counselor);
+
+    long countByCounselorId(Long counselorId);
+
+    long countByClientId(Long clientId);
 
     Page<Session> findByCounselor(User counselor, Pageable pageable);
 
@@ -45,4 +51,7 @@ public interface SessionRepository extends JpaRepository<Session, Long> {
     Optional<Session> findFirstByAppointmentIdOrderBySessionDateDesc(Long appointmentId);
 
     List<Session> findByStudentIdOrderBySessionDateDesc(Long studentId);
+
+    @Query(value = "SELECT COUNT(*) FROM sessions s JOIN appointments a ON s.appointment_id = a.id WHERE a.case_id = :caseId", nativeQuery = true)
+    long countByLinkedCaseId(@Param("caseId") Long caseId);
 }

@@ -34,6 +34,12 @@ public class FamilyMember {
     @Column(name = "occupation")
     private String occupation;
 
+    @Column(name = "contact_phone")
+    private String contactPhone;
+
+    @Column(name = "contact_address", length = 500)
+    private String contactAddress;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "form_id")
     private PersonalDataForm personalDataForm;
@@ -101,6 +107,22 @@ public class FamilyMember {
 
     public void setOccupation(String occupation) {
         this.occupation = occupation;
+    }
+
+    public String getContactPhone() {
+        return contactPhone;
+    }
+
+    public void setContactPhone(String contactPhone) {
+        this.contactPhone = contactPhone;
+    }
+
+    public String getContactAddress() {
+        return contactAddress;
+    }
+
+    public void setContactAddress(String contactAddress) {
+        this.contactAddress = contactAddress;
     }
 
     public PersonalDataForm getPersonalDataForm() {

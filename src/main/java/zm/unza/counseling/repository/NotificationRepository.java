@@ -18,6 +18,8 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
 
     long countByRecipientIdAndIsRead(Long recipientId, Boolean isRead);
 
+    void deleteByRecipientId(Long recipientId);
+
     @Query("SELECT n FROM Notification n WHERE n.recipientId = ?1 ORDER BY n.createdAt DESC")
     List<Notification> findByRecipientIdOrderByCreatedAtDescNative(Long recipientId);
 

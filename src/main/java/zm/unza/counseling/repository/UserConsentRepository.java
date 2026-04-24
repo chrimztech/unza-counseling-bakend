@@ -66,4 +66,6 @@ public interface UserConsentRepository extends JpaRepository<UserConsent, Long> 
      * Delete user consents by consent form
      */
     void deleteByConsentForm(zm.unza.counseling.entity.ConsentForm consentForm);
+
+    void deleteByUser(User user);
 }

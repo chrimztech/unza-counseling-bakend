@@ -42,6 +42,8 @@ public interface MentalHealthAcademicAnalysisRepository extends JpaRepository<Me
 
     List<MentalHealthAcademicAnalysis> findByClientId(Long clientId);
 
+    long countByClientId(Long clientId);
+
     Optional<MentalHealthAcademicAnalysis> findTopByClientIdOrderByCreatedAtDesc(Long clientId);
 
     List<MentalHealthAcademicAnalysis> findByClientIdOrderByCreatedAtDesc(Long clientId);

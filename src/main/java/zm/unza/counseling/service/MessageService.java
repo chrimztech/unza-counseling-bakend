@@ -472,10 +472,10 @@ public class MessageService {
         dto.setId(message.getId());
         dto.setConversationId(message.getConversationId());
         dto.setSenderId(message.getSender().getId());
-        dto.setSenderName(message.getSender().getFullName());
+        dto.setSenderName(resolveAuditDisplayName(message.getSender()));
         dto.setSenderEmail(message.getSender().getEmail());
         dto.setRecipientId(message.getRecipient().getId());
-        dto.setRecipientName(message.getRecipient().getFullName());
+        dto.setRecipientName(resolveAuditDisplayName(message.getRecipient()));
         dto.setRecipientEmail(message.getRecipient().getEmail());
         dto.setSubject(message.getSubject());
         dto.setContent(message.getContent());
@@ -489,6 +489,19 @@ public class MessageService {
         dto.setDeletedBySender(message.isDeletedBySender());
         dto.setDeletedByRecipient(message.isDeletedByRecipient());
         return dto;
+    }
+
+    private String resolveAuditDisplayName(User user) {
+        if (user == null) {
+            return "Unknown User";
+        }
+        if (user.isAnonymous()) {
+            return "Anonymous Client";
+        }
+        if (user.isClient()) {
+            return "Client";
+        }
+        return user.getFullName();
     }
 
     private boolean isDeletedForUser(Message message, Long userId) {

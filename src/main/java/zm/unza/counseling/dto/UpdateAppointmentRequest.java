@@ -13,7 +13,23 @@ public class UpdateAppointmentRequest {
     private String description;
     private Appointment.AppointmentStatus status;
     private LocalDateTime appointmentDate;
+    private Integer duration;
+    private Long counselorId;
+    private String sessionMode;
+    private String meetingLink;
+    private String location;
     private String cancellationReason;
     private Long caseId;
     private Map<String, Object> bookingDetails = new HashMap<>();
+
+    public Appointment.SessionMode getSessionModeEnum() {
+        if (sessionMode == null || sessionMode.isBlank()) {
+            return null;
+        }
+        try {
+            return Appointment.SessionMode.valueOf(sessionMode);
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+    }
 }

@@ -18,7 +18,13 @@ public interface CaseRepository extends JpaRepository<Case, Long> {
 
     List<Case> findByClient(Client client);
 
+    long countByClient(Client client);
+
+    boolean existsByClient(Client client);
+
     List<Case> findByCounselor(Counselor counselor);
+
+    boolean existsByCounselor(Counselor counselor);
 
     List<Case> findByStatus(Case.CaseStatus status);
 
@@ -29,6 +35,8 @@ public interface CaseRepository extends JpaRepository<Case, Long> {
     long countByCounselor(Counselor counselor);
 
     long countByStatus(Case.CaseStatus status);
+
+    long countByAssignedBy(Long assignedBy);
 
     @Query("SELECT c FROM Case c WHERE c.client = :client AND c.status IN :statuses " +
             "ORDER BY COALESCE(c.lastActivityAt, c.updatedAt, c.createdAt) DESC")

@@ -14,4 +14,6 @@ public interface UserFeedbackRepository extends JpaRepository<UserFeedback, Long
     List<UserFeedback> findByStatusOrderByCreatedAtDesc(String status);
     
     List<UserFeedback> findByCategoryOrderByCreatedAtDesc(String category);
+
+    void deleteByUserId(Long userId);
 }

@@ -129,6 +129,7 @@ public class PersonalDataFormService {
         form.setSchool(request.getSchool());
         form.setComputerNo(request.getComputerNo());
         form.setYearOfStudy(request.getYearOfStudy());
+        form.setStudentCategory(request.getStudentCategory());
         form.setOccupation(request.getOccupation());
         form.setContactAddress(request.getContactAddress());
         form.setPhoneNumber(request.getPhoneNumber());
@@ -137,6 +138,8 @@ public class PersonalDataFormService {
         form.setPreviousCounsellingOther(request.getPreviousCounsellingOther());
         form.setReferralSource(safeList(request.getReferralSource()));
         form.setReferralSourceOther(request.getReferralSourceOther());
+        form.setReferralPointFrom(request.getReferralPointFrom());
+        form.setReferralPointTo(request.getReferralPointTo());
         form.setReasonsForCounselling(mapReasons(request.getReasonsForCounselling()));
         form.setFamilyHistory(mapFamilyHistory(request.getFamilyHistory(), form));
         form.setHealthStatus(request.getHealthStatus());
@@ -183,6 +186,8 @@ public class PersonalDataFormService {
             familyMember.setAge(familyMemberRequest.getAge());
             familyMember.setEducation(familyMemberRequest.getEducation());
             familyMember.setOccupation(familyMemberRequest.getOccupation());
+            familyMember.setContactPhone(familyMemberRequest.getContactPhone());
+            familyMember.setContactAddress(familyMemberRequest.getContactAddress());
             familyMember.setPersonalDataForm(form);
             familyMembers.add(familyMember);
         }

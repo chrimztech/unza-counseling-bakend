@@ -26,6 +26,7 @@ public class PersonalDataFormResponse {
     private String school;
     private String computerNo;
     private Integer yearOfStudy;
+    private PersonalDataForm.StudentCategory studentCategory;
     private String occupation;
     private String contactAddress;
     private String phoneNumber;
@@ -34,6 +35,8 @@ public class PersonalDataFormResponse {
     private String previousCounsellingOther;
     private List<PersonalDataForm.ReferralSource> referralSource;
     private String referralSourceOther;
+    private String referralPointFrom;
+    private String referralPointTo;
     private ReasonsForCounsellingResponse reasonsForCounselling;
     private List<FamilyMemberResponse> familyHistory;
     private PersonalDataForm.HealthStatus healthStatus;
@@ -144,6 +147,8 @@ public class PersonalDataFormResponse {
         private String age;
         private String education;
         private String occupation;
+        private String contactPhone;
+        private String contactAddress;
 
         public Long getId() {
             return id;
@@ -192,6 +197,22 @@ public class PersonalDataFormResponse {
         public void setOccupation(String occupation) {
             this.occupation = occupation;
         }
+
+        public String getContactPhone() {
+            return contactPhone;
+        }
+
+        public void setContactPhone(String contactPhone) {
+            this.contactPhone = contactPhone;
+        }
+
+        public String getContactAddress() {
+            return contactAddress;
+        }
+
+        public void setContactAddress(String contactAddress) {
+            this.contactAddress = contactAddress;
+        }
     }
 
     public static PersonalDataFormResponse fromEntity(PersonalDataForm form) {
@@ -205,6 +226,7 @@ public class PersonalDataFormResponse {
         response.setSchool(form.getSchool());
         response.setComputerNo(form.getComputerNo());
         response.setYearOfStudy(form.getYearOfStudy());
+        response.setStudentCategory(form.getStudentCategory());
         response.setOccupation(form.getOccupation());
         response.setContactAddress(form.getContactAddress());
         response.setPhoneNumber(form.getPhoneNumber());
@@ -213,6 +235,8 @@ public class PersonalDataFormResponse {
         response.setPreviousCounsellingOther(form.getPreviousCounsellingOther());
         response.setReferralSource(form.getReferralSource());
         response.setReferralSourceOther(form.getReferralSourceOther());
+        response.setReferralPointFrom(form.getReferralPointFrom());
+        response.setReferralPointTo(form.getReferralPointTo());
         response.setHealthStatus(form.getHealthStatus());
         response.setHealthCondition(form.getHealthCondition());
         response.setTakingMedication(form.getTakingMedication());
@@ -257,6 +281,8 @@ public class PersonalDataFormResponse {
                         item.setAge(familyMember.getAge());
                         item.setEducation(familyMember.getEducation());
                         item.setOccupation(familyMember.getOccupation());
+                        item.setContactPhone(familyMember.getContactPhone());
+                        item.setContactAddress(familyMember.getContactAddress());
                         return item;
                     })
                     .collect(Collectors.toList()));
@@ -369,6 +395,14 @@ public class PersonalDataFormResponse {
         this.yearOfStudy = yearOfStudy;
     }
 
+    public PersonalDataForm.StudentCategory getStudentCategory() {
+        return studentCategory;
+    }
+
+    public void setStudentCategory(PersonalDataForm.StudentCategory studentCategory) {
+        this.studentCategory = studentCategory;
+    }
+
     public String getOccupation() {
         return occupation;
     }
@@ -431,6 +465,22 @@ public class PersonalDataFormResponse {
 
     public void setReferralSourceOther(String referralSourceOther) {
         this.referralSourceOther = referralSourceOther;
+    }
+
+    public String getReferralPointFrom() {
+        return referralPointFrom;
+    }
+
+    public void setReferralPointFrom(String referralPointFrom) {
+        this.referralPointFrom = referralPointFrom;
+    }
+
+    public String getReferralPointTo() {
+        return referralPointTo;
+    }
+
+    public void setReferralPointTo(String referralPointTo) {
+        this.referralPointTo = referralPointTo;
     }
 
     public ReasonsForCounsellingResponse getReasonsForCounselling() {

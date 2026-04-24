@@ -72,6 +72,10 @@ public class PersonalDataForm {
     @Column(name = "year_of_study")
     private Integer yearOfStudy;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "student_category")
+    private StudentCategory studentCategory;
+
     @Column(name = "occupation")
     private String occupation;
 
@@ -102,6 +106,12 @@ public class PersonalDataForm {
 
     @Column(name = "referral_source_other")
     private String referralSourceOther;
+
+    @Column(name = "referral_point_from", length = 500)
+    private String referralPointFrom;
+
+    @Column(name = "referral_point_to", length = 500)
+    private String referralPointTo;
 
     @Embedded
     private ReasonsForCounselling reasonsForCounselling;
@@ -149,6 +159,11 @@ public class PersonalDataForm {
         SUBJECT_COUNSELLOR_TUTOR_DEAN,
         OTHER,
         NONE
+    }
+
+    public enum StudentCategory {
+        LOCAL_STUDENT,
+        INTERNATIONAL_STUDENT
     }
 
     public enum ReferralSource {
@@ -460,6 +475,14 @@ public class PersonalDataForm {
         this.yearOfStudy = yearOfStudy;
     }
 
+    public StudentCategory getStudentCategory() {
+        return studentCategory;
+    }
+
+    public void setStudentCategory(StudentCategory studentCategory) {
+        this.studentCategory = studentCategory;
+    }
+
     public String getOccupation() {
         return occupation;
     }
@@ -522,6 +545,22 @@ public class PersonalDataForm {
 
     public void setReferralSourceOther(String referralSourceOther) {
         this.referralSourceOther = referralSourceOther;
+    }
+
+    public String getReferralPointFrom() {
+        return referralPointFrom;
+    }
+
+    public void setReferralPointFrom(String referralPointFrom) {
+        this.referralPointFrom = referralPointFrom;
+    }
+
+    public String getReferralPointTo() {
+        return referralPointTo;
+    }
+
+    public void setReferralPointTo(String referralPointTo) {
+        this.referralPointTo = referralPointTo;
     }
 
     public ReasonsForCounselling getReasonsForCounselling() {

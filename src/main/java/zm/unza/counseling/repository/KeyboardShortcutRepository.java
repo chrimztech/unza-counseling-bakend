@@ -15,4 +15,6 @@ public interface KeyboardShortcutRepository extends JpaRepository<KeyboardShortc
     List<KeyboardShortcut> findByUserIdOrderByKeyAsc(Long userId);
     
     Optional<KeyboardShortcut> findByUserIdAndKey(Long userId, String key);
+
+    void deleteByUserId(Long userId);
 }

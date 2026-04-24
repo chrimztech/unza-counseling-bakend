@@ -15,6 +15,8 @@ public interface UserDashboardConfigRepository extends JpaRepository<UserDashboa
     Optional<UserDashboardConfig> findByUserIdAndWidgetId(Long userId, String widgetId);
     
     void deleteByUserIdAndWidgetId(Long userId, String widgetId);
+
+    void deleteByUserId(Long userId);
     
     boolean existsByUserIdAndWidgetId(Long userId, String widgetId);
 }

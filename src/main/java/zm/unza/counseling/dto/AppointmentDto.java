@@ -18,6 +18,7 @@ public class AppointmentDto {
     private String counselorName;
     private Long caseId;
     private String caseNumber;
+    private Long sessionId;
     private LocalDateTime appointmentDate;
     private Integer duration;
     private Appointment.AppointmentType type;
@@ -51,6 +52,8 @@ public class AppointmentDto {
     public void setCaseId(Long caseId) { this.caseId = caseId; }
     public String getCaseNumber() { return caseNumber; }
     public void setCaseNumber(String caseNumber) { this.caseNumber = caseNumber; }
+    public Long getSessionId() { return sessionId; }
+    public void setSessionId(Long sessionId) { this.sessionId = sessionId; }
     public LocalDateTime getAppointmentDate() { return appointmentDate; }
     public void setAppointmentDate(LocalDateTime appointmentDate) { this.appointmentDate = appointmentDate; }
     public Integer getDuration() { return duration; }

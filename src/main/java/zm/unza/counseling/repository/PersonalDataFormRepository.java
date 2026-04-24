@@ -41,4 +41,6 @@ public interface PersonalDataFormRepository extends JpaRepository<PersonalDataFo
      * @return Optional containing the personal data form if found
      */
     Optional<PersonalDataForm> findByClientId(Long clientId);
+
+    boolean existsByClientId(Long clientId);
 }

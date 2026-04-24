@@ -3,6 +3,8 @@ package zm.unza.counseling.service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 import java.util.concurrent.CompletableFuture;
 import java.util.List;
@@ -19,6 +21,7 @@ public class NotificationService {
     /**
      * Send system notification
      */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public CompletableFuture<Notification> sendSystemNotification(Long userId, String title, 
                                                                 String message, String priority) {
         Notification notification = new Notification();
@@ -28,8 +31,9 @@ public class NotificationService {
         notification.setType("SYSTEM");
         notification.setPriority(priority);
         notification.setIsRead(false);
+        notification.setCreatedAt(LocalDateTime.now());
         
-        return CompletableFuture.completedFuture(notificationRepository.save(notification));
+        return CompletableFuture.completedFuture(notificationRepository.saveAndFlush(notification));
     }
 
     public List<Notification> getUserNotifications(Long userId) {

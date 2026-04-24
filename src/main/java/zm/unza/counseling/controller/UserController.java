@@ -87,9 +87,21 @@ public class UserController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<String>> deleteUser(@PathVariable Long id) {
-        userService.deleteUser(id);
-        return ResponseEntity.ok(ApiResponse.success("User deleted successfully"));
+    public ResponseEntity<ApiResponse<String>> deleteUser(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "false") boolean permanent) {
+        userService.deleteUser(id, permanent);
+        String message = permanent
+                ? "User permanently deleted successfully"
+                : "User deactivated successfully";
+        return ResponseEntity.ok(ApiResponse.success(message));
+    }
+
+    @DeleteMapping("/{id}/permanent")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<String>> permanentlyDeleteUser(@PathVariable Long id) {
+        userService.permanentlyDeleteUser(id);
+        return ResponseEntity.ok(ApiResponse.success("User permanently deleted successfully"));
     }
 
     @GetMapping("/role/{role}")

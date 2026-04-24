@@ -1,24 +1,33 @@
 package zm.unza.counseling.service;
 
-import zm.unza.counseling.dto.request.CaseAssignmentRequest;
-import zm.unza.counseling.dto.request.CreateCaseRequest;
-import zm.unza.counseling.dto.response.CaseAssignmentResponse;
-import zm.unza.counseling.dto.response.CaseResponse;
-import zm.unza.counseling.entity.Case;
-import zm.unza.counseling.entity.CaseAssignment;
-import zm.unza.counseling.entity.Client;
-import zm.unza.counseling.entity.Counselor;
-import zm.unza.counseling.entity.User;
-import zm.unza.counseling.repository.AppointmentRepository;
-import zm.unza.counseling.repository.CaseAssignmentRepository;
-import zm.unza.counseling.repository.CaseRepository;
-import zm.unza.counseling.repository.ClientRepository;
-import zm.unza.counseling.repository.CounselorRepository;
-import zm.unza.counseling.repository.UserRepository;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import zm.unza.counseling.dto.request.CaseAssignmentRequest;
+import zm.unza.counseling.dto.request.CreateCaseRequest;
+import zm.unza.counseling.dto.response.CaseAssignmentResponse;
+import zm.unza.counseling.dto.response.CaseResponse;
+import zm.unza.counseling.entity.Appointment;
+import zm.unza.counseling.entity.Case;
+import zm.unza.counseling.entity.CaseAssignment;
+import zm.unza.counseling.entity.Client;
+import zm.unza.counseling.entity.ClientIntakeForm;
+import zm.unza.counseling.entity.Counselor;
+import zm.unza.counseling.entity.PersonalDataForm;
+import zm.unza.counseling.entity.User;
+import zm.unza.counseling.exception.ResourceNotFoundException;
+import zm.unza.counseling.exception.ValidationException;
+import zm.unza.counseling.repository.AppointmentRepository;
+import zm.unza.counseling.repository.CaseAssignmentRepository;
+import zm.unza.counseling.repository.CaseRepository;
+import zm.unza.counseling.repository.ClientIntakeFormRepository;
+import zm.unza.counseling.repository.ClientRepository;
+import zm.unza.counseling.repository.CounselorRepository;
+import zm.unza.counseling.repository.PersonalDataFormRepository;
+import zm.unza.counseling.repository.ReportRepository;
+import zm.unza.counseling.repository.SessionRepository;
+import zm.unza.counseling.repository.UserRepository;
 
 import java.time.LocalDateTime;
 import java.time.YearMonth;
@@ -26,6 +35,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
@@ -37,75 +47,80 @@ public class CaseService {
     private final AppointmentRepository appointmentRepository;
     private final CaseAssignmentRepository caseAssignmentRepository;
     private final UserRepository userRepository;
+    private final SessionRepository sessionRepository;
+    private final ReportRepository reportRepository;
+    private final ClientIntakeFormRepository clientIntakeFormRepository;
+    private final PersonalDataFormRepository personalDataFormRepository;
+    private final CaseDocumentService caseDocumentService;
 
-    public CaseService(CaseRepository caseRepository, ClientRepository clientRepository, 
-                       CounselorRepository counselorRepository, AppointmentRepository appointmentRepository,
-                       CaseAssignmentRepository caseAssignmentRepository, UserRepository userRepository) {
+    public CaseService(
+            CaseRepository caseRepository,
+            ClientRepository clientRepository,
+            CounselorRepository counselorRepository,
+            AppointmentRepository appointmentRepository,
+            CaseAssignmentRepository caseAssignmentRepository,
+            UserRepository userRepository,
+            SessionRepository sessionRepository,
+            ReportRepository reportRepository,
+            ClientIntakeFormRepository clientIntakeFormRepository,
+            PersonalDataFormRepository personalDataFormRepository,
+            CaseDocumentService caseDocumentService
+    ) {
         this.caseRepository = caseRepository;
         this.clientRepository = clientRepository;
         this.counselorRepository = counselorRepository;
         this.appointmentRepository = appointmentRepository;
         this.caseAssignmentRepository = caseAssignmentRepository;
         this.userRepository = userRepository;
+        this.sessionRepository = sessionRepository;
+        this.reportRepository = reportRepository;
+        this.clientIntakeFormRepository = clientIntakeFormRepository;
+        this.personalDataFormRepository = personalDataFormRepository;
+        this.caseDocumentService = caseDocumentService;
     }
 
     @Transactional
     public CaseResponse createCase(CreateCaseRequest request) {
-        Client client = clientRepository.findById(request.getClientId())
-                .orElseThrow(() -> new RuntimeException("Client not found with ID: " + request.getClientId()));
+        Client client = getClientOrThrow(request.getClientId());
 
         Case caseEntity = new Case();
         caseEntity.setClient(client);
-
-        if (request.getCounselorId() != null) {
-            Counselor counselor = counselorRepository.findById(request.getCounselorId())
-                    .orElseThrow(() -> new RuntimeException("Counselor not found with ID: " + request.getCounselorId()));
-            caseEntity.setCounselor(counselor);
-            caseEntity.setAssignedAt(LocalDateTime.now());
-            User currentUser = getCurrentUser();
-            caseEntity.setAssignedBy(currentUser != null ? currentUser.getId() : null);
-        }
-
-        caseEntity.setPriority(request.getPriority());
-        caseEntity.setSubject(request.getSubject());
-        caseEntity.setDescription(request.getDescription());
-        caseEntity.setNotes(request.getNotes());
+        applyCaseDetails(caseEntity, request);
         caseEntity.setLastActivityAt(LocalDateTime.now());
 
-        Case savedCase = caseRepository.save(caseEntity);
-        
-        // Create case assignment record if counselor is assigned
+        Counselor counselor = null;
         if (request.getCounselorId() != null) {
-            Counselor counselor = caseEntity.getCounselor();
-            createCaseAssignment(savedCase, counselor, null, "Initial assignment on case creation", null);
+            counselor = getCounselorOrThrow(request.getCounselorId());
+            applyAssignmentMetadata(caseEntity, counselor, resolveAssignmentActor(counselor));
         }
-        
+
+        Case savedCase = caseRepository.save(caseEntity);
+        if (counselor != null) {
+            ensureActiveAssignment(savedCase, counselor, "Initial assignment on case creation", null);
+        }
+
         return convertToResponse(savedCase);
     }
 
     public CaseResponse getCaseById(Long id) {
-        Case caseEntity = caseRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Case not found with ID: " + id));
-        return convertToResponse(caseEntity);
+        return convertToResponse(getCaseOrThrow(id));
     }
 
     public CaseResponse getCaseByCaseNumber(String caseNumber) {
         Case caseEntity = caseRepository.findByCaseNumber(caseNumber)
-                .orElseThrow(() -> new RuntimeException("Case not found with case number: " + caseNumber));
+                .orElseThrow(() -> new ResourceNotFoundException("Case not found with case number: " + caseNumber));
         return convertToResponse(caseEntity);
     }
 
     public List<CaseResponse> getCasesByClient(Long clientId) {
-        Client client = clientRepository.findById(clientId)
-                .orElseThrow(() -> new RuntimeException("Client not found with ID: " + clientId));
+        Client client = getClientOrThrow(clientId);
         return caseRepository.findByClient(client).stream()
                 .map(this::convertToResponse)
                 .collect(Collectors.toList());
     }
 
     public List<CaseResponse> getCasesByCounselor(Long counselorId) {
-        Counselor counselor = counselorRepository.findById(counselorId)
-                .orElseThrow(() -> new RuntimeException("Counselor not found with ID: " + counselorId));
+        Counselor counselor = getCounselorOrThrow(counselorId);
         return caseRepository.findByCounselor(counselor).stream()
                 .map(this::convertToResponse)
                 .collect(Collectors.toList());
@@ -119,23 +134,31 @@ public class CaseService {
 
     @Transactional
     public CaseResponse updateCase(Long id, CreateCaseRequest request) {
-        Case caseEntity = caseRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Case not found with ID: " + id));
+        Case caseEntity = getCaseOrThrow(id);
 
-        if (request.getCounselorId() != null) {
-            Counselor counselor = counselorRepository.findById(request.getCounselorId())
-                    .orElseThrow(() -> new RuntimeException("Counselor not found with ID: " + request.getCounselorId()));
-            caseEntity.setCounselor(counselor);
-            caseEntity.setAssignedAt(LocalDateTime.now());
-            User currentUser = getCurrentUser();
-            caseEntity.setAssignedBy(currentUser != null ? currentUser.getId() : null);
+        if (!Objects.equals(caseEntity.getClient().getId(), request.getClientId())) {
+            if (appointmentRepository.countAllByCaseId(id) > 0) {
+                throw new ValidationException("Cannot move a case to a different client after appointments have been linked");
+            }
+            caseEntity.setClient(getClientOrThrow(request.getClientId()));
         }
 
-        caseEntity.setPriority(request.getPriority());
-        caseEntity.setSubject(request.getSubject());
-        caseEntity.setDescription(request.getDescription());
-        caseEntity.setNotes(request.getNotes());
+        applyCaseDetails(caseEntity, request);
         caseEntity.setLastActivityAt(LocalDateTime.now());
+
+        if (request.getCounselorId() != null) {
+            Counselor counselor = getCounselorOrThrow(request.getCounselorId());
+            if (!sameCounselor(caseEntity.getCounselor(), counselor)) {
+                assertCaseAllowsAssignment(caseEntity);
+                applyAssignmentMetadata(caseEntity, counselor, resolveAssignmentActor(counselor));
+                ensureActiveAssignment(caseEntity, counselor, "Counselor assigned during case update", null);
+            } else {
+                if (caseEntity.getAssignedBy() == null || caseEntity.getAssignedAt() == null) {
+                    applyAssignmentMetadata(caseEntity, counselor, resolveAssignmentActor(counselor));
+                }
+                ensureActiveAssignment(caseEntity, counselor, "Counselor assignment synchronized", null);
+            }
+        }
 
         Case updatedCase = caseRepository.save(caseEntity);
         return convertToResponse(updatedCase);
@@ -143,26 +166,31 @@ public class CaseService {
 
     @Transactional
     public CaseResponse updateCaseStatus(Long id, Case.CaseStatus status) {
-        Case caseEntity = caseRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Case not found with ID: " + id));
-        caseEntity.setStatus(status);
-        caseEntity.setLastActivityAt(LocalDateTime.now());
-        if (status == Case.CaseStatus.CLOSED) {
-            caseEntity.setClosedAt(LocalDateTime.now());
-        } else {
-            caseEntity.setClosedAt(null);
+        if (status == null) {
+            throw new ValidationException("Case status is required");
         }
-        if (status == Case.CaseStatus.CLOSED || status == Case.CaseStatus.RESOLVED) {
-            caseEntity.setActualResolutionDate(LocalDateTime.now());
+
+        Case caseEntity = getCaseOrThrow(id);
+        if (status == Case.CaseStatus.CLOSED && hasOpenAppointments(caseEntity)) {
+            throw new ValidationException("Cannot close a case while linked appointments are still active");
         }
+
+        applyStatusTransition(caseEntity, status);
+        if (status == Case.CaseStatus.CLOSED || status == Case.CaseStatus.RESOLVED || status == Case.CaseStatus.REFERRED) {
+            closeActiveAssignments(caseEntity);
+        }
+
         Case updatedCase = caseRepository.save(caseEntity);
         return convertToResponse(updatedCase);
     }
 
     @Transactional
     public CaseResponse updateCasePriority(Long id, Case.CasePriority priority) {
-        Case caseEntity = caseRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Case not found with ID: " + id));
+        if (priority == null) {
+            throw new ValidationException("Case priority is required");
+        }
+
+        Case caseEntity = getCaseOrThrow(id);
         caseEntity.setPriority(priority);
         caseEntity.setLastActivityAt(LocalDateTime.now());
         Case updatedCase = caseRepository.save(caseEntity);
@@ -171,108 +199,227 @@ public class CaseService {
 
     @Transactional
     public void deleteCase(Long id) {
-        if (!caseRepository.existsById(id)) {
-            throw new RuntimeException("Case not found with ID: " + id);
+        Case caseEntity = getCaseOrThrow(id);
+
+        if (sessionRepository.countByLinkedCaseId(id) > 0) {
+            throw new ValidationException("Case cannot be permanently deleted because session records already exist. Close the case instead to preserve history.");
         }
-        caseRepository.deleteById(id);
+        if (reportRepository.countByCaseId(id) > 0) {
+            throw new ValidationException("Case cannot be permanently deleted because reports already reference it. Close the case instead to preserve history.");
+        }
+
+        clearCaseLinks(caseEntity);
+        caseRepository.delete(caseEntity);
     }
 
-    /**
-     * Assign a counselor to a case
-     */
     @Transactional
     public CaseAssignmentResponse assignCounselorToCase(CaseAssignmentRequest request) {
-        Case caseEntity = caseRepository.findById(request.getCaseId())
-                .orElseThrow(() -> new RuntimeException("Case not found with ID: " + request.getCaseId()));
+        Case caseEntity = getCaseOrThrow(request.getCaseId());
+        Counselor counselor = getCounselorOrThrow(request.getCounselorId());
+        assertCaseAllowsAssignment(caseEntity);
 
-        Counselor counselor = counselorRepository.findById(request.getCounselorId())
-                .orElseThrow(() -> new RuntimeException("Counselor not found with ID: " + request.getCounselorId()));
-
-        // Get the currently authenticated user (who is making the assignment)
-        User assignedBy = getCurrentUser();
-
-        // Close any existing active assignments for this case
-        List<CaseAssignment> activeAssignments = caseAssignmentRepository
-                .findByCaseEntityAndStatus(caseEntity, "ACTIVE");
-        for (CaseAssignment assignment : activeAssignments) {
-            assignment.setStatus("CLOSED");
-            assignment.setClosedAt(LocalDateTime.now());
-            caseAssignmentRepository.save(assignment);
+        List<CaseAssignment> activeAssignments = caseAssignmentRepository.findByCaseEntityAndStatus(caseEntity, "ACTIVE");
+        boolean alreadyAssignedToCounselor = activeAssignments.stream()
+                .anyMatch(assignment -> assignment.getAssignedTo() != null
+                        && assignment.getAssignedTo().getId().equals(counselor.getId()));
+        if (alreadyAssignedToCounselor) {
+            throw new ValidationException("Case is already assigned to this counselor");
         }
 
-        // Create new assignment
-        CaseAssignment assignment = createCaseAssignment(caseEntity, counselor, assignedBy,
-                request.getAssignmentReason(), request.getAssignmentNotes());
-
-        // Update the case with the new counselor
-        caseEntity.setCounselor(counselor);
-        caseEntity.setAssignedAt(LocalDateTime.now());
-        caseEntity.setAssignedBy(assignedBy != null ? assignedBy.getId() : null);
+        User assignedBy = resolveAssignmentActor(counselor);
+        closeAssignments(activeAssignments);
+        applyAssignmentMetadata(caseEntity, counselor, assignedBy);
         caseEntity.setLastActivityAt(LocalDateTime.now());
         caseRepository.save(caseEntity);
+
+        CaseAssignment assignment = createCaseAssignment(
+                caseEntity,
+                counselor,
+                assignedBy,
+                request.getAssignmentReason(),
+                request.getAssignmentNotes()
+        );
 
         return convertToAssignmentResponse(assignment);
     }
 
-    /**
-     * Get assignment history for a case
-     */
     public List<CaseAssignmentResponse> getCaseAssignmentHistory(Long caseId) {
-        Case caseEntity = caseRepository.findById(caseId)
-                .orElseThrow(() -> new RuntimeException("Case not found with ID: " + caseId));
-
+        Case caseEntity = getCaseOrThrow(caseId);
         return caseAssignmentRepository.findByCaseEntity(caseEntity).stream()
                 .map(this::convertToAssignmentResponse)
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Get all active assignments for a counselor
-     */
     public List<CaseAssignmentResponse> getActiveAssignmentsForCounselor(Long counselorId) {
-        Counselor counselor = counselorRepository.findById(counselorId)
-                .orElseThrow(() -> new RuntimeException("Counselor not found with ID: " + counselorId));
-
+        Counselor counselor = getCounselorOrThrow(counselorId);
         return caseAssignmentRepository.findByAssignedToAndStatus(counselor, "ACTIVE").stream()
                 .map(this::convertToAssignmentResponse)
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Get case statistics for dashboard
-     */
     public Object getCaseStatistics() {
         return buildCaseStatistics(caseRepository.findAll());
     }
 
     public Object getCaseStatisticsByCounselor(Long counselorId) {
-        Counselor counselor = counselorRepository.findById(counselorId)
-                .orElseThrow(() -> new RuntimeException("Counselor not found with ID: " + counselorId));
+        Counselor counselor = getCounselorOrThrow(counselorId);
         return buildCaseStatistics(caseRepository.findByCounselor(counselor));
     }
 
-    /**
-     * Create a case assignment record
-     */
-    private CaseAssignment createCaseAssignment(Case caseEntity, Counselor counselor, User assignedBy,
-                                                 String reason, String notes) {
+    private void applyCaseDetails(Case caseEntity, CreateCaseRequest request) {
+        caseEntity.setPriority(request.getPriority() != null ? request.getPriority() : Case.CasePriority.MEDIUM);
+        caseEntity.setSubject(normalize(request.getSubject()));
+        caseEntity.setDescription(normalizeRequired(request.getDescription(), "Case description is required"));
+        caseEntity.setNotes(normalize(request.getNotes()));
+    }
+
+    private void applyAssignmentMetadata(Case caseEntity, Counselor counselor, User assignedBy) {
+        caseEntity.setCounselor(counselor);
+        caseEntity.setAssignedAt(LocalDateTime.now());
+        caseEntity.setAssignedBy(assignedBy != null ? assignedBy.getId() : null);
+    }
+
+    private void applyStatusTransition(Case caseEntity, Case.CaseStatus status) {
+        LocalDateTime now = LocalDateTime.now();
+        caseEntity.setStatus(status);
+        caseEntity.setLastActivityAt(now);
+
+        switch (status) {
+            case CLOSED -> {
+                if (caseEntity.getActualResolutionDate() == null) {
+                    caseEntity.setActualResolutionDate(now);
+                }
+                if (caseEntity.getClosedAt() == null) {
+                    caseEntity.setClosedAt(now);
+                }
+            }
+            case RESOLVED -> {
+                if (caseEntity.getActualResolutionDate() == null) {
+                    caseEntity.setActualResolutionDate(now);
+                }
+                caseEntity.setClosedAt(null);
+            }
+            default -> {
+                caseEntity.setActualResolutionDate(null);
+                caseEntity.setClosedAt(null);
+            }
+        }
+    }
+
+    private void clearCaseLinks(Case caseEntity) {
+        caseDocumentService.deleteDocumentsByCase(caseEntity.getId());
+        unlinkCaseForms(caseEntity);
+        appointmentRepository.unlinkAllByCaseId(caseEntity.getId());
+        caseAssignmentRepository.deleteByCaseEntity(caseEntity);
+    }
+
+    private void unlinkCaseForms(Case caseEntity) {
+        clientIntakeFormRepository.findByCaseEntity(caseEntity).ifPresent(form -> {
+            form.setCaseEntity(null);
+            clientIntakeFormRepository.save(form);
+        });
+
+        personalDataFormRepository.findByCaseEntity(caseEntity).ifPresent(form -> {
+            form.setCaseEntity(null);
+            personalDataFormRepository.save(form);
+        });
+    }
+
+    private void ensureActiveAssignment(Case caseEntity, Counselor counselor, String reason, String notes) {
+        List<CaseAssignment> activeAssignments = caseAssignmentRepository.findByCaseEntityAndStatus(caseEntity, "ACTIVE");
+        boolean alreadySynchronized = activeAssignments.stream()
+                .anyMatch(assignment -> assignment.getAssignedTo() != null
+                        && assignment.getAssignedTo().getId().equals(counselor.getId()));
+        if (alreadySynchronized) {
+            return;
+        }
+
+        User assignedBy = resolveAssignmentActor(counselor);
+        closeAssignments(activeAssignments);
+        createCaseAssignment(caseEntity, counselor, assignedBy, reason, notes);
+    }
+
+    private void closeActiveAssignments(Case caseEntity) {
+        closeAssignments(caseAssignmentRepository.findByCaseEntityAndStatus(caseEntity, "ACTIVE"));
+    }
+
+    private void closeAssignments(List<CaseAssignment> assignments) {
+        LocalDateTime now = LocalDateTime.now();
+        for (CaseAssignment assignment : assignments) {
+            assignment.setStatus("CLOSED");
+            assignment.setUpdatedAt(now);
+            assignment.setClosedAt(now);
+            caseAssignmentRepository.save(assignment);
+        }
+    }
+
+    private boolean hasOpenAppointments(Case caseEntity) {
+        return appointmentRepository.findByCaseEntity(caseEntity).stream()
+                .map(Appointment::getStatus)
+                .anyMatch(this::isActiveAppointmentStatus);
+    }
+
+    private boolean isActiveAppointmentStatus(Appointment.AppointmentStatus status) {
+        return status == null || switch (status) {
+            case SCHEDULED, CONFIRMED, IN_PROGRESS, RESCHEDULED, PENDING, UNASSIGNED -> true;
+            case COMPLETED, CANCELLED, NO_SHOW, MISSED -> false;
+        };
+    }
+
+    private boolean sameCounselor(Counselor current, Counselor requested) {
+        return current != null && requested != null && Objects.equals(current.getId(), requested.getId());
+    }
+
+    private void assertCaseAllowsAssignment(Case caseEntity) {
+        if (caseEntity.getStatus() == Case.CaseStatus.CLOSED) {
+            throw new ValidationException("Closed cases must be reopened before assigning a counselor");
+        }
+    }
+
+    private CaseAssignment createCaseAssignment(
+            Case caseEntity,
+            Counselor counselor,
+            User assignedBy,
+            String reason,
+            String notes
+    ) {
         CaseAssignment assignment = new CaseAssignment();
         assignment.setCaseEntity(caseEntity);
         assignment.setAssignedTo(counselor);
         assignment.setAssignedBy(assignedBy);
-        assignment.setAssignmentReason(reason);
-        assignment.setAssignmentNotes(notes);
+        assignment.setAssignmentReason(normalize(reason));
+        assignment.setAssignmentNotes(normalize(notes));
         assignment.setStatus("ACTIVE");
         return caseAssignmentRepository.save(assignment);
     }
 
-    /**
-     * Get the currently authenticated user
-     */
+    private Case getCaseOrThrow(Long id) {
+        return caseRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Case not found with id: " + id));
+    }
+
+    private Client getClientOrThrow(Long clientId) {
+        return clientRepository.findById(clientId)
+                .orElseThrow(() -> new ResourceNotFoundException("Client not found with id: " + clientId));
+    }
+
+    private Counselor getCounselorOrThrow(Long counselorId) {
+        return counselorRepository.findById(counselorId)
+                .orElseThrow(() -> new ResourceNotFoundException("Counselor not found with id: " + counselorId));
+    }
+
+    private User resolveAssignmentActor(Counselor fallbackCounselor) {
+        User currentUser = getCurrentUser();
+        return currentUser != null ? currentUser : fallbackCounselor;
+    }
+
     private User getCurrentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication != null && authentication.isAuthenticated()) {
             String username = authentication.getName();
+            if (username == null || username.isBlank() || "anonymousUser".equals(username)) {
+                return null;
+            }
             return userRepository.findByUsername(username)
                     .or(() -> userRepository.findByEmail(username))
                     .orElse(null);
@@ -280,27 +427,40 @@ public class CaseService {
         return null;
     }
 
-    /**
-     * Convert CaseAssignment entity to response DTO
-     */
+    private String normalize(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private String normalizeRequired(String value, String message) {
+        String normalized = normalize(value);
+        if (normalized == null) {
+            throw new ValidationException(message);
+        }
+        return normalized;
+    }
+
     private CaseAssignmentResponse convertToAssignmentResponse(CaseAssignment assignment) {
         CaseAssignmentResponse response = new CaseAssignmentResponse();
         response.setId(assignment.getId());
         response.setCaseId(assignment.getCaseEntity().getId());
         response.setCaseNumber(assignment.getCaseEntity().getCaseNumber());
-        
+
         if (assignment.getAssignedBy() != null) {
             response.setAssignedBy(assignment.getAssignedBy().getId());
             response.setAssignedByName(assignment.getAssignedBy().getFullName());
         }
-        
+
         response.setAssignedTo(assignment.getAssignedTo().getId());
         response.setAssignedToName(assignment.getAssignedTo().getFullName());
         response.setAssignmentReason(assignment.getAssignmentReason());
         response.setAssignmentNotes(assignment.getAssignmentNotes());
         response.setStatus(assignment.getStatus());
         response.setAssignedAt(assignment.getAssignedAt());
-        
+
         return response;
     }
 

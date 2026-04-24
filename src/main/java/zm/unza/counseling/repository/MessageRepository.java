@@ -110,4 +110,8 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
     @Query("UPDATE Message m SET m.isRead = true, m.readAt = CURRENT_TIMESTAMP " +
            "WHERE m.recipient.id = :userId")
     void markAllMessagesAsReadByUser(@Param("userId") Long userId);
+
+    @Modifying
+    @Query("DELETE FROM Message m WHERE m.sender.id = :userId OR m.recipient.id = :userId")
+    void deleteAllByUserId(@Param("userId") Long userId);
 }

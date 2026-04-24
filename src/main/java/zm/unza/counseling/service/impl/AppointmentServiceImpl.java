@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -78,33 +79,27 @@ public class AppointmentServiceImpl implements AppointmentService {
 
     @Override
     public Page<AppointmentDto> getAllAppointments(Pageable pageable) {
-        return appointmentRepository.findAll(pageable).map(this::toAppointmentDto);
+        return getScopedAppointments(pageable).map(this::toAppointmentDto);
     }
 
     @Override
     public AppointmentDto getAppointmentById(Long id) {
-        return appointmentRepository.findById(id)
-                .map(this::toAppointmentDto)
-                .orElseThrow(() -> new NoSuchElementException("Appointment not found with id: " + id));
+        return toAppointmentDto(getAppointmentOrThrow(id));
     }
 
     @Override
     public Page<AppointmentDto> getAppointmentsByClientId(Long clientId, Pageable pageable) {
-        Optional<Client> clientOpt = clientRepository.findById(clientId);
-        if (clientOpt.isPresent()) {
-            return appointmentRepository.findByClient(clientOpt.get(), pageable).map(this::toAppointmentDto);
-        }
-
         User user = userRepository.findById(clientId)
                 .orElseThrow(() -> new NoSuchElementException("Client not found with id: " + clientId));
-        log.info("No Client record found for user {}, querying appointments by student", user.getUsername());
+        authorizeClientScopedRead(user);
+        ensureAppointmentClientUser(user);
         return appointmentRepository.findByStudent(user, pageable).map(this::toAppointmentDto);
     }
 
     @Override
     public Page<AppointmentDto> getAppointmentsByCounselorId(Long counselorId, Pageable pageable) {
-        User counselor = userRepository.findById(counselorId)
-                .orElseThrow(() -> new NoSuchElementException("Counselor not found with id: " + counselorId));
+        User counselor = resolveCounselorUser(counselorId);
+        validateCounselorScopedRead(counselor);
         return appointmentRepository.findByCounselor(counselor, pageable).map(this::toAppointmentDto);
     }
 
@@ -112,6 +107,8 @@ public class AppointmentServiceImpl implements AppointmentService {
     public Page<AppointmentDto> getAppointmentsByStudentId(String studentId, Pageable pageable) {
         User student = findUserByStudentIdentifier(studentId)
                 .orElseThrow(() -> new NoSuchElementException("Student not found with identifier: " + studentId));
+        authorizeStudentScopedRead(student);
+        ensureAppointmentClientUser(student);
         return appointmentRepository.findByStudent(student, pageable).map(this::toAppointmentDto);
     }
 
@@ -119,6 +116,7 @@ public class AppointmentServiceImpl implements AppointmentService {
     public Page<AppointmentDto> getAppointmentsByCaseId(Long caseId, Pageable pageable) {
         Case caseEntity = caseRepository.findById(caseId)
                 .orElseThrow(() -> new NoSuchElementException("Case not found with id: " + caseId));
+        authorizeCaseRead(caseEntity);
         return appointmentRepository.findByCaseEntity(caseEntity, pageable).map(this::toAppointmentDto);
     }
 
@@ -128,146 +126,195 @@ public class AppointmentServiceImpl implements AppointmentService {
         User student = resolveStudentForRequest(request, currentUser);
         Client client = resolveClientForUser(student);
         Case caseEntity = resolveCaseForAppointment(request.getCaseId(), client);
+        Appointment.AppointmentType appointmentType = resolveAppointmentType(request);
+        Appointment.SessionMode sessionMode = resolveCreateSessionMode(request);
+        int duration = normalizeDuration(request.getDuration());
+        User counselor = resolveCounselorForAppointment(request.getCounselorId(), caseEntity);
+
+        validateAvailability(counselor, request.getAppointmentDate(), duration, null);
 
         Appointment appointment = new Appointment();
-        appointment.setTitle(request.getTitle());
+        appointment.setTitle(normalizeRequired(request.getTitle(), "Appointment title is required"));
         appointment.setStudent(student);
         appointment.setClient(client);
         appointment.setCaseEntity(caseEntity);
-        appointment.setAppointmentDate(request.getAppointmentDate());
-        appointment.setType(Optional.ofNullable(request.getAppointmentType())
-                .orElse(Appointment.AppointmentType.INITIAL_CONSULTATION));
-        appointment.setDuration(request.getDuration() != null ? request.getDuration() : 60);
-        appointment.setSessionMode(request.getSessionModeEnum());
+        appointment.setAppointmentDate(requireAppointmentDate(request.getAppointmentDate()));
+        appointment.setType(appointmentType);
+        appointment.setDuration(duration);
+        appointment.setSessionMode(sessionMode);
 
         Map<String, Object> bookingDetails = sanitizeMap(request.getBookingDetails());
         appointment.setDescription(resolveAppointmentDescription(request.getDescription(), bookingDetails));
         appointment.setIntakeDataJson(writeJson(bookingDetails));
-
-        User counselor = resolveCounselorForAppointment(request.getCounselorId(), caseEntity);
-        if (counselor != null) {
-            appointment.setCounselor(counselor);
-            appointment.setStatus(Appointment.AppointmentStatus.SCHEDULED);
-        } else {
-            appointment.setStatus(Appointment.AppointmentStatus.UNASSIGNED);
-        }
-
-        if (appointment.getSessionMode() == Appointment.SessionMode.VIRTUAL) {
-            if (counselor != null) {
-                String meetingLink = request.getMeetingLink() != null && !request.getMeetingLink().isBlank()
-                        ? request.getMeetingLink()
-                        : generateMeetingLink(appointment);
-                appointment.setMeetingLink(meetingLink);
-                appointment.setMeetingProvider(defaultMeetingProvider);
-            }
-        } else if (request.getLocation() != null && !request.getLocation().isBlank()) {
-            appointment.setLocation(request.getLocation());
-        }
+        appointment.setCounselor(counselor);
+        appointment.setStatus(counselor != null
+                ? Appointment.AppointmentStatus.SCHEDULED
+                : Appointment.AppointmentStatus.UNASSIGNED);
+        applyVenueDetails(appointment, sessionMode, request.getMeetingLink(), request.getLocation());
 
         Appointment savedAppointment = appointmentRepository.save(appointment);
+        syncSessionFromAppointment(savedAppointment);
         notifyStudentOnCreate(savedAppointment);
-        touchCase(caseEntity);
+        touchCaseTransition(null, savedAppointment.getCaseEntity());
         auditAppointment("APPOINTMENT_CREATED", savedAppointment, "Appointment created");
         return toAppointmentDto(savedAppointment);
     }
 
     @Override
     public AppointmentDto updateAppointment(Long id, UpdateAppointmentRequest request) {
-        Appointment appointment = appointmentRepository.findById(id)
-                .orElseThrow(() -> new NoSuchElementException("Appointment not found with id: " + id));
+        Appointment appointment = getAppointmentOrThrow(id);
+        assertAppointmentUpdatable(appointment, "update");
+
+        Case previousCase = appointment.getCaseEntity();
+        Client client = resolveClientForUser(appointment.getStudent());
+
+        Case targetCase = appointment.getCaseEntity();
+        if (request.getCaseId() != null) {
+            targetCase = request.getCaseId() > 0
+                    ? resolveCaseForAppointment(request.getCaseId(), client)
+                    : null;
+        }
+
+        User targetCounselor = resolveUpdatedCounselor(appointment, request, targetCase);
+        LocalDateTime targetDate = request.getAppointmentDate() != null
+                ? requireAppointmentDate(request.getAppointmentDate())
+                : appointment.getAppointmentDate();
+        int targetDuration = request.getDuration() != null
+                ? normalizeDuration(request.getDuration())
+                : resolveAppointmentDuration(appointment);
+
+        validateAvailability(targetCounselor, targetDate, targetDuration, appointment.getId());
 
         if (request.getTitle() != null) {
-            appointment.setTitle(request.getTitle());
+            appointment.setTitle(normalizeRequired(request.getTitle(), "Appointment title is required"));
         }
         if (request.getDescription() != null) {
-            appointment.setDescription(request.getDescription());
+            appointment.setDescription(normalize(request.getDescription()));
         }
-        if (request.getStatus() != null) {
-            appointment.setStatus(request.getStatus());
+        appointment.setCaseEntity(targetCase);
+        appointment.setCounselor(targetCounselor);
+        appointment.setAppointmentDate(targetDate);
+        appointment.setDuration(targetDuration);
+
+        Appointment.SessionMode targetSessionMode = request.getSessionMode() != null
+                ? resolveUpdateSessionMode(request)
+                : appointment.getSessionMode();
+        if (targetSessionMode == null) {
+            targetSessionMode = Appointment.SessionMode.IN_PERSON;
         }
-        if (request.getAppointmentDate() != null) {
-            appointment.setAppointmentDate(request.getAppointmentDate());
-        }
+        appointment.setSessionMode(targetSessionMode);
+        applyVenueDetails(appointment, targetSessionMode, request.getMeetingLink(), request.getLocation());
+
         if (request.getCancellationReason() != null) {
-            appointment.setCancellationReason(request.getCancellationReason());
-        }
-        if (request.getCaseId() != null) {
-            Client client = resolveClientForUser(appointment.getStudent());
-            appointment.setCaseEntity(resolveCaseForAppointment(request.getCaseId(), client));
+            appointment.setCancellationReason(normalize(request.getCancellationReason()));
         }
         if (request.getBookingDetails() != null && !request.getBookingDetails().isEmpty()) {
-            appointment.setIntakeDataJson(writeJson(sanitizeMap(request.getBookingDetails())));
-            if ((appointment.getDescription() == null || appointment.getDescription().isBlank())) {
-                appointment.setDescription(resolveAppointmentDescription(appointment.getDescription(), request.getBookingDetails()));
+            Map<String, Object> bookingDetails = sanitizeMap(request.getBookingDetails());
+            appointment.setIntakeDataJson(writeJson(bookingDetails));
+            if (appointment.getDescription() == null || appointment.getDescription().isBlank()) {
+                appointment.setDescription(resolveAppointmentDescription(appointment.getDescription(), bookingDetails));
             }
         }
 
+        if (targetCounselor == null && appointment.getStatus() == Appointment.AppointmentStatus.UNASSIGNED) {
+            appointment.setMeetingLink(null);
+            appointment.setMeetingProvider(null);
+        }
+
+        if (request.getStatus() != null) {
+            applyStatusChange(appointment, request.getStatus(), request.getCancellationReason());
+        } else if (targetCounselor == null && appointment.getStatus() != Appointment.AppointmentStatus.CANCELLED) {
+            appointment.setStatus(Appointment.AppointmentStatus.UNASSIGNED);
+        } else if (targetCounselor != null && appointment.getStatus() == Appointment.AppointmentStatus.UNASSIGNED) {
+            appointment.setStatus(Appointment.AppointmentStatus.SCHEDULED);
+        }
+
+        if (isActiveAppointmentStatus(appointment.getStatus())) {
+            ensureLinkedCaseSupportsActiveAppointment(appointment);
+        }
+
         Appointment savedAppointment = appointmentRepository.save(appointment);
-        touchCase(savedAppointment.getCaseEntity());
+        syncSessionFromAppointment(savedAppointment);
+        touchCaseTransition(previousCase, savedAppointment.getCaseEntity());
         auditAppointment("APPOINTMENT_UPDATED", savedAppointment, "Appointment updated");
         return toAppointmentDto(savedAppointment);
     }
 
     @Override
     public AppointmentDto updateAppointmentStatus(Long id, UpdateAppointmentRequest request) {
-        Appointment appointment = appointmentRepository.findById(id)
-                .orElseThrow(() -> new NoSuchElementException("Appointment not found with id: " + id));
-        if (request.getStatus() != null) {
-            appointment.setStatus(request.getStatus());
-        }
-        if (request.getAppointmentDate() != null) {
-            appointment.setAppointmentDate(request.getAppointmentDate());
-        }
-        if (request.getCancellationReason() != null) {
-            appointment.setCancellationReason(request.getCancellationReason());
+        if (request.getStatus() == null) {
+            throw new ValidationException("Appointment status is required");
         }
 
+        Appointment appointment = getAppointmentOrThrow(id);
+        assertAppointmentUpdatable(appointment, "change status");
+
+        Case previousCase = appointment.getCaseEntity();
+        if (request.getAppointmentDate() != null) {
+            appointment.setAppointmentDate(requireAppointmentDate(request.getAppointmentDate()));
+            validateAvailability(
+                    appointment.getCounselor(),
+                    appointment.getAppointmentDate(),
+                    resolveAppointmentDuration(appointment),
+                    appointment.getId()
+            );
+        }
+        if (request.getCancellationReason() != null) {
+            appointment.setCancellationReason(normalize(request.getCancellationReason()));
+        }
+
+        applyStatusChange(appointment, request.getStatus(), request.getCancellationReason());
         Appointment savedAppointment = appointmentRepository.save(appointment);
-        touchCase(savedAppointment.getCaseEntity());
+        syncSessionFromAppointment(savedAppointment);
+        touchCaseTransition(previousCase, savedAppointment.getCaseEntity());
         auditAppointment("APPOINTMENT_STATUS_UPDATED", savedAppointment, "Appointment status updated");
         return toAppointmentDto(savedAppointment);
     }
 
     @Override
     public void deleteAppointment(Long id) {
-        Appointment appointment = appointmentRepository.findById(id)
-                .orElseThrow(() -> new NoSuchElementException("Appointment not found with id: " + id));
-        User currentUser = resolveCurrentUser();
+        Appointment appointment = getAppointmentOrThrow(id);
+        assertAppointmentUpdatable(appointment, "delete");
+        if (sessionRepository.findFirstByAppointmentIdOrderBySessionDateDesc(appointment.getId()).isPresent()) {
+            throw new ValidationException("Appointments with session records cannot be deleted. Cancel or complete the appointment instead to preserve history.");
+        }
 
+        User currentUser = resolveCurrentUser();
         appointment.setDeletedAt(LocalDateTime.now());
         appointment.setDeletedByUserId(currentUser != null ? currentUser.getId() : null);
         appointment.setDeletionReason("Soft deleted");
         appointment.setStatus(Appointment.AppointmentStatus.CANCELLED);
         appointmentRepository.save(appointment);
 
-        touchCase(appointment.getCaseEntity());
+        syncSessionFromAppointment(appointment);
+        touchCaseTransition(appointment.getCaseEntity(), appointment.getCaseEntity());
         auditAppointment("APPOINTMENT_DELETED", appointment, "Appointment soft deleted");
         log.info("Soft deleted appointment with id: {}", id);
     }
 
     @Override
     public Page<AppointmentDto> getUpcomingAppointments(Pageable pageable) {
-        return appointmentRepository.findByAppointmentDateAfter(LocalDateTime.now(), pageable).map(this::toAppointmentDto);
+        return getScopedAppointmentsAfter(LocalDateTime.now(), pageable).map(this::toAppointmentDto);
     }
 
     @Override
     public Page<AppointmentDto> getPastAppointments(Pageable pageable) {
-        return appointmentRepository.findByAppointmentDateBefore(LocalDateTime.now(), pageable).map(this::toAppointmentDto);
+        return getScopedAppointmentsBefore(LocalDateTime.now(), pageable).map(this::toAppointmentDto);
     }
 
     @Override
     public Page<AppointmentDto> getCancelledAppointments(Pageable pageable) {
-        return appointmentRepository.findByStatus(Appointment.AppointmentStatus.CANCELLED, pageable).map(this::toAppointmentDto);
+        return getScopedAppointmentsByStatus(Appointment.AppointmentStatus.CANCELLED, pageable).map(this::toAppointmentDto);
     }
 
     @Override
     public Page<AppointmentDto> getConfirmedAppointments(Pageable pageable) {
-        return appointmentRepository.findByStatus(Appointment.AppointmentStatus.CONFIRMED, pageable).map(this::toAppointmentDto);
+        return getScopedAppointmentsByStatus(Appointment.AppointmentStatus.CONFIRMED, pageable).map(this::toAppointmentDto);
     }
 
     @Override
     public Page<AppointmentDto> getPendingAppointments(Pageable pageable) {
-        return appointmentRepository.findByStatus(Appointment.AppointmentStatus.PENDING, pageable).map(this::toAppointmentDto);
+        return getScopedAppointmentsByStatus(Appointment.AppointmentStatus.PENDING, pageable).map(this::toAppointmentDto);
     }
 
     @Override
@@ -277,93 +324,55 @@ public class AppointmentServiceImpl implements AppointmentService {
 
     @Override
     public AppointmentDto cancelAppointment(Long id, CancelRequest request) {
-        Appointment appointment = appointmentRepository.findById(id)
-                .orElseThrow(() -> new NoSuchElementException("Appointment not found with id: " + id));
-        appointment.setStatus(Appointment.AppointmentStatus.CANCELLED);
-        if (request != null && request.getReason() != null) {
-            appointment.setCancellationReason(request.getReason());
-        }
+        Appointment appointment = getAppointmentOrThrow(id);
+        assertAppointmentUpdatable(appointment, "cancel");
+
+        applyStatusChange(
+                appointment,
+                Appointment.AppointmentStatus.CANCELLED,
+                request != null ? request.getReason() : null
+        );
 
         Appointment savedAppointment = appointmentRepository.save(appointment);
-        notifyStudent(savedAppointment,
-                "Appointment Cancelled",
-                buildCancellationMessage(savedAppointment));
-        touchCase(savedAppointment.getCaseEntity());
+        syncSessionFromAppointment(savedAppointment);
+        notifyStudent(savedAppointment, "Appointment Cancelled", buildCancellationMessage(savedAppointment));
+        touchCaseTransition(savedAppointment.getCaseEntity(), savedAppointment.getCaseEntity());
         auditAppointment("APPOINTMENT_CANCELLED", savedAppointment, "Appointment cancelled");
         return toAppointmentDto(savedAppointment);
     }
 
     @Override
     public AppointmentDto confirmAppointment(Long id) {
-        Appointment appointment = appointmentRepository.findById(id)
-                .orElseThrow(() -> new NoSuchElementException("Appointment not found with id: " + id));
+        Appointment appointment = getAppointmentOrThrow(id);
+        assertAppointmentUpdatable(appointment, "confirm");
 
-        if (appointment.getCounselor() == null && appointment.getCaseEntity() != null && appointment.getCaseEntity().getCounselor() != null) {
-            appointment.setCounselor(appointment.getCaseEntity().getCounselor());
-        }
-        if (appointment.getCounselor() == null) {
-            throw new ValidationException("Appointment must be assigned to a counselor before it can be confirmed");
-        }
-
-        appointment.setStatus(Appointment.AppointmentStatus.CONFIRMED);
-        appointment = appointmentRepository.save(appointment);
-        ensureSessionFromAppointment(appointment);
-        notifyStudent(appointment,
+        applyStatusChange(appointment, Appointment.AppointmentStatus.CONFIRMED, null);
+        Appointment savedAppointment = appointmentRepository.save(appointment);
+        syncSessionFromAppointment(savedAppointment);
+        notifyStudent(savedAppointment,
                 "Appointment Confirmed",
                 String.format("Your appointment with %s on %s has been confirmed.",
-                        describeCounselor(appointment),
-                        formatAppointmentDate(appointment)));
+                        describeCounselor(savedAppointment),
+                        formatAppointmentDate(savedAppointment)));
 
-        touchCase(appointment.getCaseEntity());
-        auditAppointment("APPOINTMENT_CONFIRMED", appointment, "Appointment confirmed");
-        return toAppointmentDto(appointment);
+        touchCaseTransition(savedAppointment.getCaseEntity(), savedAppointment.getCaseEntity());
+        auditAppointment("APPOINTMENT_CONFIRMED", savedAppointment, "Appointment confirmed");
+        return toAppointmentDto(savedAppointment);
     }
 
     @Override
     public AppointmentDto rescheduleAppointment(Long id, UpdateAppointmentRequest request) {
-        Appointment appointment = appointmentRepository.findById(id)
-                .orElseThrow(() -> new NoSuchElementException("Appointment not found with id: " + id));
-        appointment.setAppointmentDate(request.getAppointmentDate());
-        if (request.getTitle() != null) {
-            appointment.setTitle(request.getTitle());
-        }
-        appointment.setStatus(Appointment.AppointmentStatus.RESCHEDULED);
-
-        Appointment savedAppointment = appointmentRepository.save(appointment);
-        notifyStudent(savedAppointment,
-                "Appointment Rescheduled",
-                String.format("Your appointment has been rescheduled to %s.",
-                        formatAppointmentDate(savedAppointment)));
-        touchCase(savedAppointment.getCaseEntity());
-        auditAppointment("APPOINTMENT_RESCHEDULED", savedAppointment, "Appointment rescheduled");
-        return toAppointmentDto(savedAppointment);
+        return rescheduleAppointmentInternal(id, request.getAppointmentDate(), request.getTitle());
     }
 
     @Override
     public AppointmentDto rescheduleAppointment(Long id, RescheduleRequest request) {
-        Appointment appointment = appointmentRepository.findById(id)
-                .orElseThrow(() -> new NoSuchElementException("Appointment not found with id: " + id));
-        appointment.setAppointmentDate(request.getAppointmentDate());
-        if (request.getTitle() != null) {
-            appointment.setTitle(request.getTitle());
-        }
-        appointment.setStatus(Appointment.AppointmentStatus.RESCHEDULED);
-
-        Appointment savedAppointment = appointmentRepository.save(appointment);
-        notifyStudent(savedAppointment,
-                "Appointment Rescheduled",
-                String.format("Your appointment has been rescheduled to %s.",
-                        formatAppointmentDate(savedAppointment)));
-        touchCase(savedAppointment.getCaseEntity());
-        auditAppointment("APPOINTMENT_RESCHEDULED", savedAppointment, "Appointment rescheduled");
-        return toAppointmentDto(savedAppointment);
+        return rescheduleAppointmentInternal(id, request.getAppointmentDate(), request.getTitle());
     }
 
     @Override
     public boolean checkCounselorAvailability(Long counselorId, String dateTime) {
-        User counselor = userRepository.findById(counselorId)
-                .orElseThrow(() -> new NoSuchElementException("Counselor not found with id: " + counselorId));
-
+        User counselor = resolveCounselorUser(counselorId);
         LocalDateTime requestedTime = LocalDateTime.parse(dateTime, DateTimeFormatter.ISO_DATE_TIME);
         int duration = 60;
         LocalDateTime endTime = requestedTime.plusMinutes(duration);
@@ -449,7 +458,7 @@ public class AppointmentServiceImpl implements AppointmentService {
     public Page<AppointmentDto> getTodaysAppointments(Pageable pageable) {
         LocalDateTime startOfDay = LocalDateTime.now().withHour(0).withMinute(0).withSecond(0).withNano(0);
         LocalDateTime endOfDay = LocalDateTime.now().withHour(23).withMinute(59).withSecond(59).withNano(999999999);
-        return appointmentRepository.findByAppointmentDateBetween(startOfDay, endOfDay, pageable).map(this::toAppointmentDto);
+        return getScopedAppointmentsBetween(startOfDay, endOfDay, pageable).map(this::toAppointmentDto);
     }
 
     @Override
@@ -459,76 +468,59 @@ public class AppointmentServiceImpl implements AppointmentService {
 
     @Override
     public AppointmentDto assignSessionToCounselor(AssignAppointmentRequest request) {
-        Appointment appointment = appointmentRepository.findById(request.getAppointmentId())
-                .orElseThrow(() -> new NoSuchElementException("Appointment not found with id: " + request.getAppointmentId()));
+        Appointment appointment = getAppointmentOrThrow(request.getAppointmentId());
+        assertAppointmentUpdatable(appointment, "assign");
+        ensureLinkedCaseSupportsActiveAppointment(appointment);
 
-        User counselor = userRepository.findById(request.getCounselorId())
-                .orElseThrow(() -> new NoSuchElementException("Counselor not found with id: " + request.getCounselorId()));
-
-        LocalDateTime appointmentEnd = appointment.getAppointmentDate().plusMinutes(resolveAppointmentDuration(appointment));
-        List<Appointment> conflicts = findConflictingAppointments(
-                counselor,
-                appointment.getAppointmentDate(),
-                appointmentEnd,
-                appointment.getId()
-        );
-        if (!conflicts.isEmpty()) {
-            throw new ValidationException("Counselor has conflicting appointments at this time");
-        }
+        User counselor = resolveCounselorUser(request.getCounselorId());
+        validateCaseCounselorCompatibility(appointment.getCaseEntity(), counselor);
+        validateAvailability(counselor, appointment.getAppointmentDate(), resolveAppointmentDuration(appointment), appointment.getId());
 
         appointment.setCounselor(counselor);
         if (appointment.getStatus() == Appointment.AppointmentStatus.UNASSIGNED) {
             appointment.setStatus(Appointment.AppointmentStatus.SCHEDULED);
         }
-        if (appointment.getSessionMode() == Appointment.SessionMode.VIRTUAL && (appointment.getMeetingLink() == null || appointment.getMeetingLink().isBlank())) {
-            appointment.setMeetingLink(generateMeetingLink(appointment));
-            appointment.setMeetingProvider(defaultMeetingProvider);
-        }
+        applyVenueDetails(appointment, appointment.getSessionMode(), appointment.getMeetingLink(), appointment.getLocation());
 
         Appointment savedAppointment = appointmentRepository.save(appointment);
+        syncSessionFromAppointment(savedAppointment);
         notifyStudent(savedAppointment,
                 "Counselor Assigned",
                 String.format("Your appointment on %s has been assigned to %s.",
                         formatAppointmentDate(savedAppointment),
                         describeCounselor(savedAppointment)));
-        touchCase(savedAppointment.getCaseEntity());
+        touchCaseTransition(savedAppointment.getCaseEntity(), savedAppointment.getCaseEntity());
         auditAppointment("APPOINTMENT_ASSIGNED", savedAppointment, "Appointment assigned to counselor");
         return toAppointmentDto(savedAppointment);
     }
 
     @Override
     public AppointmentDto counselorTakeAppointment(Long appointmentId, Long counselorId) {
-        Appointment appointment = appointmentRepository.findById(appointmentId)
-                .orElseThrow(() -> new NoSuchElementException("Appointment not found with id: " + appointmentId));
-
-        User counselor = userRepository.findById(counselorId)
-                .orElseThrow(() -> new NoSuchElementException("Counselor not found with id: " + counselorId));
+        Appointment appointment = getAppointmentOrThrow(appointmentId);
+        assertAppointmentTakeableByCounselor(appointment);
+        ensureLinkedCaseSupportsActiveAppointment(appointment);
 
         if (appointment.getCounselor() != null) {
             throw new ValidationException("Appointment is already assigned to a counselor");
         }
 
-        LocalDateTime appointmentTime = appointment.getAppointmentDate();
-        LocalDateTime endTime = appointmentTime.plusMinutes(resolveAppointmentDuration(appointment));
-        List<Appointment> conflicts = findConflictingAppointments(counselor, appointmentTime, endTime, appointment.getId());
-        if (!conflicts.isEmpty()) {
-            throw new ValidationException("Counselor has conflicting appointments at this time");
-        }
+        User counselor = resolveCounselorUser(counselorId);
+        ensureCounselorOwnsAction(counselor);
+        validateCaseCounselorCompatibility(appointment.getCaseEntity(), counselor);
+        validateAvailability(counselor, appointment.getAppointmentDate(), resolveAppointmentDuration(appointment), appointment.getId());
 
         appointment.setCounselor(counselor);
         appointment.setStatus(Appointment.AppointmentStatus.SCHEDULED);
-        if (appointment.getSessionMode() == Appointment.SessionMode.VIRTUAL && (appointment.getMeetingLink() == null || appointment.getMeetingLink().isBlank())) {
-            appointment.setMeetingLink(generateMeetingLink(appointment));
-            appointment.setMeetingProvider(defaultMeetingProvider);
-        }
+        applyVenueDetails(appointment, appointment.getSessionMode(), appointment.getMeetingLink(), appointment.getLocation());
 
         Appointment savedAppointment = appointmentRepository.save(appointment);
+        syncSessionFromAppointment(savedAppointment);
         notifyStudent(savedAppointment,
                 "Counselor Assigned",
                 String.format("Your appointment on %s has been taken by %s.",
                         formatAppointmentDate(savedAppointment),
                         describeCounselor(savedAppointment)));
-        touchCase(savedAppointment.getCaseEntity());
+        touchCaseTransition(savedAppointment.getCaseEntity(), savedAppointment.getCaseEntity());
         auditAppointment("APPOINTMENT_TAKEN", savedAppointment, "Counselor self-assigned appointment");
         return toAppointmentDto(savedAppointment);
     }
@@ -538,9 +530,112 @@ public class AppointmentServiceImpl implements AppointmentService {
         return appointmentRepository.countUnassignedAppointments();
     }
 
+    private AppointmentDto rescheduleAppointmentInternal(Long id, LocalDateTime appointmentDate, String title) {
+        Appointment appointment = getAppointmentOrThrow(id);
+        assertAppointmentUpdatable(appointment, "reschedule");
+
+        validateAvailability(
+                appointment.getCounselor(),
+                requireAppointmentDate(appointmentDate),
+                resolveAppointmentDuration(appointment),
+                appointment.getId()
+        );
+
+        appointment.setAppointmentDate(requireAppointmentDate(appointmentDate));
+        if (title != null) {
+            appointment.setTitle(normalizeRequired(title, "Appointment title is required"));
+        }
+        applyStatusChange(
+                appointment,
+                appointment.getCounselor() != null
+                        ? Appointment.AppointmentStatus.RESCHEDULED
+                        : Appointment.AppointmentStatus.UNASSIGNED,
+                null
+        );
+
+        Appointment savedAppointment = appointmentRepository.save(appointment);
+        syncSessionFromAppointment(savedAppointment);
+        notifyStudent(savedAppointment,
+                "Appointment Rescheduled",
+                String.format("Your appointment has been rescheduled to %s.",
+                        formatAppointmentDate(savedAppointment)));
+        touchCaseTransition(savedAppointment.getCaseEntity(), savedAppointment.getCaseEntity());
+        auditAppointment("APPOINTMENT_RESCHEDULED", savedAppointment, "Appointment rescheduled");
+        return toAppointmentDto(savedAppointment);
+    }
+
+    private Page<Appointment> getScopedAppointments(Pageable pageable) {
+        User currentUser = resolveCurrentUser();
+        if (currentUser == null || isAdministrator(currentUser)) {
+            return appointmentRepository.findAll(pageable);
+        }
+        if (isCounselorUser(currentUser)) {
+            return appointmentRepository.findByCounselor(currentUser, pageable);
+        }
+        ensureAppointmentClientUser(currentUser);
+        return appointmentRepository.findByStudent(currentUser, pageable);
+    }
+
+    private Page<Appointment> getScopedAppointmentsAfter(LocalDateTime start, Pageable pageable) {
+        User currentUser = resolveCurrentUser();
+        if (currentUser == null || isAdministrator(currentUser)) {
+            return appointmentRepository.findByAppointmentDateAfter(start, pageable);
+        }
+        if (isCounselorUser(currentUser)) {
+            return appointmentRepository.findByCounselorAndAppointmentDateAfter(currentUser, start, pageable);
+        }
+        ensureAppointmentClientUser(currentUser);
+        return appointmentRepository.findByStudentAndAppointmentDateAfter(currentUser, start, pageable);
+    }
+
+    private Page<Appointment> getScopedAppointmentsBefore(LocalDateTime end, Pageable pageable) {
+        User currentUser = resolveCurrentUser();
+        if (currentUser == null || isAdministrator(currentUser)) {
+            return appointmentRepository.findByAppointmentDateBefore(end, pageable);
+        }
+        if (isCounselorUser(currentUser)) {
+            return appointmentRepository.findByCounselorAndAppointmentDateBefore(currentUser, end, pageable);
+        }
+        ensureAppointmentClientUser(currentUser);
+        return appointmentRepository.findByStudentAndAppointmentDateBefore(currentUser, end, pageable);
+    }
+
+    private Page<Appointment> getScopedAppointmentsBetween(LocalDateTime start, LocalDateTime end, Pageable pageable) {
+        User currentUser = resolveCurrentUser();
+        if (currentUser == null || isAdministrator(currentUser)) {
+            return appointmentRepository.findByAppointmentDateBetween(start, end, pageable);
+        }
+        if (isCounselorUser(currentUser)) {
+            return appointmentRepository.findByCounselorAndAppointmentDateBetween(currentUser, start, end, pageable);
+        }
+        ensureAppointmentClientUser(currentUser);
+        return appointmentRepository.findByStudentAndAppointmentDateBetween(currentUser, start, end, pageable);
+    }
+
+    private Page<Appointment> getScopedAppointmentsByStatus(Appointment.AppointmentStatus status, Pageable pageable) {
+        User currentUser = resolveCurrentUser();
+        if (currentUser == null || isAdministrator(currentUser)) {
+            return appointmentRepository.findByStatus(status, pageable);
+        }
+        if (isCounselorUser(currentUser)) {
+            return appointmentRepository.findByCounselorAndStatus(currentUser, status, pageable);
+        }
+        ensureAppointmentClientUser(currentUser);
+        return appointmentRepository.findByStudentAndStatus(currentUser, status, pageable);
+    }
+
+    private Appointment getAppointmentOrThrow(Long id) {
+        Appointment appointment = appointmentRepository.findById(id)
+                .orElseThrow(() -> new NoSuchElementException("Appointment not found with id: " + id));
+        authorizeAppointmentRead(appointment);
+        return appointment;
+    }
+
     private boolean checkAvailabilityInternal(Long counselorId, LocalDateTime dateTime) {
-        User counselor = userRepository.findById(counselorId).orElse(null);
-        if (counselor == null) {
+        User counselor;
+        try {
+            counselor = resolveCounselorUser(counselorId);
+        } catch (RuntimeException exception) {
             return false;
         }
 
@@ -555,9 +650,16 @@ public class AppointmentServiceImpl implements AppointmentService {
             LocalDateTime end,
             Long excludeAppointmentId
     ) {
+        if (counselor == null) {
+            return Collections.emptyList();
+        }
+
         return appointmentRepository.findByCounselor(counselor).stream()
                 .filter(appointment -> appointment.getStatus() == Appointment.AppointmentStatus.SCHEDULED
-                        || appointment.getStatus() == Appointment.AppointmentStatus.CONFIRMED)
+                        || appointment.getStatus() == Appointment.AppointmentStatus.CONFIRMED
+                        || appointment.getStatus() == Appointment.AppointmentStatus.RESCHEDULED
+                        || appointment.getStatus() == Appointment.AppointmentStatus.IN_PROGRESS
+                        || appointment.getStatus() == Appointment.AppointmentStatus.PENDING)
                 .filter(appointment -> excludeAppointmentId == null || !appointment.getId().equals(excludeAppointmentId))
                 .filter(appointment -> overlaps(appointment, start, end))
                 .toList();
@@ -574,7 +676,11 @@ public class AppointmentServiceImpl implements AppointmentService {
     }
 
     private AppointmentDto toAppointmentDto(Appointment appointment) {
-        return AppointmentDto.from(appointment, readJsonMap(appointment.getIntakeDataJson()));
+        AppointmentDto dto = AppointmentDto.from(appointment, readJsonMap(appointment.getIntakeDataJson()));
+        sessionRepository.findFirstByAppointmentIdOrderBySessionDateDesc(appointment.getId())
+                .map(Session::getId)
+                .ifPresent(dto::setSessionId);
+        return dto;
     }
 
     private User resolveCurrentUser() {
@@ -590,18 +696,19 @@ public class AppointmentServiceImpl implements AppointmentService {
     }
 
     private User resolveStudentForRequest(CreateAppointmentRequest request, User currentUser) {
-        if (currentUser != null && !currentUser.hasRole("ROLE_ADMIN") && !currentUser.hasRole("ROLE_COUNSELOR")) {
+        if (currentUser != null && !isAdministrator(currentUser) && !isCounselorUser(currentUser)) {
+            ensureAppointmentClientUser(currentUser);
             return currentUser;
         }
 
-        Optional<User> requestedUser = findUserByStudentIdentifier(request.getStudentId());
-        if (requestedUser.isPresent()) {
-            return requestedUser.get();
+        if (request.getStudentId() == null || String.valueOf(request.getStudentId()).isBlank()) {
+            throw new ValidationException("Student identifier is required when creating an appointment on behalf of a client");
         }
-        if (currentUser != null) {
-            return currentUser;
-        }
-        throw new NoSuchElementException("Unable to resolve student for appointment");
+
+        User student = findUserByStudentIdentifier(String.valueOf(request.getStudentId()))
+                .orElseThrow(() -> new NoSuchElementException("Student not found with identifier: " + request.getStudentId()));
+        ensureAppointmentClientUser(student);
+        return student;
     }
 
     private Optional<User> findUserByStudentIdentifier(String identifier) {
@@ -617,19 +724,25 @@ public class AppointmentServiceImpl implements AppointmentService {
         try {
             return userRepository.findById(Long.parseLong(identifier));
         } catch (NumberFormatException ignored) {
-            return userRepository.findByUsername(identifier);
+            return userRepository.findByUsername(identifier)
+                    .or(() -> userRepository.findByEmail(identifier));
         }
     }
 
     private Client resolveClientForUser(User user) {
-        return clientRepository.findById(user.getId()).orElse(null);
+        return user != null ? clientRepository.findById(user.getId()).orElse(null) : null;
     }
 
     private Case resolveCaseForAppointment(Long requestedCaseId, Client client) {
         if (requestedCaseId != null) {
+            if (client == null) {
+                throw new ValidationException("Only registered clients can link appointments to case files");
+            }
+
             Case caseEntity = caseRepository.findById(requestedCaseId)
                     .orElseThrow(() -> new NoSuchElementException("Case not found with id: " + requestedCaseId));
             validateCaseOwnership(caseEntity, client);
+            ensureCaseCanAcceptAppointments(caseEntity);
             return caseEntity;
         }
 
@@ -647,18 +760,24 @@ public class AppointmentServiceImpl implements AppointmentService {
     }
 
     private void validateCaseOwnership(Case caseEntity, Client client) {
-        if (client == null) {
-            return;
-        }
         if (caseEntity.getClient() == null || !caseEntity.getClient().getId().equals(client.getId())) {
             throw new ValidationException("Selected case does not belong to the appointment client");
         }
     }
 
+    private void ensureCaseCanAcceptAppointments(Case caseEntity) {
+        if (caseEntity.getStatus() == Case.CaseStatus.CLOSED
+                || caseEntity.getStatus() == Case.CaseStatus.RESOLVED
+                || caseEntity.getStatus() == Case.CaseStatus.REFERRED) {
+            throw new ValidationException("Appointments can only be linked to active case files");
+        }
+    }
+
     private User resolveCounselorForAppointment(Long counselorId, Case caseEntity) {
         if (counselorId != null && counselorId > 0) {
-            return userRepository.findById(counselorId)
-                    .orElseThrow(() -> new NoSuchElementException("Counselor not found with id: " + counselorId));
+            User counselor = resolveCounselorUser(counselorId);
+            validateCaseCounselorCompatibility(caseEntity, counselor);
+            return counselor;
         }
         if (caseEntity != null && caseEntity.getCounselor() != null) {
             return caseEntity.getCounselor();
@@ -666,12 +785,299 @@ public class AppointmentServiceImpl implements AppointmentService {
         return null;
     }
 
-    private String resolveAppointmentDescription(String explicitDescription, Map<String, Object> bookingDetails) {
-        if (explicitDescription != null && !explicitDescription.isBlank()) {
-            return explicitDescription;
+    private User resolveUpdatedCounselor(Appointment appointment, UpdateAppointmentRequest request, Case targetCase) {
+        User targetCounselor = appointment.getCounselor();
+        if (request.getCounselorId() != null) {
+            targetCounselor = request.getCounselorId() > 0
+                    ? resolveCounselorUser(request.getCounselorId())
+                    : null;
         }
+
+        if (targetCase != null && targetCase.getCounselor() != null) {
+            if (request.getCounselorId() == null || request.getCounselorId() <= 0) {
+                targetCounselor = targetCase.getCounselor();
+            } else {
+                validateCaseCounselorCompatibility(targetCase, targetCounselor);
+            }
+        }
+
+        return targetCounselor;
+    }
+
+    private User resolveCounselorUser(Long counselorId) {
+        User counselor = userRepository.findById(counselorId)
+                .orElseThrow(() -> new NoSuchElementException("Counselor not found with id: " + counselorId));
+        if (!isCounselorUser(counselor)) {
+            throw new ValidationException("Selected user is not configured as a counselor");
+        }
+        if (!Boolean.TRUE.equals(counselor.getActive())) {
+            throw new ValidationException("Selected counselor account is inactive");
+        }
+        if (Boolean.FALSE.equals(counselor.getAvailableForAppointments())) {
+            throw new ValidationException("Selected counselor is currently unavailable for appointments");
+        }
+        return counselor;
+    }
+
+    private void validateCounselorScopedRead(User counselor) {
+        User currentUser = resolveCurrentUser();
+        if (currentUser != null && isCounselorUser(currentUser) && !isAdministrator(currentUser)
+                && !currentUser.getId().equals(counselor.getId())) {
+            throw new ValidationException("Counselors can only view their own appointment lists");
+        }
+    }
+
+    private void ensureCounselorOwnsAction(User counselor) {
+        User currentUser = resolveCurrentUser();
+        if (currentUser != null && isCounselorUser(currentUser) && !isAdministrator(currentUser)
+                && !currentUser.getId().equals(counselor.getId())) {
+            throw new ValidationException("Counselors can only take appointments for themselves");
+        }
+    }
+
+    private String resolveAppointmentDescription(String explicitDescription, Map<String, Object> bookingDetails) {
+        String normalizedDescription = normalize(explicitDescription);
+        if (normalizedDescription != null) {
+            return normalizedDescription;
+        }
+
         Object presentingConcern = bookingDetails.get("presentingConcern");
-        return presentingConcern != null ? String.valueOf(presentingConcern) : explicitDescription;
+        return presentingConcern != null ? String.valueOf(presentingConcern) : null;
+    }
+
+    private Appointment.AppointmentType resolveAppointmentType(CreateAppointmentRequest request) {
+        Appointment.AppointmentType type = request.getAppointmentType();
+        if (type == null) {
+            throw new ValidationException("Invalid appointment type");
+        }
+        return type;
+    }
+
+    private Appointment.SessionMode resolveCreateSessionMode(CreateAppointmentRequest request) {
+        if (request.getSessionMode() != null && !request.getSessionMode().isBlank()) {
+            try {
+                return Appointment.SessionMode.valueOf(request.getSessionMode());
+            } catch (IllegalArgumentException exception) {
+                throw new ValidationException("Invalid session mode");
+            }
+        }
+        return request.getSessionModeEnum();
+    }
+
+    private Appointment.SessionMode resolveUpdateSessionMode(UpdateAppointmentRequest request) {
+        if (request.getSessionMode() != null && !request.getSessionMode().isBlank()) {
+            Appointment.SessionMode mode = request.getSessionModeEnum();
+            if (mode == null) {
+                throw new ValidationException("Invalid session mode");
+            }
+            return mode;
+        }
+        return null;
+    }
+
+    private void applyVenueDetails(
+            Appointment appointment,
+            Appointment.SessionMode sessionMode,
+            String requestedMeetingLink,
+            String requestedLocation
+    ) {
+        if (sessionMode == Appointment.SessionMode.VIRTUAL) {
+            appointment.setLocation(null);
+            String meetingLink = normalize(requestedMeetingLink);
+            if (meetingLink == null) {
+                meetingLink = normalize(appointment.getMeetingLink());
+            }
+            if (meetingLink == null && appointment.getCounselor() != null) {
+                meetingLink = generateMeetingLink(appointment);
+            }
+            appointment.setMeetingLink(meetingLink);
+            appointment.setMeetingProvider(meetingLink != null ? defaultMeetingProvider : null);
+            return;
+        }
+
+        appointment.setMeetingLink(null);
+        appointment.setMeetingProvider(null);
+        if (requestedLocation != null) {
+            appointment.setLocation(normalize(requestedLocation));
+        }
+    }
+
+    private void validateAvailability(User counselor, LocalDateTime appointmentDate, int duration, Long excludeAppointmentId) {
+        if (counselor == null || appointmentDate == null) {
+            return;
+        }
+
+        LocalDateTime appointmentEnd = appointmentDate.plusMinutes(duration);
+        List<Appointment> conflicts = findConflictingAppointments(counselor, appointmentDate, appointmentEnd, excludeAppointmentId);
+        if (!conflicts.isEmpty()) {
+            throw new ValidationException("Counselor has conflicting appointments at this time");
+        }
+    }
+
+    private void validateCaseCounselorCompatibility(Case caseEntity, User counselor) {
+        if (caseEntity == null || caseEntity.getCounselor() == null || counselor == null) {
+            return;
+        }
+        if (!caseEntity.getCounselor().getId().equals(counselor.getId())) {
+            throw new ValidationException("Linked appointments must use the counselor assigned to the case file");
+        }
+    }
+
+    private void applyStatusChange(
+            Appointment appointment,
+            Appointment.AppointmentStatus status,
+            String cancellationReason
+    ) {
+        if (status == Appointment.AppointmentStatus.SCHEDULED
+                || status == Appointment.AppointmentStatus.CONFIRMED
+                || status == Appointment.AppointmentStatus.IN_PROGRESS
+                || status == Appointment.AppointmentStatus.RESCHEDULED
+                || status == Appointment.AppointmentStatus.PENDING
+                || status == Appointment.AppointmentStatus.UNASSIGNED) {
+            ensureLinkedCaseSupportsActiveAppointment(appointment);
+        }
+
+        switch (status) {
+            case CONFIRMED -> {
+                if (appointment.getCounselor() == null && appointment.getCaseEntity() != null && appointment.getCaseEntity().getCounselor() != null) {
+                    appointment.setCounselor(appointment.getCaseEntity().getCounselor());
+                }
+                if (appointment.getCounselor() == null) {
+                    throw new ValidationException("Appointment must be assigned to a counselor before it can be confirmed");
+                }
+                validateCaseCounselorCompatibility(appointment.getCaseEntity(), appointment.getCounselor());
+                validateAvailability(appointment.getCounselor(), appointment.getAppointmentDate(), resolveAppointmentDuration(appointment), appointment.getId());
+                appointment.setStatus(Appointment.AppointmentStatus.CONFIRMED);
+            }
+            case CANCELLED -> {
+                appointment.setStatus(Appointment.AppointmentStatus.CANCELLED);
+                if (cancellationReason != null) {
+                    appointment.setCancellationReason(normalize(cancellationReason));
+                }
+            }
+            case UNASSIGNED -> {
+                appointment.setCounselor(null);
+                appointment.setStatus(Appointment.AppointmentStatus.UNASSIGNED);
+                appointment.setMeetingLink(null);
+                appointment.setMeetingProvider(null);
+            }
+            case IN_PROGRESS -> {
+                if (appointment.getCounselor() == null) {
+                    throw new ValidationException("Appointment must be assigned to a counselor before it can start");
+                }
+                validateAvailability(appointment.getCounselor(), appointment.getAppointmentDate(), resolveAppointmentDuration(appointment), appointment.getId());
+                appointment.setStatus(Appointment.AppointmentStatus.IN_PROGRESS);
+            }
+            case SCHEDULED -> {
+                if (appointment.getCounselor() == null) {
+                    appointment.setStatus(Appointment.AppointmentStatus.UNASSIGNED);
+                } else {
+                    validateAvailability(appointment.getCounselor(), appointment.getAppointmentDate(), resolveAppointmentDuration(appointment), appointment.getId());
+                    appointment.setStatus(Appointment.AppointmentStatus.SCHEDULED);
+                }
+            }
+            case COMPLETED -> {
+                if (appointment.getCounselor() == null) {
+                    throw new ValidationException("Appointment must be assigned to a counselor before it can be completed");
+                }
+                appointment.setStatus(Appointment.AppointmentStatus.COMPLETED);
+            }
+            case PENDING -> appointment.setStatus(Appointment.AppointmentStatus.PENDING);
+            case RESCHEDULED -> {
+                if (appointment.getCounselor() == null) {
+                    appointment.setStatus(Appointment.AppointmentStatus.UNASSIGNED);
+                } else {
+                    validateAvailability(appointment.getCounselor(), appointment.getAppointmentDate(), resolveAppointmentDuration(appointment), appointment.getId());
+                    appointment.setStatus(Appointment.AppointmentStatus.RESCHEDULED);
+                }
+            }
+            case NO_SHOW, MISSED -> appointment.setStatus(status);
+        }
+    }
+
+    private void assertAppointmentUpdatable(Appointment appointment, String action) {
+        authorizeAppointmentManage(appointment);
+        if (appointment.getStatus() == Appointment.AppointmentStatus.COMPLETED) {
+            throw new ValidationException("Completed appointments cannot be changed via " + action);
+        }
+    }
+
+    private void assertAppointmentTakeableByCounselor(Appointment appointment) {
+        if (appointment.getStatus() == Appointment.AppointmentStatus.COMPLETED) {
+            throw new ValidationException("Completed appointments cannot be taken by another counselor");
+        }
+    }
+
+    private void syncSessionFromAppointment(Appointment appointment) {
+        Optional<Session> existingSession = sessionRepository.findFirstByAppointmentIdOrderBySessionDateDesc(appointment.getId());
+        if (existingSession.isEmpty()) {
+            if (shouldEnsureSession(appointment)) {
+                createSessionFromAppointment(appointment);
+            }
+            return;
+        }
+
+        Session session = existingSession.get();
+        updateSessionFromAppointment(session, appointment);
+        sessionRepository.save(session);
+    }
+
+    private boolean shouldEnsureSession(Appointment appointment) {
+        return appointment.getStatus() == Appointment.AppointmentStatus.CONFIRMED
+                || appointment.getStatus() == Appointment.AppointmentStatus.IN_PROGRESS
+                || appointment.getStatus() == Appointment.AppointmentStatus.COMPLETED;
+    }
+
+    private void updateSessionFromAppointment(Session session, Appointment appointment) {
+        boolean lockedSession = session.getStatus() == Session.SessionStatus.IN_PROGRESS
+                || session.getStatus() == Session.SessionStatus.COMPLETED;
+
+        if (!lockedSession) {
+            session.setStudent(appointment.getStudent());
+            session.setClient(appointment.getClient());
+            session.setCounselor(appointment.getCounselor());
+            session.setSessionDate(appointment.getAppointmentDate());
+            session.setMeetingLink(appointment.getMeetingLink());
+            session.setDurationMinutes(resolveAppointmentDuration(appointment));
+            session.setType(mapAppointmentTypeToSessionType(appointment.getType()));
+            session.setTitle(appointment.getTitle());
+            session.setPresentingIssue(appointment.getDescription());
+        } else {
+            if (session.getCounselor() == null && appointment.getCounselor() != null) {
+                session.setCounselor(appointment.getCounselor());
+            }
+            if (session.getClient() == null && appointment.getClient() != null) {
+                session.setClient(appointment.getClient());
+            }
+        }
+
+        session.setStatus(mapAppointmentStatusToSessionStatus(appointment.getStatus(), session.getStatus()));
+    }
+
+    private Session.SessionStatus mapAppointmentStatusToSessionStatus(
+            Appointment.AppointmentStatus appointmentStatus,
+            Session.SessionStatus currentStatus
+    ) {
+        if (currentStatus == Session.SessionStatus.COMPLETED && appointmentStatus != Appointment.AppointmentStatus.CANCELLED) {
+            return currentStatus;
+        }
+
+        return switch (appointmentStatus) {
+            case CONFIRMED, SCHEDULED, RESCHEDULED, PENDING, UNASSIGNED -> Session.SessionStatus.SCHEDULED;
+            case IN_PROGRESS -> Session.SessionStatus.IN_PROGRESS;
+            case COMPLETED -> Session.SessionStatus.COMPLETED;
+            case CANCELLED -> Session.SessionStatus.CANCELLED;
+            case NO_SHOW, MISSED -> Session.SessionStatus.NO_SHOW;
+        };
+    }
+
+    private void touchCaseTransition(Case previousCase, Case currentCase) {
+        if (previousCase != null) {
+            touchCase(previousCase);
+        }
+        if (currentCase != null && (previousCase == null || !previousCase.getId().equals(currentCase.getId()))) {
+            touchCase(currentCase);
+        }
     }
 
     private void touchCase(Case caseEntity) {
@@ -685,13 +1091,6 @@ public class AppointmentServiceImpl implements AppointmentService {
         caseRepository.save(caseEntity);
     }
 
-    private void ensureSessionFromAppointment(Appointment appointment) {
-        if (sessionRepository.findFirstByAppointmentIdOrderBySessionDateDesc(appointment.getId()).isPresent()) {
-            return;
-        }
-        createSessionFromAppointment(appointment);
-    }
-
     private void createSessionFromAppointment(Appointment appointment) {
         Session session = new Session();
         session.setAppointment(appointment);
@@ -699,9 +1098,10 @@ public class AppointmentServiceImpl implements AppointmentService {
         session.setClient(appointment.getClient());
         session.setCounselor(appointment.getCounselor());
         session.setSessionDate(appointment.getAppointmentDate());
-        session.setDurationMinutes(appointment.getDuration());
+        session.setMeetingLink(appointment.getMeetingLink());
+        session.setDurationMinutes(resolveAppointmentDuration(appointment));
         session.setType(mapAppointmentTypeToSessionType(appointment.getType()));
-        session.setStatus(Session.SessionStatus.SCHEDULED);
+        session.setStatus(mapAppointmentStatusToSessionStatus(appointment.getStatus(), Session.SessionStatus.SCHEDULED));
         session.setTitle(appointment.getTitle());
         session.setPresentingIssue(appointment.getDescription());
         sessionRepository.save(session);
@@ -791,8 +1191,11 @@ public class AppointmentServiceImpl implements AppointmentService {
     }
 
     private String generateMeetingLink(Appointment appointment) {
+        String domain = customMeetingDomain != null && !customMeetingDomain.isBlank()
+                ? customMeetingDomain
+                : jitsiDomain;
         String roomName = generateRoomName(appointment);
-        return String.format("https://%s/%s", jitsiDomain, roomName);
+        return String.format("https://%s/%s", domain, roomName);
     }
 
     private String generateRoomName(Appointment appointment) {
@@ -849,5 +1252,155 @@ public class AppointmentServiceImpl implements AppointmentService {
             log.warn("Failed to parse appointment booking details", exception);
             return Collections.emptyMap();
         }
+    }
+
+    private boolean isAdministrator(User user) {
+        return user != null && (user.hasRole("ROLE_ADMIN") || user.hasRole("ROLE_SUPER_ADMIN"));
+    }
+
+    private boolean isCounselorUser(User user) {
+        return user != null && user.isCounselor();
+    }
+
+    private String normalize(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private String normalizeRequired(String value, String message) {
+        String normalized = normalize(value);
+        if (normalized == null) {
+            throw new ValidationException(message);
+        }
+        return normalized;
+    }
+
+    private LocalDateTime requireAppointmentDate(LocalDateTime appointmentDate) {
+        if (appointmentDate == null) {
+            throw new ValidationException("Appointment date is required");
+        }
+        return appointmentDate;
+    }
+
+    private int normalizeDuration(Integer duration) {
+        int resolvedDuration = duration != null ? duration : 60;
+        if (resolvedDuration <= 0) {
+            throw new ValidationException("Appointment duration must be greater than zero");
+        }
+        return resolvedDuration;
+    }
+
+    private void ensureAppointmentClientUser(User user) {
+        if (user == null || (!user.isStudent() && resolveClientForUser(user) == null)) {
+            throw new ValidationException("Appointments can only be created and retrieved for client or student accounts");
+        }
+    }
+
+    private void ensureLinkedCaseSupportsActiveAppointment(Appointment appointment) {
+        if (appointment.getCaseEntity() != null) {
+            ensureCaseCanAcceptAppointments(appointment.getCaseEntity());
+        }
+    }
+
+    private boolean isActiveAppointmentStatus(Appointment.AppointmentStatus status) {
+        return status == Appointment.AppointmentStatus.SCHEDULED
+                || status == Appointment.AppointmentStatus.CONFIRMED
+                || status == Appointment.AppointmentStatus.IN_PROGRESS
+                || status == Appointment.AppointmentStatus.RESCHEDULED
+                || status == Appointment.AppointmentStatus.PENDING
+                || status == Appointment.AppointmentStatus.UNASSIGNED;
+    }
+
+    private void authorizeAppointmentRead(Appointment appointment) {
+        User currentUser = resolveCurrentUser();
+        if (currentUser == null || isAdministrator(currentUser)) {
+            return;
+        }
+        if (isCounselorUser(currentUser)) {
+            if (appointment.getCounselor() == null && appointment.getStatus() == Appointment.AppointmentStatus.UNASSIGNED) {
+                return;
+            }
+            boolean matchesAssignedCounselor = appointment.getCounselor() != null
+                    && currentUser.getId().equals(appointment.getCounselor().getId());
+            boolean matchesCaseCounselor = appointment.getCaseEntity() != null
+                    && appointment.getCaseEntity().getCounselor() != null
+                    && currentUser.getId().equals(appointment.getCaseEntity().getCounselor().getId());
+            if (matchesAssignedCounselor || matchesCaseCounselor) {
+                return;
+            }
+            throw new AccessDeniedException("You do not have access to this appointment");
+        }
+        if (appointment.getStudent() != null && currentUser.getId().equals(appointment.getStudent().getId())) {
+            return;
+        }
+        throw new AccessDeniedException("You do not have access to this appointment");
+    }
+
+    private void authorizeAppointmentManage(Appointment appointment) {
+        User currentUser = resolveCurrentUser();
+        if (currentUser == null || isAdministrator(currentUser)) {
+            return;
+        }
+        if (isCounselorUser(currentUser)) {
+            boolean matchesAssignedCounselor = appointment.getCounselor() != null
+                    && currentUser.getId().equals(appointment.getCounselor().getId());
+            boolean matchesCaseCounselor = appointment.getCaseEntity() != null
+                    && appointment.getCaseEntity().getCounselor() != null
+                    && currentUser.getId().equals(appointment.getCaseEntity().getCounselor().getId());
+            if (matchesAssignedCounselor || matchesCaseCounselor) {
+                return;
+            }
+            throw new AccessDeniedException("You do not have permission to modify this appointment");
+        }
+        if (appointment.getStudent() != null && currentUser.getId().equals(appointment.getStudent().getId())) {
+            return;
+        }
+        throw new AccessDeniedException("You do not have permission to modify this appointment");
+    }
+
+    private void authorizeClientScopedRead(User clientUser) {
+        User currentUser = resolveCurrentUser();
+        if (currentUser == null || isAdministrator(currentUser) || isCounselorUser(currentUser)) {
+            return;
+        }
+        if (!currentUser.getId().equals(clientUser.getId())) {
+            throw new AccessDeniedException("You do not have access to this client appointment list");
+        }
+    }
+
+    private void authorizeStudentScopedRead(User student) {
+        User currentUser = resolveCurrentUser();
+        if (currentUser == null || isAdministrator(currentUser) || isCounselorUser(currentUser)) {
+            return;
+        }
+        if (!currentUser.getId().equals(student.getId())) {
+            throw new AccessDeniedException("You do not have access to this student appointment list");
+        }
+    }
+
+    private void authorizeCaseRead(Case caseEntity) {
+        User currentUser = resolveCurrentUser();
+        if (currentUser == null || isAdministrator(currentUser)) {
+            return;
+        }
+        if (isCounselorUser(currentUser)) {
+            if (caseEntity.getCounselor() != null && currentUser.getId().equals(caseEntity.getCounselor().getId())) {
+                return;
+            }
+            boolean hasLinkedAppointment = appointmentRepository.findByCaseEntity(caseEntity).stream()
+                    .anyMatch(appointment -> appointment.getCounselor() != null
+                            && currentUser.getId().equals(appointment.getCounselor().getId()));
+            if (hasLinkedAppointment) {
+                return;
+            }
+            throw new AccessDeniedException("You do not have access to this case appointment history");
+        }
+        if (caseEntity.getClient() != null && currentUser.getId().equals(caseEntity.getClient().getId())) {
+            return;
+        }
+        throw new AccessDeniedException("You do not have access to this case appointment history");
     }
 }

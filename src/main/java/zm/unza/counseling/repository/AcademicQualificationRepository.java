@@ -62,6 +62,8 @@ public interface AcademicQualificationRepository extends JpaRepository<AcademicQ
     /**
      * Count failed courses
      */
+    long countByClientId(Long clientId);
+
     long countByClientIdAndCourseStatus(Long clientId, AcademicQualification.CourseStatus status);
 
     /**

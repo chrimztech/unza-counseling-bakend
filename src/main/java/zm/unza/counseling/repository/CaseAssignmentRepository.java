@@ -22,6 +22,10 @@ public interface CaseAssignmentRepository extends JpaRepository<CaseAssignment, 
 
     List<CaseAssignment> findByAssignedToAndStatus(Counselor assignedTo, String status);
 
+    boolean existsByAssignedTo(Counselor assignedTo);
+
+    boolean existsByAssignedBy(User assignedBy);
+
     long countByCaseEntity(Case caseEntity);
 
     long countByAssignedTo(Counselor assignedTo);

@@ -24,13 +24,33 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
 
     // Student appointments
     List<Appointment> findByStudent(User student);
+
+    boolean existsByStudent(User student);
     
     Page<Appointment> findByStudent(User student, Pageable pageable);
+
+    Page<Appointment> findByStudentAndStatus(User student, AppointmentStatus status, Pageable pageable);
+
+    Page<Appointment> findByStudentAndAppointmentDateAfter(User student, LocalDateTime start, Pageable pageable);
+
+    Page<Appointment> findByStudentAndAppointmentDateBefore(User student, LocalDateTime end, Pageable pageable);
+
+    Page<Appointment> findByStudentAndAppointmentDateBetween(User student, LocalDateTime start, LocalDateTime end, Pageable pageable);
     
     List<Appointment> findByStudentAndStatus(User student, AppointmentStatus status);
     
     // Client appointments (appointments where client is the user receiving counseling)
+    boolean existsByClient(Client client);
+
     Page<Appointment> findByClient(Client client, Pageable pageable);
+
+    Page<Appointment> findByClientAndStatus(Client client, AppointmentStatus status, Pageable pageable);
+
+    Page<Appointment> findByClientAndAppointmentDateAfter(Client client, LocalDateTime start, Pageable pageable);
+
+    Page<Appointment> findByClientAndAppointmentDateBefore(Client client, LocalDateTime end, Pageable pageable);
+
+    Page<Appointment> findByClientAndAppointmentDateBetween(Client client, LocalDateTime start, LocalDateTime end, Pageable pageable);
     
     @Query("SELECT a FROM Appointment a WHERE a.student = :student " +
            "AND a.appointmentDate >= :start AND a.appointmentDate <= :end " +
@@ -43,8 +63,18 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
 
     // Counselor appointments
     List<Appointment> findByCounselor(User counselor);
+
+    boolean existsByCounselor(User counselor);
     
     Page<Appointment> findByCounselor(User counselor, Pageable pageable);
+
+    Page<Appointment> findByCounselorAndStatus(User counselor, AppointmentStatus status, Pageable pageable);
+
+    Page<Appointment> findByCounselorAndAppointmentDateAfter(User counselor, LocalDateTime start, Pageable pageable);
+
+    Page<Appointment> findByCounselorAndAppointmentDateBefore(User counselor, LocalDateTime end, Pageable pageable);
+
+    Page<Appointment> findByCounselorAndAppointmentDateBetween(User counselor, LocalDateTime start, LocalDateTime end, Pageable pageable);
     
     List<Appointment> findByCounselorAndStatus(User counselor, AppointmentStatus status);
     
@@ -168,6 +198,22 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
     Page<Appointment> findByCaseEntity(Case caseEntity, Pageable pageable);
 
     long countByCaseEntity(Case caseEntity);
+
+    @Query(value = "SELECT COUNT(*) FROM appointments a WHERE a.student_id = :userId", nativeQuery = true)
+    long countAllByStudentId(@Param("userId") Long userId);
+
+    @Query(value = "SELECT COUNT(*) FROM appointments a WHERE a.client_id = :clientId", nativeQuery = true)
+    long countAllByClientId(@Param("clientId") Long clientId);
+
+    @Query(value = "SELECT COUNT(*) FROM appointments a WHERE a.counselor_id = :counselorId", nativeQuery = true)
+    long countAllByCounselorId(@Param("counselorId") Long counselorId);
+
+    @Query(value = "SELECT COUNT(*) FROM appointments a WHERE a.case_id = :caseId", nativeQuery = true)
+    long countAllByCaseId(@Param("caseId") Long caseId);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @Query(value = "UPDATE appointments SET case_id = NULL WHERE case_id = :caseId", nativeQuery = true)
+    int unlinkAllByCaseId(@Param("caseId") Long caseId);
     
     List<Appointment> findByCaseEntityAndStatus(Case caseEntity, AppointmentStatus status);
 }

@@ -57,4 +57,14 @@ public interface ReportRepository extends JpaRepository<Report, Long> {
      */
     @Query("SELECT DISTINCT r.type FROM Report r")
     List<String> findAllTypes();
+
+    long countByCaseId(Long caseId);
+
+    long countByClientId(Long clientId);
+
+    long countByCounselorId(Long counselorId);
+
+    boolean existsByClientId(Long clientId);
+
+    boolean existsByCounselorId(Long counselorId);
 }

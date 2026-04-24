@@ -32,6 +32,8 @@ public class PersonalDataFormRequest {
 
     private Integer yearOfStudy;
 
+    private PersonalDataForm.StudentCategory studentCategory;
+
     @NotBlank(message = "Occupation is required")
     private String occupation;
 
@@ -52,6 +54,10 @@ public class PersonalDataFormRequest {
     private List<PersonalDataForm.ReferralSource> referralSource;
 
     private String referralSourceOther;
+
+    private String referralPointFrom;
+
+    private String referralPointTo;
 
     private ReasonsForCounsellingRequest reasonsForCounselling;
 
@@ -172,6 +178,8 @@ public class PersonalDataFormRequest {
         private String age;
         private String education;
         private String occupation;
+        private String contactPhone;
+        private String contactAddress;
 
         public String getName() {
             return name;
@@ -211,6 +219,22 @@ public class PersonalDataFormRequest {
 
         public void setOccupation(String occupation) {
             this.occupation = occupation;
+        }
+
+        public String getContactPhone() {
+            return contactPhone;
+        }
+
+        public void setContactPhone(String contactPhone) {
+            this.contactPhone = contactPhone;
+        }
+
+        public String getContactAddress() {
+            return contactAddress;
+        }
+
+        public void setContactAddress(String contactAddress) {
+            this.contactAddress = contactAddress;
         }
     }
 
@@ -278,6 +302,14 @@ public class PersonalDataFormRequest {
         this.yearOfStudy = yearOfStudy;
     }
 
+    public PersonalDataForm.StudentCategory getStudentCategory() {
+        return studentCategory;
+    }
+
+    public void setStudentCategory(PersonalDataForm.StudentCategory studentCategory) {
+        this.studentCategory = studentCategory;
+    }
+
     public String getOccupation() {
         return occupation;
     }
@@ -340,6 +372,22 @@ public class PersonalDataFormRequest {
 
     public void setReferralSourceOther(String referralSourceOther) {
         this.referralSourceOther = referralSourceOther;
+    }
+
+    public String getReferralPointFrom() {
+        return referralPointFrom;
+    }
+
+    public void setReferralPointFrom(String referralPointFrom) {
+        this.referralPointFrom = referralPointFrom;
+    }
+
+    public String getReferralPointTo() {
+        return referralPointTo;
+    }
+
+    public void setReferralPointTo(String referralPointTo) {
+        this.referralPointTo = referralPointTo;
     }
 
     public ReasonsForCounsellingRequest getReasonsForCounselling() {

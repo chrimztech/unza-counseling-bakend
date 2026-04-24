@@ -30,7 +30,7 @@ public class Notification {
     @Column(nullable = false)
     private String message;
 
-    @Column(name = "notification_type", nullable = false)
+    @Column(name = "type", nullable = false)
     private String type;
 
     @Column(nullable = false)
