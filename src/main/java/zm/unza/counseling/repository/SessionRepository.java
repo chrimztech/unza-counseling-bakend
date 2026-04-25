@@ -3,6 +3,7 @@ package zm.unza.counseling.repository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -54,4 +55,19 @@ public interface SessionRepository extends JpaRepository<Session, Long> {
 
     @Query(value = "SELECT COUNT(*) FROM sessions s JOIN appointments a ON s.appointment_id = a.id WHERE a.case_id = :caseId", nativeQuery = true)
     long countByLinkedCaseId(@Param("caseId") Long caseId);
+
+    // Deletion helpers for permanent user deletion
+    @Query("SELECT s FROM Session s WHERE s.client.id = :clientId")
+    List<Session> findAllByClientId(@Param("clientId") Long clientId);
+
+    @Query("SELECT s FROM Session s WHERE s.counselor.id = :counselorId")
+    List<Session> findAllByCounselorId(@Param("counselorId") Long counselorId);
+
+    @Modifying
+    @Query("DELETE FROM Session s WHERE s.client.id = :clientId")
+    void deleteAllByClientId(@Param("clientId") Long clientId);
+
+    @Modifying
+    @Query("DELETE FROM Session s WHERE s.counselor.id = :counselorId")
+    void deleteAllByCounselorId(@Param("counselorId") Long counselorId);
 }

@@ -219,7 +219,7 @@ springdoc:
 
 # Flyway Configuration
 flyway:
-  enabled: ${FLYWAY_ENABLED:true}
+  enabled: ${FLYWAY_ENABLED:false}
   locations: ${FLYWAY_LOCATIONS:classpath:db/migration}
   baseline-on-migrate: ${FLYWAY_BASELINE_ON_MIGRATE:true}
   validate-on-migrate: ${FLYWAY_VALIDATE_ON_MIGRATE:true}

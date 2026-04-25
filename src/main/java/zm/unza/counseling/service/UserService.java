@@ -1,5 +1,7 @@
 package zm.unza.counseling.service;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -76,6 +78,9 @@ public class UserService {
     private final AcademicQualificationRepository academicQualificationRepository;
     private final RiskAssessmentRepository riskAssessmentRepository;
     private final MentalHealthAcademicAnalysisRepository mentalHealthAcademicAnalysisRepository;
+
+    @PersistenceContext
+    private EntityManager em;
 
     public User getUserById(Long id) {
         return userRepository.findById(id)
@@ -318,6 +323,10 @@ public class UserService {
 
     private void deleteUserOwnedArtifacts(User user) {
         Long userId = user.getId();
+
+        // Delete all dependent records in proper order to satisfy FK constraints
+
+        // 1. Delete user-owned artifacts
         notificationRepository.deleteByRecipientId(userId);
         chatMessageRepository.deleteByUserId(userId);
         userDashboardConfigRepository.deleteByUserId(userId);
@@ -326,6 +335,127 @@ public class UserService {
         userFeedbackRepository.deleteByUserId(userId);
         userConsentRepository.deleteByUser(user);
         messageRepository.deleteAllByUserId(userId);
+
+        // 2. Delete case assignments where user is the assigner (audit trail)
+        em.createQuery("DELETE FROM CaseAssignment ca WHERE ca.assignedBy.id = :userId")
+                .setParameter("userId", userId)
+                .executeUpdate();
+
+        // 3. Delete self-assessments submitted by user
+        em.createQuery("DELETE FROM SelfAssessment sa WHERE sa.submittedBy.id = :userId")
+                .setParameter("userId", userId)
+                .executeUpdate();
+
+        // 4. Delete sessions where user is student
+        em.createQuery("DELETE FROM Session s WHERE s.student.id = :userId")
+                .setParameter("userId", userId)
+                .executeUpdate();
+
+        // 5. Delete reports where user is client
+        em.createQuery("DELETE FROM Report r WHERE r.client.id = :userId")
+                .setParameter("userId", userId)
+                .executeUpdate();
+
+        // 6. Delete sessions where user is client
+        em.createQuery("DELETE FROM Session s WHERE s.client.id = :userId")
+                .setParameter("userId", userId)
+                .executeUpdate();
+
+        // 7. Delete appointments where user is client
+        em.createQuery("DELETE FROM Appointment a WHERE a.client.id = :userId")
+                .setParameter("userId", userId)
+                .executeUpdate();
+
+        // 8. Delete case assignments where user is client
+        em.createQuery("DELETE FROM CaseAssignment ca WHERE ca.client.id = :userId")
+                .setParameter("userId", userId)
+                .executeUpdate();
+
+        // 9. Delete client intake forms where user is client
+        em.createQuery("DELETE FROM ClientIntakeForm cif WHERE cif.client.id = :userId")
+                .setParameter("userId", userId)
+                .executeUpdate();
+
+        // 10. Delete personal data forms where user is client
+        em.createQuery("DELETE FROM PersonalDataForm pdf WHERE pdf.client.id = :userId")
+                .setParameter("userId", userId)
+                .executeUpdate();
+
+        // 11. Delete goals where user is client
+        em.createQuery("DELETE FROM Goal g WHERE g.client.id = :userId")
+                .setParameter("userId", userId)
+                .executeUpdate();
+
+        // 12. Delete academic performance records where user is client
+        em.createQuery("DELETE FROM AcademicPerformance ap WHERE ap.client.id = :userId")
+                .setParameter("userId", userId)
+                .executeUpdate();
+
+        // 13. Delete academic qualifications where user is client
+        em.createQuery("DELETE FROM AcademicQualification aq WHERE aq.client.id = :userId")
+                .setParameter("userId", userId)
+                .executeUpdate();
+
+        // 14. Delete risk assessments where user is client
+        em.createQuery("DELETE FROM RiskAssessment ra WHERE ra.client.id = :userId")
+                .setParameter("userId", userId)
+                .executeUpdate();
+
+        // 15. Delete mental health analyses where user is client
+        em.createQuery("DELETE FROM MentalHealthAcademicAnalysis mha WHERE mha.client.id = :userId")
+                .setParameter("userId", userId)
+                .executeUpdate();
+
+        // 16. Delete cases where user is client
+        em.createQuery("DELETE FROM Case c WHERE c.client.id = :userId")
+                .setParameter("userId", userId)
+                .executeUpdate();
+
+        // 17. Delete reports where user is counselor
+        em.createQuery("DELETE FROM Report r WHERE r.counselor.id = :userId")
+                .setParameter("userId", userId)
+                .executeUpdate();
+
+        // 18. Delete sessions where user is counselor
+        em.createQuery("DELETE FROM Session s WHERE s.counselor.id = :userId")
+                .setParameter("userId", userId)
+                .executeUpdate();
+
+        // 19. Delete appointments where user is counselor
+        em.createQuery("DELETE FROM Appointment a WHERE a.counselor.id = :userId")
+                .setParameter("userId", userId)
+                .executeUpdate();
+
+        // 20. Delete case assignments where user is assigned to (counselor)
+        // Counselor is referenced via its id; we need to delete assignments where assigned_to = counselorId
+        // We can do native query because Counselor is separate table
+        em.createNativeQuery("DELETE FROM case_assignments WHERE assigned_to IN (SELECT id FROM counselors WHERE user_id = :userId)")
+                .setParameter("userId", userId)
+                .executeUpdate();
+
+        // 21. Delete client intake forms where user is counselor
+        em.createQuery("DELETE FROM ClientIntakeForm cif WHERE cif.counselor.id = :userId")
+                .setParameter("userId", userId)
+                .executeUpdate();
+
+        // 22. Delete cases where user is counselor
+        em.createQuery("DELETE FROM Case c WHERE c.counselor.id = :userId")
+                .setParameter("userId", userId)
+                .executeUpdate();
+
+        // 23. Delete client profile if exists
+        em.createQuery("DELETE FROM Client c WHERE c.user.id = :userId")
+                .setParameter("userId", userId)
+                .executeUpdate();
+
+        // 24. Delete counselor profile if exists
+        em.createQuery("DELETE FROM Counselor co WHERE co.user.id = :userId")
+                .setParameter("userId", userId)
+                .executeUpdate();
+
+        // 25. Finally delete user roles and the user itself
+        user.getRoles().clear();
+        userRepository.delete(user);
     }
 
     private void guardAgainstSelfRemoval(User user) {

@@ -8,6 +8,7 @@ import zm.unza.counseling.entity.Case;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -214,6 +215,15 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
     @org.springframework.data.jpa.repository.Modifying
     @Query(value = "UPDATE appointments SET case_id = NULL WHERE case_id = :caseId", nativeQuery = true)
     int unlinkAllByCaseId(@Param("caseId") Long caseId);
-    
+     
     List<Appointment> findByCaseEntityAndStatus(Case caseEntity, AppointmentStatus status);
+
+    // Batch deletes for user permanent deletion
+    @Modifying
+    @Query(value = "DELETE FROM appointments WHERE client_id = :clientId", nativeQuery = true)
+    void deleteAllByClientId(@Param("clientId") Long clientId);
+
+    @Modifying
+    @Query(value = "DELETE FROM appointments WHERE counselor_id = :counselorId", nativeQuery = true)
+    void deleteAllByCounselorId(@Param("counselorId") Long counselorId);
 }
