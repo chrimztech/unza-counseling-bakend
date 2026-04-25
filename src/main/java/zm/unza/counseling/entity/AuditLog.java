@@ -1,13 +1,17 @@
 package zm.unza.counseling.entity;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.*;
 import lombok.Data;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.Map;
-import java.util.UUID;
 
 @Entity
 @Table(name = "audit_logs")
@@ -15,8 +19,8 @@ import java.util.UUID;
 @Data
 public class AuditLog {
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
     private String action;
     private String entityType;
@@ -28,38 +32,37 @@ public class AuditLog {
     private boolean success;
 
     @Convert(converter = JsonMapConverter.class)
-    @Column(columnDefinition = "TEXT")
+    @JdbcTypeCode(SqlTypes.JSON)
     private Map<String, Object> metadata;
 
     @CreatedDate
     private LocalDateTime createdAt;
 
-    public UUID getId() { return id; }
-    public void setId(UUID id) { this.id = id; }
-    public String getAction() { return action; }
-    public void setAction(String action) { this.action = action; }
-    public String getEntityType() { return entityType; }
-    public void setEntityType(String entityType) { this.entityType = entityType; }
-    public String getEntityId() { return entityId; }
-    public void setEntityId(String entityId) { this.entityId = entityId; }
-    public String getUserId() { return userId; }
-    public void setUserId(String userId) { this.userId = userId; }
-    public String getDetails() { return details; }
-    public void setDetails(String details) { this.details = details; }
-    public String getIpAddress() { return ipAddress; }
-    public void setIpAddress(String ipAddress) { this.ipAddress = ipAddress; }
-    public String getSeverity() { return severity; }
-    public void setSeverity(String severity) { this.severity = severity; }
-    public boolean isSuccess() { return success; }
-    public void setSuccess(boolean success) { this.success = success; }
-    public Map<String, Object> getMetadata() { return metadata; }
-    public void setMetadata(Map<String, Object> metadata) { this.metadata = metadata; }
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
-}
+    public static class JsonMapConverter implements AttributeConverter<Map<String, Object>, String> {
+        private static final ObjectMapper mapper = new ObjectMapper();
 
-class JsonMapConverter implements AttributeConverter<Map<String, Object>, String> {
-    // Simplified converter for compilation
-    @Override public String convertToDatabaseColumn(Map<String, Object> attribute) { return "{}"; }
-    @Override public Map<String, Object> convertToEntityAttribute(String dbData) { return java.util.Collections.emptyMap(); }
+        @Override
+        public String convertToDatabaseColumn(Map<String, Object> attribute) {
+            if (attribute == null || attribute.isEmpty()) {
+                return "{}";
+            }
+            try {
+                return mapper.writeValueAsString(attribute);
+            } catch (JsonProcessingException e) {
+                return "{}";
+            }
+        }
+
+        @Override
+        public Map<String, Object> convertToEntityAttribute(String dbData) {
+            if (dbData == null || dbData.isEmpty()) {
+                return java.util.Collections.emptyMap();
+            }
+            try {
+                return mapper.readValue(dbData, Map.class);
+            } catch (IOException e) {
+                return java.util.Collections.emptyMap();
+            }
+        }
+    }
 }
