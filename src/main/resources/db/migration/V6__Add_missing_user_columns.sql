@@ -1,6 +1,9 @@
 -- Add missing columns to users table to match User entity
 -- This migration adds all the columns that are defined in the User entity but missing from the database
 
+-- JPA inheritance discriminator column (critical for User entity hierarchy)
+ALTER TABLE users ADD COLUMN IF NOT EXISTS user_type VARCHAR(20);
+
 -- Basic user fields
 ALTER TABLE users ADD COLUMN IF NOT EXISTS username VARCHAR(50) UNIQUE;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS student_id VARCHAR(50) UNIQUE;
@@ -48,8 +51,16 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS office_location VARCHAR(200);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS authentication_source VARCHAR(50) DEFAULT 'INTERNAL';
 ALTER TABLE users ADD COLUMN IF NOT EXISTS has_signed_consent BOOLEAN DEFAULT false;
 
+-- Set user_type based on the existing role column for proper JPA inheritance
+UPDATE users SET user_type = 'ADMIN' WHERE role = 'SUPER_ADMIN' AND (user_type IS NULL OR user_type = '');
+UPDATE users SET user_type = 'ADMIN' WHERE role = 'ADMIN' AND (user_type IS NULL OR user_type = '');
+UPDATE users SET user_type = 'COUNSELOR' WHERE role = 'COUNSELOR' AND (user_type IS NULL OR user_type = '');
+UPDATE users SET user_type = 'CLIENT' WHERE role = 'CLIENT' AND (user_type IS NULL OR user_type = '');
+UPDATE users SET user_type = 'USER' WHERE user_type IS NULL OR user_type = '';
+
 -- Add indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
+CREATE INDEX IF NOT EXISTS idx_users_user_type ON users(user_type);
 CREATE INDEX IF NOT EXISTS idx_users_student_id ON users(student_id);
 CREATE INDEX IF NOT EXISTS idx_users_available_for_appointments ON users(available_for_appointments);
 CREATE INDEX IF NOT EXISTS idx_users_specialization ON users(specialization);
