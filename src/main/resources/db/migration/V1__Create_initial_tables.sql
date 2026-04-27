@@ -100,11 +100,11 @@ CREATE INDEX idx_users_role ON users(role);
 CREATE INDEX idx_users_active ON users(is_active);
 
 -- Roles table (for role-based permissions)
+-- Note: permissions are stored in the separate role_permissions table
 CREATE TABLE roles (
     id BIGSERIAL PRIMARY KEY,
     name VARCHAR(50) UNIQUE NOT NULL,
     description TEXT,
-    permissions JSONB,
     is_active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -436,6 +436,17 @@ CREATE TABLE admins (
 -- Create indexes for admins table
 CREATE INDEX idx_admins_user_id ON admins(user_id);
 CREATE INDEX idx_admins_level ON admins(admin_level);
+
+-- Create user_roles join table for User @ManyToMany relationship
+CREATE TABLE user_roles (
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    role_id BIGINT NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
+    PRIMARY KEY (user_id, role_id)
+);
+
+-- Create indexes for user_roles table
+CREATE INDEX idx_user_roles_user_id ON user_roles(user_id);
+CREATE INDEX idx_user_roles_role_id ON user_roles(role_id);
 
 -- Create role_permissions table for Role entity @ElementCollection
 CREATE TABLE role_permissions (
