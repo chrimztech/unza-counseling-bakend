@@ -1,4 +1,4 @@
-ALTER TABLE users
+ALTER TABLE IF EXISTS users
     ADD COLUMN IF NOT EXISTS is_anonymous BOOLEAN NOT NULL DEFAULT FALSE,
     ADD COLUMN IF NOT EXISTS anonymous_identifier_hash VARCHAR(255),
     ADD COLUMN IF NOT EXISTS anonymous_display_name VARCHAR(255),
@@ -11,7 +11,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_users_anonymous_identifier_hash
 CREATE INDEX IF NOT EXISTS idx_users_is_anonymous
     ON users (is_anonymous);
 
-ALTER TABLE self_assessments
+ALTER TABLE IF EXISTS self_assessments
     ADD COLUMN IF NOT EXISTS submitted_by_user_id BIGINT,
     ADD COLUMN IF NOT EXISTS assessment_date TIMESTAMP,
     ADD COLUMN IF NOT EXISTS responses_json TEXT,

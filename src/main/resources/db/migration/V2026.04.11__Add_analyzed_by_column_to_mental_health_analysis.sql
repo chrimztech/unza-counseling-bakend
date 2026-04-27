@@ -1,6 +1,6 @@
 -- Add missing analyzed_by column safely
 
-ALTER TABLE mental_health_academic_analysis
+ALTER TABLE IF EXISTS mental_health_academic_analysis
 ADD COLUMN IF NOT EXISTS analyzed_by BIGINT;
 
 -- Add FK safely (avoid duplicate constraint crash)

@@ -1,5 +1,5 @@
-ALTER TABLE sessions
+ALTER TABLE IF EXISTS sessions
     ALTER COLUMN start_time DROP NOT NULL;
 
-ALTER TABLE sessions
+ALTER TABLE EXISTS sessions
     ALTER COLUMN end_time DROP NOT NULL;

@@ -2,7 +2,7 @@
 -- Older databases still keep a required client_id column from the legacy schema,
 -- which breaks new inserts whenever no legacy Client row exists.
 
-ALTER TABLE sessions
+ALTER TABLE IF EXISTS sessions
     ALTER COLUMN client_id DROP NOT NULL;
 
 -- Preserve client linkage for existing rows wherever the appointment already has it.
