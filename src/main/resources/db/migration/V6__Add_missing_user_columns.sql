@@ -1,8 +1,19 @@
--- Add missing columns to users table to match User entity
+-- Add missing columns to users table to match User entity (including JPA inheritance discriminator)
 -- This migration adds all the columns that are defined in the User entity but missing from the database
+-- CRITICAL: V1 creates the users table with a 'role' column (ENUM) but JPA uses SINGLE_TABLE inheritance
+-- with @DiscriminatorColumn(name = "user_type") which requires a user_type column for proper inheritance
 
--- JPA inheritance discriminator column (critical for User entity hierarchy)
+-- Add user_type for JPA SINGLE_TABLE inheritance (critical discriminator column)
+-- Maps existing role values: SUPER_ADMIN -> ADMIN, ADMIN -> ADMIN, COUNSELOR -> COUNSELOR, CLIENT -> CLIENT
 ALTER TABLE users ADD COLUMN IF NOT EXISTS user_type VARCHAR(20);
+DO $$
+BEGIN
+    UPDATE users SET user_type = 'ADMIN' WHERE role::text = 'SUPER_ADMIN' AND (user_type IS NULL OR user_type = '');
+    UPDATE users SET user_type = 'ADMIN' WHERE role::text = 'ADMIN' AND (user_type IS NULL OR user_type = '');
+    UPDATE users SET user_type = 'COUNSELOR' WHERE role::text = 'COUNSELOR' AND (user_type IS NULL OR user_type = '');
+    UPDATE users SET user_type = 'CLIENT' WHERE role::text = 'CLIENT' AND (user_type IS NULL OR user_type = '');
+    UPDATE users SET user_type = 'USER' WHERE user_type IS NULL OR user_type = '';
+END $$;
 
 -- Basic user fields
 ALTER TABLE users ADD COLUMN IF NOT EXISTS username VARCHAR(50) UNIQUE;
@@ -21,6 +32,7 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS specialization VARCHAR(255);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS qualifications TEXT;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS years_of_experience INTEGER;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS available_for_appointments BOOLEAN DEFAULT true;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS has_signed_consent BOOLEAN DEFAULT false;
 
 -- Admin-specific fields
 ALTER TABLE users ADD COLUMN IF NOT EXISTS admin_level VARCHAR(50);
@@ -49,14 +61,6 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS office_location VARCHAR(200);
 
 -- Authentication and security fields
 ALTER TABLE users ADD COLUMN IF NOT EXISTS authentication_source VARCHAR(50) DEFAULT 'INTERNAL';
-ALTER TABLE users ADD COLUMN IF NOT EXISTS has_signed_consent BOOLEAN DEFAULT false;
-
--- Set user_type based on the existing role column for proper JPA inheritance
-UPDATE users SET user_type = 'ADMIN' WHERE role = 'SUPER_ADMIN' AND (user_type IS NULL OR user_type = '');
-UPDATE users SET user_type = 'ADMIN' WHERE role = 'ADMIN' AND (user_type IS NULL OR user_type = '');
-UPDATE users SET user_type = 'COUNSELOR' WHERE role = 'COUNSELOR' AND (user_type IS NULL OR user_type = '');
-UPDATE users SET user_type = 'CLIENT' WHERE role = 'CLIENT' AND (user_type IS NULL OR user_type = '');
-UPDATE users SET user_type = 'USER' WHERE user_type IS NULL OR user_type = '';
 
 -- Add indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
