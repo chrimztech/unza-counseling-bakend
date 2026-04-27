@@ -134,7 +134,7 @@ public class UserService {
 
     @Transactional
     public void deleteUser(Long id) {
-        deleteUser(id, false);
+        deleteUser(id, true);
     }
 
     @Transactional
@@ -453,9 +453,8 @@ public class UserService {
                 .setParameter("userId", userId)
                 .executeUpdate();
 
-        // 25. Finally delete user roles and the user itself
+        // 25. Finally clear user roles before deleting the user
         user.getRoles().clear();
-        userRepository.delete(user);
     }
 
     private void guardAgainstSelfRemoval(User user) {

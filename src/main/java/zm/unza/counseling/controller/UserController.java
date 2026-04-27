@@ -89,7 +89,7 @@ public class UserController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<String>> deleteUser(
             @PathVariable Long id,
-            @RequestParam(defaultValue = "false") boolean permanent) {
+            @RequestParam(defaultValue = "true") boolean permanent) {
         userService.deleteUser(id, permanent);
         String message = permanent
                 ? "User permanently deleted successfully"
