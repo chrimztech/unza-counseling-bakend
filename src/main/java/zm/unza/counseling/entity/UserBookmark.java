@@ -21,7 +21,7 @@ public class UserBookmark {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
-    @Column(nullable = false)
+    @Column(name = "user_id", nullable = false)
     private Long userId;
     
     @Column(nullable = false)
@@ -36,10 +36,13 @@ public class UserBookmark {
     
     private String category;
     
+    @Column(name = "usage_count")
     private Integer usageCount;
     
+    @Column(name = "last_used_at")
     private LocalDateTime lastUsedAt;
     
+    @Column(name = "created_at")
     private LocalDateTime createdAt;
     
     @PrePersist

@@ -21,7 +21,7 @@ public class KeyboardShortcut {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
-    @Column(nullable = false)
+    @Column(name = "user_id", nullable = false)
     private Long userId;
     
     @Column(nullable = false)
@@ -34,8 +34,10 @@ public class KeyboardShortcut {
     
     private Boolean enabled;
     
+    @Column(name = "created_at")
     private LocalDateTime createdAt;
     
+    @Column(name = "updated_at")
     private LocalDateTime updatedAt;
     
     @PrePersist

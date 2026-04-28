@@ -21,10 +21,10 @@ public class UserFeedback {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
-    @Column(nullable = false)
+    @Column(name = "user_id", nullable = false)
     private Long userId;
     
-    @Column(nullable = false)
+    @Column(name = "feedback_type", nullable = false)
     private String feedbackType;
     
     @Column(nullable = false)
@@ -37,10 +37,13 @@ public class UserFeedback {
     
     private String status;
     
+    @Column(name = "admin_response")
     private String adminResponse;
     
+    @Column(name = "created_at")
     private LocalDateTime createdAt;
     
+    @Column(name = "updated_at")
     private LocalDateTime updatedAt;
     
     @PrePersist

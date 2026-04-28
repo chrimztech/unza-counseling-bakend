@@ -21,17 +21,19 @@ public class UserDashboardConfig {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
-    @Column(nullable = false)
+    @Column(name = "user_id", nullable = false)
     private Long userId;
     
-    @Column(nullable = false)
+    @Column(name = "widget_id", nullable = false)
     private String widgetId;
     
-    @Column(nullable = false)
+    @Column(name = "widget_type", nullable = false)
     private String widgetType;
     
+    @Column(name = "position_x")
     private Integer positionX;
     
+    @Column(name = "position_y")
     private Integer positionY;
     
     private Integer width;
@@ -40,10 +42,13 @@ public class UserDashboardConfig {
     
     private Boolean visible;
     
+    @Column(name = "config_json")
     private String configJson;
     
+    @Column(name = "created_at")
     private LocalDateTime createdAt;
     
+    @Column(name = "updated_at")
     private LocalDateTime updatedAt;
     
     @PrePersist
