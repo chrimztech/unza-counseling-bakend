@@ -9,8 +9,10 @@ import zm.unza.counseling.entity.Counselor;
 import zm.unza.counseling.entity.Role;
 import zm.unza.counseling.entity.User;
 import zm.unza.counseling.exception.ResourceNotFoundException;
+import zm.unza.counseling.exception.ValidationException;
 import zm.unza.counseling.repository.CounselorRepository;
 import zm.unza.counseling.repository.RoleRepository;
+import zm.unza.counseling.repository.UserRepository;
 import zm.unza.counseling.security.AuthenticationSource;
 
 import java.time.LocalDateTime;
@@ -25,6 +27,7 @@ public class CounselorService {
     private final CounselorRepository counselorRepository;
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
+    private final UserRepository userRepository;
 
     public List<Counselor> getAllCounselors() {
         return counselorRepository.findAll();
@@ -37,17 +40,20 @@ public class CounselorService {
 
     @Transactional
     public Counselor createCounselor(CreateCounselorRequest request) {
+        String email = request.getEmail().trim();
+        validateNewCounselor(email);
+
         Counselor counselor = new Counselor();
-        counselor.setEmail(request.getEmail());
-        counselor.setUsername(request.getEmail());
+        counselor.setEmail(email);
+        counselor.setUsername(email);
         counselor.setPassword(passwordEncoder.encode(request.getPassword()));
-        counselor.setFirstName(request.getFirstName());
-        counselor.setLastName(request.getLastName());
-        counselor.setPhoneNumber(request.getPhoneNumber());
-        counselor.setSpecialization(request.getSpecialization());
-        counselor.setBio(request.getBio());
-        counselor.setOfficeLocation(request.getOfficeLocation());
-        counselor.setDepartment(request.getDepartment());
+        counselor.setFirstName(request.getFirstName().trim());
+        counselor.setLastName(request.getLastName().trim());
+        counselor.setPhoneNumber(trimToNull(request.getPhoneNumber()));
+        counselor.setSpecialization(trimToNull(request.getSpecialization()));
+        counselor.setBio(trimToNull(request.getBio()));
+        counselor.setOfficeLocation(trimToNull(request.getOfficeLocation()));
+        counselor.setDepartment(trimToNull(request.getDepartment()));
         counselor.setGender(User.Gender.OTHER); // Required field
         counselor.setActive(true);
         counselor.setEmailVerified(true);
@@ -69,6 +75,24 @@ public class CounselorService {
         counselor.setRoles(roles);
 
         return counselorRepository.save(counselor);
+    }
+
+    private void validateNewCounselor(String email) {
+        if (userRepository.existsByEmail(email)) {
+            throw new ValidationException("A user with this email already exists");
+        }
+        if (userRepository.existsByUsername(email)) {
+            throw new ValidationException("A user with this username already exists");
+        }
+    }
+
+    private String trimToNull(String value) {
+        if (value == null) {
+            return null;
+        }
+
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 
     @Transactional

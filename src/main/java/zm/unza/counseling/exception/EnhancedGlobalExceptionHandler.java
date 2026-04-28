@@ -11,6 +11,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import java.time.LocalDateTime;
@@ -50,6 +51,25 @@ public class EnhancedGlobalExceptionHandler {
                 .build();
 
         log.warn("Validation error: {}", errors);
+        return ResponseEntity.badRequest().body(errorResponse);
+    }
+
+    /**
+     * Handle malformed JSON requests
+     */
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ErrorResponse> handleHttpMessageNotReadableException(
+            HttpMessageNotReadableException ex, WebRequest request) {
+
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.BAD_REQUEST.value())
+                .error("Malformed Request")
+                .message("Request body could not be parsed. Check field names and value types.")
+                .path(request.getDescription(false).replace("uri=", ""))
+                .build();
+
+        log.warn("Malformed request body", ex);
         return ResponseEntity.badRequest().body(errorResponse);
     }
 

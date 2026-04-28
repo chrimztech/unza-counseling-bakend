@@ -9,8 +9,10 @@ import zm.unza.counseling.entity.Admin;
 import zm.unza.counseling.entity.Role;
 import zm.unza.counseling.entity.User;
 import zm.unza.counseling.exception.ResourceNotFoundException;
+import zm.unza.counseling.exception.ValidationException;
 import zm.unza.counseling.repository.AdminRepository;
 import zm.unza.counseling.repository.RoleRepository;
+import zm.unza.counseling.repository.UserRepository;
 import zm.unza.counseling.security.AuthenticationSource;
 
 import java.time.LocalDateTime;
@@ -25,6 +27,7 @@ public class AdminService {
     private final AdminRepository adminRepository;
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
+    private final UserRepository userRepository;
 
     public List<Admin> getAllAdmins() {
         return adminRepository.findAll();
@@ -32,15 +35,19 @@ public class AdminService {
 
     @Transactional
     public Admin createAdmin(CreateAdminRequest request) {
+        String email = request.getEmail().trim();
+        validateNewAdmin(email);
+        String adminLevel = normalizeAdminLevel(request.getAdminLevel());
+
         Admin admin = new Admin();
-        admin.setEmail(request.getEmail());
-        admin.setUsername(request.getEmail());
+        admin.setEmail(email);
+        admin.setUsername(email);
         admin.setPassword(passwordEncoder.encode(request.getPassword()));
-        admin.setFirstName(request.getFirstName());
-        admin.setLastName(request.getLastName());
-        admin.setPhoneNumber(request.getPhoneNumber());
-        admin.setAdminLevel(request.getAdminLevel());
-        admin.setDepartmentManaged(request.getDepartmentManaged());
+        admin.setFirstName(request.getFirstName().trim());
+        admin.setLastName(request.getLastName().trim());
+        admin.setPhoneNumber(trimToNull(request.getPhoneNumber()));
+        admin.setAdminLevel(adminLevel);
+        admin.setDepartmentManaged(trimToNull(request.getDepartmentManaged()));
         admin.setGender(User.Gender.OTHER); // Required field
         admin.setActive(true);
         admin.setEmailVerified(true);
@@ -59,9 +66,56 @@ public class AdminService {
 
         Set<Role> roles = new HashSet<>();
         roles.add(adminRole);
+        if ("SUPER_ADMIN".equals(adminLevel)) {
+            roles.add(getOrCreateRole(
+                    Role.ERole.ROLE_SUPER_ADMIN,
+                    "Super administrator with complete system control"
+            ));
+        }
         admin.setRoles(roles);
 
         return adminRepository.save(admin);
+    }
+
+    private void validateNewAdmin(String email) {
+        if (userRepository.existsByEmail(email)) {
+            throw new ValidationException("A user with this email already exists");
+        }
+        if (userRepository.existsByUsername(email)) {
+            throw new ValidationException("A user with this username already exists");
+        }
+    }
+
+    private Role getOrCreateRole(Role.ERole roleName, String description) {
+        return roleRepository.findByName(roleName)
+                .orElseGet(() -> {
+                    Role newRole = new Role();
+                    newRole.setName(roleName);
+                    newRole.setDescription(description);
+                    return roleRepository.save(newRole);
+                });
+    }
+
+    private String normalizeAdminLevel(String adminLevel) {
+        if (adminLevel == null || adminLevel.isBlank()) {
+            return "STANDARD_ADMIN";
+        }
+
+        return switch (adminLevel.trim().toUpperCase()) {
+            case "STANDARD", "STANDARD_ADMIN", "ADMIN", "DEPARTMENT_ADMIN" -> "STANDARD_ADMIN";
+            case "SENIOR", "SENIOR_ADMIN" -> "SENIOR_ADMIN";
+            case "SUPER", "SUPER_ADMIN", "SYSTEM_ADMIN" -> "SUPER_ADMIN";
+            default -> throw new ValidationException("Unsupported admin level: " + adminLevel);
+        };
+    }
+
+    private String trimToNull(String value) {
+        if (value == null) {
+            return null;
+        }
+
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 
     @Transactional

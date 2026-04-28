@@ -1,5 +1,6 @@
 package zm.unza.counseling.controller;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -31,7 +32,7 @@ public class CounselorController {
 
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<Counselor>> createCounselor(@RequestBody CreateCounselorRequest request) {
+    public ResponseEntity<ApiResponse<Counselor>> createCounselor(@Valid @RequestBody CreateCounselorRequest request) {
         Counselor counselor = counselorService.createCounselor(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(counselor));
     }
