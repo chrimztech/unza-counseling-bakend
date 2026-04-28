@@ -128,15 +128,17 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
     List<Appointment> findTodayAppointmentsByStudent(@Param("student") User student);
 
     // Next appointment
-    @Query("SELECT a FROM Appointment a WHERE a.student = :student " +
-           "AND a.status = 'SCHEDULED' AND a.appointmentDate > :now " +
-           "ORDER BY a.appointmentDate LIMIT 1")
-    Optional<Appointment> findNextAppointmentByStudent(@Param("student") User student, @Param("now") LocalDateTime now);
-    
-    @Query("SELECT a FROM Appointment a WHERE a.counselor = :counselor " +
-           "AND a.status = 'SCHEDULED' AND a.appointmentDate > :now " +
-           "ORDER BY a.appointmentDate LIMIT 1")
-    Optional<Appointment> findNextAppointmentByCounselor(@Param("counselor") User counselor, @Param("now") LocalDateTime now);
+    Optional<Appointment> findFirstByStudentAndStatusAndAppointmentDateAfterOrderByAppointmentDateAsc(
+            User student,
+            AppointmentStatus status,
+            LocalDateTime now
+    );
+
+    Optional<Appointment> findFirstByCounselorAndStatusAndAppointmentDateAfterOrderByAppointmentDateAsc(
+            User counselor,
+            AppointmentStatus status,
+            LocalDateTime now
+    );
 
     // Reminders
     @Query("SELECT a FROM Appointment a WHERE a.status = 'SCHEDULED' " +

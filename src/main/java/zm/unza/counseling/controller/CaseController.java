@@ -35,11 +35,13 @@ public class CaseController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
     public ResponseEntity<CaseResponse> createCase(@Valid @RequestBody CreateCaseRequest request) {
         return ResponseEntity.ok(caseService.createCase(request));
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
     public ResponseEntity<CaseResponse> getCaseById(@PathVariable Long id) {
         return ResponseEntity.ok(caseService.getCaseById(id));
     }
@@ -51,21 +53,25 @@ public class CaseController {
     }
 
     @GetMapping("/number/{caseNumber}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
     public ResponseEntity<CaseResponse> getCaseByCaseNumber(@PathVariable String caseNumber) {
         return ResponseEntity.ok(caseService.getCaseByCaseNumber(caseNumber));
     }
 
     @GetMapping("/client/{clientId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
     public ResponseEntity<List<CaseResponse>> getCasesByClient(@PathVariable Long clientId) {
         return ResponseEntity.ok(caseService.getCasesByClient(clientId));
     }
 
     @GetMapping("/counselor/{counselorId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
     public ResponseEntity<List<CaseResponse>> getCasesByCounselor(@PathVariable Long counselorId) {
         return ResponseEntity.ok(caseService.getCasesByCounselor(counselorId));
     }
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
     public ResponseEntity<List<CaseResponse>> getAllCases(
             @RequestParam(required = false) Case.CaseStatus status,
             @RequestParam(required = false) Case.CasePriority priority,
@@ -87,21 +93,25 @@ public class CaseController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
     public ResponseEntity<CaseResponse> updateCase(@PathVariable Long id, @Valid @RequestBody CreateCaseRequest request) {
         return ResponseEntity.ok(caseService.updateCase(id, request));
     }
 
     @PatchMapping("/{id}/status")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
     public ResponseEntity<CaseResponse> updateCaseStatus(@PathVariable Long id, @RequestBody Case.CaseStatus status) {
         return ResponseEntity.ok(caseService.updateCaseStatus(id, status));
     }
 
     @PatchMapping("/{id}/priority")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
     public ResponseEntity<CaseResponse> updateCasePriority(@PathVariable Long id, @RequestBody Case.CasePriority priority) {
         return ResponseEntity.ok(caseService.updateCasePriority(id, priority));
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
     public ResponseEntity<Void> deleteCase(@PathVariable Long id) {
         caseService.deleteCase(id);
         return ResponseEntity.noContent().build();
@@ -113,6 +123,7 @@ public class CaseController {
      * Assign a counselor to a case
      */
     @PostMapping("/assign")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
     public ResponseEntity<CaseAssignmentResponse> assignCounselorToCase(@Valid @RequestBody CaseAssignmentRequest request) {
         return ResponseEntity.ok(caseService.assignCounselorToCase(request));
     }
@@ -121,6 +132,7 @@ public class CaseController {
      * Get assignment history for a case
      */
     @GetMapping("/{caseId}/assignments")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
     public ResponseEntity<List<CaseAssignmentResponse>> getCaseAssignmentHistory(@PathVariable Long caseId) {
         return ResponseEntity.ok(caseService.getCaseAssignmentHistory(caseId));
     }
@@ -129,6 +141,7 @@ public class CaseController {
      * Get all active assignments for a counselor
      */
     @GetMapping("/counselor/{counselorId}/active-assignments")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
     public ResponseEntity<List<CaseAssignmentResponse>> getActiveAssignmentsForCounselor(@PathVariable Long counselorId) {
         return ResponseEntity.ok(caseService.getActiveAssignmentsForCounselor(counselorId));
     }
