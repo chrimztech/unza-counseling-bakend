@@ -1,6 +1,8 @@
 package zm.unza.counseling.service;
 
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -13,7 +15,6 @@ import zm.unza.counseling.entity.User;
 import zm.unza.counseling.exception.ResourceNotFoundException;
 import zm.unza.counseling.exception.ValidationException;
 import zm.unza.counseling.repository.AppointmentRepository;
-import zm.unza.counseling.repository.ClientRepository;
 import zm.unza.counseling.repository.SessionRepository;
 import zm.unza.counseling.repository.UserRepository;
 
@@ -23,10 +24,13 @@ import java.time.LocalDateTime;
 @RequiredArgsConstructor
 public class SessionService {
 
+    private static final Logger log = LoggerFactory.getLogger(SessionService.class);
+
     private final SessionRepository sessionRepository;
     private final AppointmentRepository appointmentRepository;
-    private final ClientRepository clientRepository;
     private final UserRepository userRepository;
+    private final ClientIdentityService clientIdentityService;
+    private final NotificationService notificationService;
 
     public Page<SessionDto> getAllSessions(Pageable pageable) {
         return sessionRepository.findAll(pageable).map(SessionDto::from);
@@ -127,11 +131,15 @@ public class SessionService {
         session.setConfidential(true);
 
         Session savedSession = sessionRepository.save(session);
+        notifySessionRecorded(savedSession);
         return SessionDto.from(savedSession);
     }
 
     private java.util.Optional<Client> resolveClientForUser(User user) {
-        return clientRepository.findById(user.getId());
+        if (user == null || !user.isClient()) {
+            return java.util.Optional.empty();
+        }
+        return java.util.Optional.of(clientIdentityService.getOrCreateClient(user.getId()));
     }
 
     public void assignCounselor(Long sessionId, Long counselorId) {
@@ -208,5 +216,43 @@ public class SessionService {
     
     public Page<SessionDto> getSessionsByClient(Long clientId, Pageable pageable) {
         return sessionRepository.findByStudentId(clientId, pageable).map(SessionDto::from);
+    }
+
+    private void notifySessionRecorded(Session session) {
+        String actionUrl = "/sessions/" + session.getId();
+        String sessionDate = session.getSessionDate() != null
+                ? session.getSessionDate().toLocalDate().toString()
+                : LocalDateTime.now().toLocalDate().toString();
+
+        if (session.getStudent() != null) {
+            safeNotify(
+                    session.getStudent().getId(),
+                    "Session recorded",
+                    "A counseling session for " + sessionDate + " has been added to your record.",
+                    "SESSION",
+                    "MEDIUM",
+                    actionUrl
+            );
+        }
+
+        if (session.getCounselor() != null) {
+            safeNotify(
+                    session.getCounselor().getId(),
+                    "Session saved",
+                    "Session notes for " + (session.getStudent() != null ? session.getStudent().getFullName() : "your client")
+                            + " were saved successfully.",
+                    "SESSION",
+                    "LOW",
+                    actionUrl
+            );
+        }
+    }
+
+    private void safeNotify(Long userId, String title, String message, String type, String priority, String actionUrl) {
+        try {
+            notificationService.sendNotification(userId, title, message, type, priority, actionUrl);
+        } catch (Exception exception) {
+            log.warn("Failed to create session notification for user {}", userId, exception);
+        }
     }
 }

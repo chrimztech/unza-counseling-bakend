@@ -21,6 +21,7 @@ import zm.unza.counseling.service.ReportService;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @RestController
@@ -38,12 +39,16 @@ public class ReportController {
             Pageable pageable,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String type,
+            @RequestParam(required = false) Long clientId,
+            @RequestParam(required = false) Long counselorId,
             @RequestParam(required = false) String dateFrom,
             @RequestParam(required = false) String dateTo
     ) {
         List<Report> filteredReports = reportService.getAllReports().stream()
                 .filter(report -> matchesReportStatus(report.getStatus(), status))
                 .filter(report -> matches(report.getType(), type))
+                .filter(report -> clientId == null || Objects.equals(report.getClientId(), clientId))
+                .filter(report -> counselorId == null || Objects.equals(report.getCounselorId(), counselorId))
                 .filter(report -> matchesDateRange(report, dateFrom, dateTo))
                 .collect(Collectors.toList());
         return ResponseEntity.ok(ApiResponse.success(toPage(filteredReports, pageable)));

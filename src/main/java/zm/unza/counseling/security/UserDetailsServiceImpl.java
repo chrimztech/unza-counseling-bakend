@@ -27,14 +27,12 @@ public class UserDetailsServiceImpl implements UserDetailsService {
     @Override
     @Transactional(readOnly = true)
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        // The 'username' parameter for this method is the unique identifier used for login.
-        // In our system, the JWT subject is the user's email, so we receive an email here.
         User user = userRepository.findByEmail(username)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + username));
+                .or(() -> userRepository.findByUsername(username))
+                .or(() -> userRepository.findByStudentId(username))
+                .orElseThrow(() -> new UsernameNotFoundException("User not found with identifier: " + username));
 
         return org.springframework.security.core.userdetails.User.builder()
-                // The username in the returned UserDetails must match the identifier used in the token.
-                // Since our token's subject is the email, we must use the email here.
                 .username(user.getEmail())
                 .password(user.getPassword())
                 .authorities(getAuthorities(user))

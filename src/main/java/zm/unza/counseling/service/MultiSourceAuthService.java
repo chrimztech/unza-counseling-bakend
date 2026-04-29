@@ -74,11 +74,21 @@ public class MultiSourceAuthService {
         if (identifier == null || identifier.trim().isEmpty()) {
             throw new ValidationException("Identifier is required");
         }
+
+        identifier = identifier.trim();
+        request.setIdentifier(identifier);
     
         // Special handling for admin
         if ("admin@unza.zm".equals(identifier)) {
             System.out.println("Detected admin login - Taking INTERNAL authentication path");
             return authenticateInternal(request);
+        }
+
+        // Student numbers must always go through SIS authentication.
+        // This avoids local INTERNAL user records accidentally shadowing SIS login.
+        if (isNumeric(identifier)) {
+            System.out.println("DEBUG: Detected numeric identifier - Taking SIS authentication path");
+            return authenticateStudent(request);
         }
     
         // Check if user exists locally and is explicitly INTERNAL
@@ -106,10 +116,7 @@ public class MultiSourceAuthService {
 
         // Detect user type from identifier
         System.out.println("DEBUG: About to detect user type for identifier: " + identifier);
-        if (isNumeric(identifier)) {
-            System.out.println("DEBUG: Detected numeric identifier - Taking SIS authentication path");
-            return authenticateStudent(request);
-        } else if (identifier.toLowerCase().contains("@unza.zm") || 
+        if (identifier.toLowerCase().contains("@unza.zm") || 
                    identifier.toLowerCase().contains("@unza.ac.zm") || 
                    identifier.equalsIgnoreCase("chrishentmatakala@yahoo.com")) {
             System.out.println("DEBUG: Detected staff email - Taking HR authentication path");
@@ -363,6 +370,9 @@ public class MultiSourceAuthService {
 
         // Check if user already exists by username or email
         Optional<User> existingOpt = userRepository.findByUsername(externalUser.getUsername());
+        if (existingOpt.isEmpty() && safeTrim(externalUser.getStudentId()) != null) {
+            existingOpt = userRepository.findByStudentId(externalUser.getStudentId());
+        }
         if (existingOpt.isEmpty() && externalUser.getEmail() != null) {
             existingOpt = userRepository.findByEmail(externalUser.getEmail());
         }

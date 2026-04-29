@@ -1,5 +1,7 @@
 package zm.unza.counseling.service;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -22,8 +24,6 @@ import zm.unza.counseling.repository.AppointmentRepository;
 import zm.unza.counseling.repository.CaseAssignmentRepository;
 import zm.unza.counseling.repository.CaseRepository;
 import zm.unza.counseling.repository.ClientIntakeFormRepository;
-import zm.unza.counseling.repository.ClientRepository;
-import zm.unza.counseling.repository.CounselorRepository;
 import zm.unza.counseling.repository.PersonalDataFormRepository;
 import zm.unza.counseling.repository.ReportRepository;
 import zm.unza.counseling.repository.SessionRepository;
@@ -41,9 +41,9 @@ import java.util.stream.Collectors;
 @Service
 public class CaseService {
 
+    private static final Logger log = LoggerFactory.getLogger(CaseService.class);
+
     private final CaseRepository caseRepository;
-    private final ClientRepository clientRepository;
-    private final CounselorRepository counselorRepository;
     private final AppointmentRepository appointmentRepository;
     private final CaseAssignmentRepository caseAssignmentRepository;
     private final UserRepository userRepository;
@@ -52,11 +52,12 @@ public class CaseService {
     private final ClientIntakeFormRepository clientIntakeFormRepository;
     private final PersonalDataFormRepository personalDataFormRepository;
     private final CaseDocumentService caseDocumentService;
+    private final ClientIdentityService clientIdentityService;
+    private final CounselorIdentityService counselorIdentityService;
+    private final NotificationService notificationService;
 
     public CaseService(
             CaseRepository caseRepository,
-            ClientRepository clientRepository,
-            CounselorRepository counselorRepository,
             AppointmentRepository appointmentRepository,
             CaseAssignmentRepository caseAssignmentRepository,
             UserRepository userRepository,
@@ -64,11 +65,12 @@ public class CaseService {
             ReportRepository reportRepository,
             ClientIntakeFormRepository clientIntakeFormRepository,
             PersonalDataFormRepository personalDataFormRepository,
-            CaseDocumentService caseDocumentService
+            CaseDocumentService caseDocumentService,
+            ClientIdentityService clientIdentityService,
+            CounselorIdentityService counselorIdentityService,
+            NotificationService notificationService
     ) {
         this.caseRepository = caseRepository;
-        this.clientRepository = clientRepository;
-        this.counselorRepository = counselorRepository;
         this.appointmentRepository = appointmentRepository;
         this.caseAssignmentRepository = caseAssignmentRepository;
         this.userRepository = userRepository;
@@ -77,6 +79,9 @@ public class CaseService {
         this.clientIntakeFormRepository = clientIntakeFormRepository;
         this.personalDataFormRepository = personalDataFormRepository;
         this.caseDocumentService = caseDocumentService;
+        this.clientIdentityService = clientIdentityService;
+        this.counselorIdentityService = counselorIdentityService;
+        this.notificationService = notificationService;
     }
 
     @Transactional
@@ -98,6 +103,7 @@ public class CaseService {
         if (counselor != null) {
             ensureActiveAssignment(savedCase, counselor, "Initial assignment on case creation", null);
         }
+        notifyCaseCreated(savedCase, counselor, getCurrentUser());
 
         return convertToResponse(savedCase);
     }
@@ -135,6 +141,7 @@ public class CaseService {
     @Transactional
     public CaseResponse updateCase(Long id, CreateCaseRequest request) {
         Case caseEntity = getCaseOrThrow(id);
+        boolean counselorChanged = false;
 
         if (!Objects.equals(caseEntity.getClient().getId(), request.getClientId())) {
             if (appointmentRepository.countAllByCaseId(id) > 0) {
@@ -152,6 +159,7 @@ public class CaseService {
                 assertCaseAllowsAssignment(caseEntity);
                 applyAssignmentMetadata(caseEntity, counselor, resolveAssignmentActor(counselor));
                 ensureActiveAssignment(caseEntity, counselor, "Counselor assigned during case update", null);
+                counselorChanged = true;
             } else {
                 if (caseEntity.getAssignedBy() == null || caseEntity.getAssignedAt() == null) {
                     applyAssignmentMetadata(caseEntity, counselor, resolveAssignmentActor(counselor));
@@ -161,6 +169,9 @@ public class CaseService {
         }
 
         Case updatedCase = caseRepository.save(caseEntity);
+        if (counselorChanged && updatedCase.getCounselor() != null) {
+            notifyCaseAssigned(updatedCase, updatedCase.getCounselor(), getCurrentUser());
+        }
         return convertToResponse(updatedCase);
     }
 
@@ -181,6 +192,7 @@ public class CaseService {
         }
 
         Case updatedCase = caseRepository.save(caseEntity);
+        notifyCaseStatusUpdated(updatedCase);
         return convertToResponse(updatedCase);
     }
 
@@ -239,6 +251,8 @@ public class CaseService {
                 request.getAssignmentReason(),
                 request.getAssignmentNotes()
         );
+
+        notifyCaseAssigned(caseEntity, counselor, assignedBy);
 
         return convertToAssignmentResponse(assignment);
     }
@@ -399,13 +413,11 @@ public class CaseService {
     }
 
     private Client getClientOrThrow(Long clientId) {
-        return clientRepository.findById(clientId)
-                .orElseThrow(() -> new ResourceNotFoundException("Client not found with id: " + clientId));
+        return clientIdentityService.getOrCreateClient(clientId);
     }
 
     private Counselor getCounselorOrThrow(Long counselorId) {
-        return counselorRepository.findById(counselorId)
-                .orElseThrow(() -> new ResourceNotFoundException("Counselor not found with id: " + counselorId));
+        return counselorIdentityService.getOrCreateCounselor(counselorId);
     }
 
     private User resolveAssignmentActor(Counselor fallbackCounselor) {
@@ -425,6 +437,116 @@ public class CaseService {
                     .orElse(null);
         }
         return null;
+    }
+
+    private void notifyCaseCreated(Case caseEntity, Counselor counselor, User actor) {
+        if (caseEntity.getClient() != null) {
+            safeNotify(
+                    caseEntity.getClient().getId(),
+                    "Case opened",
+                    "Your counseling case " + caseEntity.getCaseNumber() + " has been opened.",
+                    "CASE",
+                    "MEDIUM",
+                    "/cases/" + caseEntity.getId()
+            );
+        }
+
+        if (counselor != null && !sameUser(actor, counselor)) {
+            safeNotify(
+                    counselor.getId(),
+                    "New case assignment",
+                    "Case " + caseEntity.getCaseNumber() + " has been assigned to you for "
+                            + caseEntity.getClient().getFullName() + ".",
+                    "CASE",
+                    "HIGH",
+                    "/cases/" + caseEntity.getId()
+            );
+        }
+
+        if (actor == null || actor.isClient()) {
+            List<Long> adminIds = getAdminRecipientIds(actor != null ? actor.getId() : null);
+            if (!adminIds.isEmpty()) {
+                safeNotifyMany(
+                        adminIds,
+                        "New counseling request",
+                        caseEntity.getClient().getFullName() + " has a new counseling case "
+                                + caseEntity.getCaseNumber() + " that needs review.",
+                        "CASE",
+                        "HIGH",
+                        "/cases/" + caseEntity.getId()
+                );
+            }
+        }
+    }
+
+    private void notifyCaseAssigned(Case caseEntity, Counselor counselor, User actor) {
+        if (counselor != null && !sameUser(actor, counselor)) {
+            safeNotify(
+                    counselor.getId(),
+                    "Case assigned",
+                    "You have been assigned case " + caseEntity.getCaseNumber() + " for "
+                            + caseEntity.getClient().getFullName() + ".",
+                    "CASE",
+                    "HIGH",
+                    "/cases/" + caseEntity.getId()
+            );
+        }
+
+        if (caseEntity.getClient() != null) {
+            safeNotify(
+                    caseEntity.getClient().getId(),
+                    "Counselor assigned",
+                    "A counselor has been assigned to your case " + caseEntity.getCaseNumber() + ".",
+                    "CASE",
+                    "MEDIUM",
+                    "/cases/" + caseEntity.getId()
+            );
+        }
+    }
+
+    private void notifyCaseStatusUpdated(Case caseEntity) {
+        if (caseEntity.getClient() != null) {
+            safeNotify(
+                    caseEntity.getClient().getId(),
+                    "Case status updated",
+                    "Your case " + caseEntity.getCaseNumber() + " is now "
+                            + caseEntity.getStatus().name().replace('_', ' ').toLowerCase() + ".",
+                    "CASE",
+                    "MEDIUM",
+                    "/cases/" + caseEntity.getId()
+            );
+        }
+    }
+
+    private List<Long> getAdminRecipientIds(Long excludedUserId) {
+        return java.util.stream.Stream.concat(
+                        userRepository.findByRolesName(zm.unza.counseling.entity.Role.ERole.ROLE_ADMIN).stream(),
+                        userRepository.findByRolesName(zm.unza.counseling.entity.Role.ERole.ROLE_SUPER_ADMIN).stream()
+                )
+                .map(User::getId)
+                .filter(id -> excludedUserId == null || !excludedUserId.equals(id))
+                .distinct()
+                .collect(Collectors.toList());
+    }
+
+    private boolean sameUser(User left, User right) {
+        return left != null && right != null && Objects.equals(left.getId(), right.getId());
+    }
+
+    private void safeNotify(Long userId, String title, String message, String type, String priority, String actionUrl) {
+        try {
+            notificationService.sendNotification(userId, title, message, type, priority, actionUrl);
+        } catch (Exception exception) {
+            log.warn("Failed to create notification for user {}", userId, exception);
+        }
+    }
+
+    private void safeNotifyMany(List<Long> userIds, String title, String message, String type, String priority, String actionUrl) {
+        try {
+            notificationService.sendNotifications(userIds, title, message, type, priority, actionUrl);
+        } catch (Exception exception) {
+            log.warn("Failed to create notifications for users {}", userIds, exception);
+        }
     }
 
     private String normalize(String value) {

@@ -5,6 +5,8 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -20,11 +22,12 @@ import zm.unza.counseling.entity.Session;
 import zm.unza.counseling.entity.User;
 import zm.unza.counseling.repository.AppointmentRepository;
 import zm.unza.counseling.repository.CaseRepository;
-import zm.unza.counseling.repository.ClientRepository;
 import zm.unza.counseling.repository.ReportRepository;
 import zm.unza.counseling.repository.SessionRepository;
 import zm.unza.counseling.repository.UserRepository;
 import zm.unza.counseling.service.AuditLogService;
+import zm.unza.counseling.service.ClientIdentityService;
+import zm.unza.counseling.service.NotificationService;
 import zm.unza.counseling.service.ReportService;
 
 import java.io.ByteArrayOutputStream;
@@ -41,6 +44,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -56,13 +60,14 @@ public class ReportServiceImpl implements ReportService {
     private static final TypeReference<Map<String, Object>> MAP_TYPE = new TypeReference<>() {};
 
     private final ReportRepository reportRepository;
-    private final ClientRepository clientRepository;
     private final CaseRepository caseRepository;
     private final AppointmentRepository appointmentRepository;
     private final SessionRepository sessionRepository;
     private final UserRepository userRepository;
     private final AuditLogService auditLogService;
     private final ObjectMapper objectMapper;
+    private final ClientIdentityService clientIdentityService;
+    private final NotificationService notificationService;
 
     @Override
     public Report generateReport(Report.ReportType type, Report.ReportFormat format) {
@@ -79,13 +84,13 @@ public class ReportServiceImpl implements ReportService {
         report.setReportDataJson(writeJson(report.getReportData()));
         Report savedReport = reportRepository.save(report);
         auditReport("REPORT_GENERATED", savedReport, "Generic report generated");
+        notifyGenericReportSaved(savedReport, "generated");
         return hydrateReport(savedReport);
     }
 
     @Override
     public Report createCounselorReport(CounselorReportRequest request) {
-        Client client = clientRepository.findById(request.getClientId())
-                .orElseThrow(() -> new NoSuchElementException("Client not found with id: " + request.getClientId()));
+        Client client = resolveClient(request.getClientId());
 
         Case caseEntity = resolveCase(request, client);
         Appointment appointment = resolveAppointment(request, caseEntity, client);
@@ -96,14 +101,14 @@ public class ReportServiceImpl implements ReportService {
         populateCounselorReport(report, request, client, counselor, caseEntity, appointment, session);
         Report savedReport = reportRepository.save(report);
         auditReport("REPORT_CREATED", savedReport, "Counselor report created");
+        notifyCounselorReportSaved(savedReport, client, counselor, false);
         return hydrateReport(savedReport);
     }
 
     @Override
     public Report updateCounselorReport(Long id, CounselorReportRequest request) {
         Report report = getReportById(id);
-        Client client = clientRepository.findById(request.getClientId())
-                .orElseThrow(() -> new NoSuchElementException("Client not found with id: " + request.getClientId()));
+        Client client = resolveClient(request.getClientId());
 
         Case caseEntity = resolveCase(request, client);
         Appointment appointment = resolveAppointment(request, caseEntity, client);
@@ -113,6 +118,7 @@ public class ReportServiceImpl implements ReportService {
         populateCounselorReport(report, request, client, counselor, caseEntity, appointment, session);
         Report savedReport = reportRepository.save(report);
         auditReport("REPORT_UPDATED", savedReport, "Counselor report updated");
+        notifyCounselorReportSaved(savedReport, client, counselor, true);
         return hydrateReport(savedReport);
     }
 
@@ -201,6 +207,7 @@ public class ReportServiceImpl implements ReportService {
         report.setReportDataJson(writeJson(report.getReportData()));
         Report savedReport = reportRepository.save(report);
         auditReport("REPORT_GENERATED", savedReport, "Report generated from generic endpoint");
+        notifyGenericReportSaved(savedReport, "generated");
         return hydrateReport(savedReport);
     }
 
@@ -237,6 +244,7 @@ public class ReportServiceImpl implements ReportService {
         report.setReportDataJson(writeJson(report.getReportData()));
         Report savedReport = reportRepository.save(report);
         auditReport("REPORT_SCHEDULED", savedReport, "Report scheduled");
+        notifyGenericReportSaved(savedReport, "scheduled");
         return hydrateReport(savedReport);
     }
 
@@ -579,9 +587,7 @@ public class ReportServiceImpl implements ReportService {
                 ? new LinkedHashMap<>(hydratedReport.getReportData())
                 : new LinkedHashMap<>();
 
-        Client client = hydratedReport.getClientId() != null
-                ? clientRepository.findById(hydratedReport.getClientId()).orElse(null)
-                : null;
+        Client client = safelyResolveClient(hydratedReport.getClientId());
         User counselor = hydratedReport.getCounselorId() != null
                 ? userRepository.findById(hydratedReport.getCounselorId()).orElse(null)
                 : null;
@@ -1023,6 +1029,23 @@ public class ReportServiceImpl implements ReportService {
         return reportData;
     }
 
+    private Client resolveClient(Long clientId) {
+        return clientIdentityService.getOrCreateClient(clientId);
+    }
+
+    private Client safelyResolveClient(Long clientId) {
+        if (clientId == null) {
+            return null;
+        }
+
+        try {
+            return resolveClient(clientId);
+        } catch (RuntimeException exception) {
+            log.warn("Unable to resolve client {} while hydrating report data", clientId, exception);
+            return null;
+        }
+    }
+
     private Case resolveCase(CounselorReportRequest request, Client client) {
         if (request.getCaseId() != null) {
             Case caseEntity = caseRepository.findById(request.getCaseId())
@@ -1181,6 +1204,81 @@ public class ReportServiceImpl implements ReportService {
             }
         }
         return builder.toString();
+    }
+
+    private void notifyCounselorReportSaved(Report report, Client client, User counselor, boolean updated) {
+        String actionUrl = "/reports/" + report.getId();
+        String actionWord = updated ? "updated" : "created";
+
+        safeNotify(
+                client != null ? client.getId() : null,
+                "Counselor report " + actionWord,
+                "A counselor report for your record has been " + actionWord + ".",
+                "REPORT",
+                "MEDIUM",
+                actionUrl
+        );
+
+        User currentUser = getCurrentUser();
+        if (counselor != null && client != null
+                && (currentUser == null || !Objects.equals(currentUser.getId(), counselor.getId()))) {
+            safeNotify(
+                    counselor.getId(),
+                    "Report " + actionWord,
+                    "Counselor report for " + client.getFullName() + " has been " + actionWord + ".",
+                    "REPORT",
+                    "LOW",
+                    actionUrl
+            );
+        }
+    }
+
+    private void notifyGenericReportSaved(Report report, String action) {
+        User currentUser = getCurrentUser();
+        if (currentUser == null) {
+            return;
+        }
+
+        String reportLabel = report.getTitle() != null && !report.getTitle().isBlank()
+                ? report.getTitle()
+                : report.getType() + " report";
+
+        safeNotify(
+                currentUser.getId(),
+                "Report " + action,
+                reportLabel + " was " + action + " successfully.",
+                "REPORT",
+                "LOW",
+                "/reports/" + report.getId()
+        );
+    }
+
+    private User getCurrentUser() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return null;
+        }
+
+        String username = authentication.getName();
+        if (username == null || username.isBlank() || "anonymousUser".equals(username)) {
+            return null;
+        }
+
+        return userRepository.findByUsername(username)
+                .or(() -> userRepository.findByEmail(username))
+                .orElse(null);
+    }
+
+    private void safeNotify(Long userId, String title, String message, String type, String priority, String actionUrl) {
+        if (userId == null) {
+            return;
+        }
+
+        try {
+            notificationService.sendNotification(userId, title, message, type, priority, actionUrl);
+        } catch (Exception exception) {
+            log.warn("Failed to create report notification for user {}", userId, exception);
+        }
     }
 
     private void auditReport(String action, Report report, String details) {

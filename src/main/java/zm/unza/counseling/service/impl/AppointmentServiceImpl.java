@@ -29,11 +29,11 @@ import zm.unza.counseling.entity.User;
 import zm.unza.counseling.exception.ValidationException;
 import zm.unza.counseling.repository.AppointmentRepository;
 import zm.unza.counseling.repository.CaseRepository;
-import zm.unza.counseling.repository.ClientRepository;
 import zm.unza.counseling.repository.SessionRepository;
 import zm.unza.counseling.repository.UserRepository;
 import zm.unza.counseling.service.AppointmentService;
 import zm.unza.counseling.service.AuditLogService;
+import zm.unza.counseling.service.ClientIdentityService;
 import zm.unza.counseling.service.NotificationService;
 
 import java.time.LocalDateTime;
@@ -61,10 +61,10 @@ public class AppointmentServiceImpl implements AppointmentService {
 
     private final AppointmentRepository appointmentRepository;
     private final UserRepository userRepository;
-    private final ClientRepository clientRepository;
     private final SessionRepository sessionRepository;
     private final CaseRepository caseRepository;
     private final AuditLogService auditLogService;
+    private final ClientIdentityService clientIdentityService;
     private final NotificationService notificationService;
     private final ObjectMapper objectMapper;
 
@@ -730,7 +730,7 @@ public class AppointmentServiceImpl implements AppointmentService {
     }
 
     private Client resolveClientForUser(User user) {
-        return user != null ? clientRepository.findById(user.getId()).orElse(null) : null;
+        return user != null ? clientIdentityService.getOrCreateClient(user.getId()) : null;
     }
 
     private Case resolveCaseForAppointment(Long requestedCaseId, Client client) {

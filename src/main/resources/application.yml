@@ -126,7 +126,7 @@ app:
     api:
       baseUrl: ${SIS_BASE_URL:https://sis.unza.zm}
       resultsEndpoint: ${SIS_RESULTS_ENDPOINT:/StudentApp/getStudentResults.json}
-      loginEndpoint: ${SIS_LOGIN_ENDPOINT:/StudentApp/student_login.json}
+      loginEndpoint: ${SIS_LOGIN_ENDPOINT:/api/v1/customers/login}
       tokenEndpoint: ${SIS_TOKEN_ENDPOINT:/StudentApp/get_student_token.json}
       baseUrls:
         undergraduate: ${SIS_UNDERGRADUATE_URL:https://devoap.unza.zm}

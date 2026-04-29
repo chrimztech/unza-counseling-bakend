@@ -28,14 +28,14 @@ public class CounselorService {
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
     private final UserRepository userRepository;
+    private final CounselorIdentityService counselorIdentityService;
 
     public List<Counselor> getAllCounselors() {
-        return counselorRepository.findAll();
+        return counselorIdentityService.getAllCounselors();
     }
 
     public Counselor getCounselorById(Long id) {
-        return counselorRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Counselor not found with id: " + id));
+        return counselorIdentityService.getOrCreateCounselor(id);
     }
 
     @Transactional

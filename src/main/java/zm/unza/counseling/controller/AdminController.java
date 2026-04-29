@@ -2,6 +2,7 @@ package zm.unza.counseling.controller;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -27,8 +28,8 @@ public class AdminController {
 
     @GetMapping("/users")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<List<Admin>>> getAllAdmins() {
-        return ResponseEntity.ok(ApiResponse.success(adminService.getAllAdmins()));
+    public ResponseEntity<ApiResponse<PageImpl<Admin>>> getAllAdmins() {
+        return ResponseEntity.ok(ApiResponse.success(new PageImpl<>(adminService.getAllAdmins())));
     }
 
     @PostMapping

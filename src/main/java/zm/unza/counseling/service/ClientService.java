@@ -18,10 +18,10 @@ import zm.unza.counseling.entity.Client;
 import zm.unza.counseling.entity.User;
 import zm.unza.counseling.exception.ResourceNotFoundException;
 import zm.unza.counseling.repository.ClientRepository;
+import zm.unza.counseling.repository.UserRepository;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -33,6 +33,8 @@ public class ClientService {
     private final ClientRepository clientRepository;
     private final PasswordEncoder passwordEncoder;
     private final CaseService caseService;
+    private final ClientIdentityService clientIdentityService;
+    private final UserRepository userRepository;
 
     public Client createClient(RegisterRequest request) {
         log.info("Creating new client: {}", request.getEmail());
@@ -152,28 +154,35 @@ public class ClientService {
     }
 
     public Client getClientById(Long id) {
-        return clientRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Client not found with ID: " + id));
+        return clientIdentityService.getOrCreateClient(id);
     }
 
     public Client getClientByStudentId(String studentId) {
+        syncClientDirectory();
         return clientRepository.findByStudentId(studentId)
+                .or(() -> userRepository.findByStudentId(studentId)
+                        .filter(User::isClient)
+                        .map(user -> clientIdentityService.getOrCreateClient(user.getId())))
                 .orElseThrow(() -> new ResourceNotFoundException("Client not found with student ID: " + studentId));
     }
 
     public Page<Client> getAllClients(Pageable pageable) {
+        syncClientDirectory();
         return clientRepository.findAll(pageable);
     }
 
     public Page<Client> searchClients(String searchTerm, Pageable pageable) {
+        syncClientDirectory();
         return clientRepository.searchClients(searchTerm, pageable);
     }
 
     public Page<Client> getClientsByStatus(Client.ClientStatus status, Pageable pageable) {
+        syncClientDirectory();
         return clientRepository.findByClientStatus(status, pageable);
     }
 
     public Page<Client> getClientsByRiskLevel(Client.RiskLevel riskLevel, Pageable pageable) {
+        syncClientDirectory();
         return clientRepository.findByRiskLevel(riskLevel, pageable);
     }
 
@@ -208,10 +217,12 @@ public class ClientService {
     }
 
     public Long getActiveClientCount() {
+        syncClientDirectory();
         return clientRepository.countByClientStatus(Client.ClientStatus.ACTIVE);
     }
 
     public Long getHighRiskClientCount() {
+        syncClientDirectory();
         return clientRepository.countByRiskLevels(
                 List.of(Client.RiskLevel.HIGH, Client.RiskLevel.CRITICAL)
         );
@@ -221,5 +232,9 @@ public class ClientService {
         Client client = getClientById(clientId);
         client.setRiskLevel(riskLevel);
         return clientRepository.save(client);
+    }
+
+    private void syncClientDirectory() {
+        clientIdentityService.syncRoleBackedClients();
     }
 }

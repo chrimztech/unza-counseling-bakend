@@ -12,7 +12,6 @@ import zm.unza.counseling.exception.ValidationException;
 import zm.unza.counseling.exception.ResourceNotFoundException;
 import zm.unza.counseling.repository.CaseRepository;
 import zm.unza.counseling.repository.ClientIntakeFormRepository;
-import zm.unza.counseling.repository.ClientRepository;
 import zm.unza.counseling.repository.CounselorRepository;
 
 /**
@@ -22,20 +21,20 @@ import zm.unza.counseling.repository.CounselorRepository;
 public class ClientIntakeFormService {
 
     private final ClientIntakeFormRepository clientIntakeFormRepository;
-    private final ClientRepository clientRepository;
     private final CaseRepository caseRepository;
     private final CounselorRepository counselorRepository;
+    private final ClientIdentityService clientIdentityService;
 
     public ClientIntakeFormService(
             ClientIntakeFormRepository clientIntakeFormRepository,
-            ClientRepository clientRepository,
             CaseRepository caseRepository,
-            CounselorRepository counselorRepository
+            CounselorRepository counselorRepository,
+            ClientIdentityService clientIdentityService
     ) {
         this.clientIntakeFormRepository = clientIntakeFormRepository;
-        this.clientRepository = clientRepository;
         this.caseRepository = caseRepository;
         this.counselorRepository = counselorRepository;
+        this.clientIdentityService = clientIdentityService;
     }
 
     @Transactional
@@ -119,10 +118,7 @@ public class ClientIntakeFormService {
     }
 
     private Client getClient(Long clientId) {
-        return clientRepository.findById(clientId)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Client not found with id: " + clientId
-                ));
+        return clientIdentityService.getOrCreateClient(clientId);
     }
 
     private Case getCase(Long caseId) {

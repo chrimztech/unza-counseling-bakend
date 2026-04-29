@@ -28,9 +28,10 @@ public class AdminService {
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
     private final UserRepository userRepository;
+    private final AdminIdentityService adminIdentityService;
 
     public List<Admin> getAllAdmins() {
-        return adminRepository.findAll();
+        return adminIdentityService.getAllAdmins();
     }
 
     @Transactional
@@ -120,9 +121,7 @@ public class AdminService {
 
     @Transactional
     public void deleteAdmin(Long id) {
-        if (!adminRepository.existsById(id)) {
-            throw new ResourceNotFoundException("Admin not found with id: " + id);
-        }
-        adminRepository.deleteById(id);
+        Admin admin = adminIdentityService.getOrCreateAdmin(id);
+        adminRepository.delete(admin);
     }
 }

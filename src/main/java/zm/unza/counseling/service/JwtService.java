@@ -131,6 +131,14 @@ public class JwtService {
     }
 
     /**
+     * Validate token against a persisted user entity using the same subject shape
+     * we use during token generation (email-based JWT subject).
+     */
+    public boolean isTokenValid(String token, zm.unza.counseling.entity.User user) {
+        return isTokenValid(token, createUserDetails(user));
+    }
+
+    /**
      * Check if token is expired
      */
     private boolean isTokenExpired(String token) {

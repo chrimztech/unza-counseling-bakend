@@ -10,7 +10,6 @@ import zm.unza.counseling.entity.FamilyMember;
 import zm.unza.counseling.entity.PersonalDataForm;
 import zm.unza.counseling.exception.ResourceNotFoundException;
 import zm.unza.counseling.repository.CaseRepository;
-import zm.unza.counseling.repository.ClientRepository;
 import zm.unza.counseling.repository.PersonalDataFormRepository;
 
 import java.util.ArrayList;
@@ -23,17 +22,17 @@ import java.util.List;
 public class PersonalDataFormService {
 
     private final PersonalDataFormRepository personalDataFormRepository;
-    private final ClientRepository clientRepository;
     private final CaseRepository caseRepository;
+    private final ClientIdentityService clientIdentityService;
 
     public PersonalDataFormService(
             PersonalDataFormRepository personalDataFormRepository,
-            ClientRepository clientRepository,
-            CaseRepository caseRepository
+            CaseRepository caseRepository,
+            ClientIdentityService clientIdentityService
     ) {
         this.personalDataFormRepository = personalDataFormRepository;
-        this.clientRepository = clientRepository;
         this.caseRepository = caseRepository;
+        this.clientIdentityService = clientIdentityService;
     }
 
     @Transactional
@@ -195,10 +194,7 @@ public class PersonalDataFormService {
     }
 
     private Client getClient(Long clientId) {
-        return clientRepository.findById(clientId)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Client not found with id: " + clientId
-                ));
+        return clientIdentityService.getOrCreateClient(clientId);
     }
 
     private Case getCase(Long caseId) {

@@ -7,6 +7,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 import java.util.concurrent.CompletableFuture;
+import java.util.Collection;
 import java.util.List;
 import java.time.LocalDateTime;
 import zm.unza.counseling.entity.Notification;
@@ -24,16 +25,69 @@ public class NotificationService {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public CompletableFuture<Notification> sendSystemNotification(Long userId, String title, 
                                                                 String message, String priority) {
+        return sendNotification(userId, title, message, "SYSTEM", priority, "/dashboard");
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public CompletableFuture<Notification> sendNotification(
+            Long userId,
+            String title,
+            String message,
+            String type,
+            String priority,
+            String actionUrl
+    ) {
+        if (userId == null) {
+            return CompletableFuture.completedFuture(null);
+        }
+
         Notification notification = new Notification();
         notification.setRecipientId(userId);
         notification.setTitle(title);
         notification.setMessage(message);
-        notification.setType("SYSTEM");
+        notification.setType(type != null ? type : "SYSTEM");
         notification.setPriority(priority);
+        notification.setActionUrl(actionUrl);
         notification.setIsRead(false);
         notification.setCreatedAt(LocalDateTime.now());
-        
+
         return CompletableFuture.completedFuture(notificationRepository.saveAndFlush(notification));
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void sendNotifications(
+            Collection<Long> userIds,
+            String title,
+            String message,
+            String type,
+            String priority,
+            String actionUrl
+    ) {
+        if (userIds == null || userIds.isEmpty()) {
+            return;
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        List<Notification> notifications = userIds.stream()
+                .filter(userId -> userId != null)
+                .distinct()
+                .map(userId -> {
+                    Notification notification = new Notification();
+                    notification.setRecipientId(userId);
+                    notification.setTitle(title);
+                    notification.setMessage(message);
+                    notification.setType(type != null ? type : "SYSTEM");
+                    notification.setPriority(priority);
+                    notification.setActionUrl(actionUrl);
+                    notification.setIsRead(false);
+                    notification.setCreatedAt(now);
+                    return notification;
+                })
+                .toList();
+
+        if (!notifications.isEmpty()) {
+            notificationRepository.saveAllAndFlush(notifications);
+        }
     }
 
     public List<Notification> getUserNotifications(Long userId) {

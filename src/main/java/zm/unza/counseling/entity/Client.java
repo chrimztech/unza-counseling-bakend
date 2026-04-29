@@ -14,6 +14,7 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "clients")
 @EntityListeners(AuditingEntityListener.class)
+@DiscriminatorValue("CLIENT")
 public class Client extends User {
 
     @Column(name = "student_id", unique = true)
