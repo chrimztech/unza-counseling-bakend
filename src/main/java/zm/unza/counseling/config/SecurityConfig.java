@@ -72,12 +72,28 @@ public class SecurityConfig {
                         "/api/v1/auth/**"
                 ).permitAll()
 
-                // 🔓 Public appointment endpoints
+                 // 🔓 Public appointment endpoints
+                 .requestMatchers(
+                         "/api/appointments/stats",
+                         "/appointments/stats",
+                         "/api/appointments/availability",
+                         "/appointments/availability"
+                 ).permitAll()
+
+                 // 🔓 Public counselor/user list endpoints
                 .requestMatchers(
-                        "/api/appointments/stats",
-                        "/appointments/stats",
-                        "/api/appointments/availability",
-                        "/appointments/availability"
+                        "/api/counselors/**",
+                        "/counselors/**",
+                        "/api/v1/counselors/**",
+                        "/v1/counselors/**",
+                        "/api/users/**",
+                        "/users/**",
+                        "/api/v1/users/**",
+                        "/v1/users/**",
+                        "/api/clients/**",
+                        "/clients/**",
+                        "/api/v1/clients/**",
+                        "/v1/clients/**"
                 ).permitAll()
 
                 // 🔓 Swagger / documentation

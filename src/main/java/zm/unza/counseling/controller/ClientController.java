@@ -42,12 +42,10 @@ public class ClientController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
     
-    @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
-    @Operation(summary = "Get all clients with pagination and filtering")
-    public ResponseEntity<Page<Client>> getAllClients(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
+     @GetMapping
+     public ResponseEntity<Page<Client>> getAllClients(
+             @RequestParam(defaultValue = "0") int page,
+             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "createdAt") String sortBy,
             @RequestParam(defaultValue = "DESC") String sortDirection,
             @RequestParam(required = false) String search,
