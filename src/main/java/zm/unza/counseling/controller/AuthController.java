@@ -5,6 +5,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
@@ -12,13 +14,20 @@ import zm.unza.counseling.dto.request.AnonymousLoginRequest;
 import zm.unza.counseling.dto.request.LoginRequest;
 import zm.unza.counseling.dto.request.RegisterRequest;
 import zm.unza.counseling.dto.response.AuthResponse;
+import zm.unza.counseling.entity.User;
+import zm.unza.counseling.exception.ResourceNotFoundException;
+import zm.unza.counseling.repository.UserRepository;
 import zm.unza.counseling.service.AnonymousAccessService;
 import zm.unza.counseling.service.MultiSourceAuthService;
 import zm.unza.counseling.service.ConsentFormService;
+import zm.unza.counseling.service.TotpService;
 import zm.unza.counseling.exception.ValidationException;
 
+import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping({"/api/v1/auth", "/api/auth", "/auth"})
@@ -29,6 +38,8 @@ public class AuthController {
     private final MultiSourceAuthService multiSourceAuthService;
     private final ConsentFormService consentFormService;
     private final AnonymousAccessService anonymousAccessService;
+    private final UserRepository userRepository;
+    private final TotpService totpService;
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request) {
@@ -98,8 +109,35 @@ public class AuthController {
 
     @GetMapping("/profile")
     public ResponseEntity<?> getProfile() {
-        // TODO: Implement proper authenticated user profile retrieval
-        return ResponseEntity.ok().body(Map.of("message", "Profile endpoint - implement authenticated user details"));
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Not authenticated"));
+        }
+        String username = auth.getName();
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + username));
+        Map<String, Object> profile = new LinkedHashMap<>();
+        profile.put("id", user.getId());
+        profile.put("username", user.getUsername());
+        profile.put("email", user.getEmail());
+        profile.put("firstName", user.getFirstName());
+        profile.put("lastName", user.getLastName());
+        profile.put("phoneNumber", user.getPhoneNumber());
+        profile.put("profilePicture", user.getProfilePicture());
+        profile.put("bio", user.getBio());
+        profile.put("gender", user.getGender());
+        profile.put("dateOfBirth", user.getDateOfBirth());
+        profile.put("department", user.getDepartment());
+        profile.put("program", user.getProgram());
+        profile.put("yearOfStudy", user.getYearOfStudy());
+        profile.put("studentId", user.getStudentId());
+        profile.put("active", user.getActive());
+        profile.put("emailVerified", user.getEmailVerified());
+        profile.put("twoFactorEnabled", Boolean.TRUE.equals(user.getTwoFactorEnabled()));
+        profile.put("roles", user.getRoles().stream().map(r -> r.getName()).collect(Collectors.toList()));
+        profile.put("createdAt", user.getCreatedAt());
+        profile.put("lastLogin", user.getLastLogin());
+        return ResponseEntity.ok(profile);
     }
 
     @PostMapping("/refresh")
@@ -120,8 +158,15 @@ public class AuthController {
 
     @PostMapping("/logout-all")
     public ResponseEntity<?> logoutAllDevices() {
-        // TODO: Implement logout from all devices functionality
-        return ResponseEntity.ok().body(Map.of("message", "Logout from all devices - implement token blacklisting"));
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Not authenticated"));
+        }
+        User user = userRepository.findByUsername(auth.getName())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        user.setTokenIssuedBefore(LocalDateTime.now());
+        userRepository.save(user);
+        return ResponseEntity.ok(Map.of("message", "All sessions invalidated successfully. Please log in again on other devices."));
     }
 
     @PostMapping("/password-reset-request")
@@ -183,26 +228,79 @@ public class AuthController {
 
     @GetMapping("/permissions")
     public ResponseEntity<?> getUserPermissions() {
-        // TODO: Implement user permissions retrieval
-        return ResponseEntity.ok().body(Map.of("permissions", "implement permissions retrieval"));
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Not authenticated"));
+        }
+        var authorities = auth.getAuthorities().stream()
+                .map(a -> a.getAuthority())
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(Map.of(
+                "username", auth.getName(),
+                "permissions", authorities,
+                "roles", authorities.stream().filter(a -> a.startsWith("ROLE_")).collect(Collectors.toList())
+        ));
     }
 
     @PostMapping("/2fa/enable")
     public ResponseEntity<?> enableTwoFactorAuth() {
-        // TODO: Implement 2FA enable functionality
-        return ResponseEntity.ok().body(Map.of("message", "2FA enable - implement TOTP setup"));
-    }
-
-    @PostMapping("/2fa/disable")
-    public ResponseEntity<?> disableTwoFactorAuth() {
-        // TODO: Implement 2FA disable functionality
-        return ResponseEntity.ok().body(Map.of("message", "2FA disable - implement TOTP removal"));
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Not authenticated"));
+        }
+        User user = userRepository.findByUsername(auth.getName())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        if (Boolean.TRUE.equals(user.getTwoFactorEnabled())) {
+            return ResponseEntity.badRequest().body(Map.of("error", "2FA is already enabled"));
+        }
+        String secret = totpService.generateSecret();
+        user.setTotpSecret(secret);
+        userRepository.save(user);
+        String otpUri = totpService.buildOtpAuthUri(secret, user.getEmail(), "UNZA Counseling");
+        return ResponseEntity.ok(Map.of(
+                "secret", secret,
+                "otpAuthUri", otpUri,
+                "message", "Scan the QR code with your authenticator app, then call /2fa/verify with the 6-digit code to activate."
+        ));
     }
 
     @PostMapping("/2fa/verify")
     public ResponseEntity<?> verifyTwoFactorAuth(@RequestParam String code) {
-        // TODO: Implement 2FA verification functionality
-        return ResponseEntity.ok().body(Map.of("message", "2FA verify - implement TOTP verification"));
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Not authenticated"));
+        }
+        User user = userRepository.findByUsername(auth.getName())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        if (user.getTotpSecret() == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "2FA setup not initiated. Call /2fa/enable first."));
+        }
+        if (!totpService.verify(user.getTotpSecret(), code)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Invalid 2FA code"));
+        }
+        user.setTwoFactorEnabled(true);
+        userRepository.save(user);
+        return ResponseEntity.ok(Map.of("message", "2FA enabled successfully"));
+    }
+
+    @PostMapping("/2fa/disable")
+    public ResponseEntity<?> disableTwoFactorAuth(@RequestParam String code) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Not authenticated"));
+        }
+        User user = userRepository.findByUsername(auth.getName())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        if (!Boolean.TRUE.equals(user.getTwoFactorEnabled())) {
+            return ResponseEntity.badRequest().body(Map.of("error", "2FA is not enabled"));
+        }
+        if (!totpService.verify(user.getTotpSecret(), code)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Invalid 2FA code"));
+        }
+        user.setTwoFactorEnabled(false);
+        user.setTotpSecret(null);
+        userRepository.save(user);
+        return ResponseEntity.ok(Map.of("message", "2FA disabled successfully"));
     }
 
     // Global exception handler for @Valid validation errors

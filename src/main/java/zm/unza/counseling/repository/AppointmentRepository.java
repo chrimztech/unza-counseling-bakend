@@ -90,6 +90,8 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
 
     // Status-based queries
     List<Appointment> findByStatus(AppointmentStatus status);
+
+    long countByStatus(AppointmentStatus status);
     
     Page<Appointment> findByStatus(AppointmentStatus status, Pageable pageable);
     

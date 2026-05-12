@@ -16,9 +16,11 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import zm.unza.counseling.entity.User;
 import zm.unza.counseling.service.JwtService;
 
 import java.io.IOException;
+import java.time.ZoneOffset;
 
 @Component
 @RequiredArgsConstructor
@@ -92,6 +94,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     log.error("User not found in database: {}", username);
                     filterChain.doFilter(request, response);
                     return;
+                }
+
+                // Check logout-all invalidation: token must be issued after tokenIssuedBefore
+                if (userDetails instanceof User u && u.getTokenIssuedBefore() != null) {
+                    java.util.Date issuedAt = jwtService.extractIssuedAt(jwt);
+                    if (issuedAt != null && issuedAt.toInstant().isBefore(
+                            u.getTokenIssuedBefore().toInstant(ZoneOffset.UTC))) {
+                        log.warn("Token invalidated by logout-all for user: {}", username);
+                        filterChain.doFilter(request, response);
+                        return;
+                    }
                 }
 
                 if (jwtService.isTokenValid(jwt, userDetails)) {

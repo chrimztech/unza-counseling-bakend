@@ -158,6 +158,16 @@ public class User implements UserDetails {
     @Column(name = "last_anonymous_activity_at")
     private LocalDateTime lastAnonymousActivityAt;
 
+    @JsonIgnore
+    @Column(name = "totp_secret")
+    private String totpSecret;
+
+    @Column(name = "two_factor_enabled", nullable = false)
+    private Boolean twoFactorEnabled = false;
+
+    @Column(name = "token_issued_before")
+    private LocalDateTime tokenIssuedBefore;
+
     // Default constructor
     public User() {}
 
@@ -302,6 +312,15 @@ public class User implements UserDetails {
 
     public LocalDateTime getLastAnonymousActivityAt() { return lastAnonymousActivityAt; }
     public void setLastAnonymousActivityAt(LocalDateTime lastAnonymousActivityAt) { this.lastAnonymousActivityAt = lastAnonymousActivityAt; }
+
+    public String getTotpSecret() { return totpSecret; }
+    public void setTotpSecret(String totpSecret) { this.totpSecret = totpSecret; }
+
+    public Boolean getTwoFactorEnabled() { return twoFactorEnabled; }
+    public void setTwoFactorEnabled(Boolean twoFactorEnabled) { this.twoFactorEnabled = twoFactorEnabled; }
+
+    public LocalDateTime getTokenIssuedBefore() { return tokenIssuedBefore; }
+    public void setTokenIssuedBefore(LocalDateTime tokenIssuedBefore) { this.tokenIssuedBefore = tokenIssuedBefore; }
 
     // Helper methods
     public String getFullName() {

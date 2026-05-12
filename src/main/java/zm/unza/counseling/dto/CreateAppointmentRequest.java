@@ -34,13 +34,31 @@ public class CreateAppointmentRequest {
     private String type;
     
     private String sessionMode = "IN_PERSON";
-    
+
+    private String urgencyLevel = "ROUTINE";
+
+    @Size(max = 2000, message = "Presenting concern must not exceed 2000 characters")
+    private String presentingConcern;
+
+    @Size(max = 200, message = "Referral source must not exceed 200 characters")
+    private String referralSource;
+
+    private Boolean previousCounseling;
+
+    private Boolean consentAcknowledged;
+
     private String meetingLink;
-    
+
     private String location;
 
     private Map<String, Object> bookingDetails = new HashMap<>();
     
+    public String getPresentingConcern() { return presentingConcern; }
+    public String getReferralSource() { return referralSource; }
+    public Boolean getPreviousCounseling() { return previousCounseling; }
+    public Boolean getConsentAcknowledged() { return consentAcknowledged; }
+    public String getUrgencyLevel() { return urgencyLevel; }
+
     public Appointment.AppointmentType getAppointmentType() {
         if (type == null) return null;
         try {
@@ -49,7 +67,7 @@ public class CreateAppointmentRequest {
             return null;
         }
     }
-    
+
     public Appointment.SessionMode getSessionModeEnum() {
         if (sessionMode == null) return Appointment.SessionMode.IN_PERSON;
         try {

@@ -88,6 +88,22 @@ public class Session {
     @Column(length = 2000)
     private String treatmentPlan; // Ongoing treatment plan
 
+    @Column(name = "session_number")
+    private Integer sessionNumber;
+
+    @Column(name = "client_mood_rating")
+    private Integer clientMoodRating; // 1-10 scale at session start
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "risk_level_assessed")
+    private RiskLevelAssessed riskLevelAssessed;
+
+    @Column(name = "goals_addressed", length = 2000)
+    private String goalsAddressed;
+
+    @Column(name = "homework_assigned", length = 2000)
+    private String homeworkAssigned;
+
     private Boolean followUpRequired = false;
 
     private LocalDateTime followUpDate;
@@ -173,10 +189,24 @@ public class Session {
     public void setAttachments(List<String> attachments) { this.attachments = attachments; }
     public Boolean getConfidential() { return confidential; }
     public void setConfidential(Boolean confidential) { this.confidential = confidential; }
+    public Integer getSessionNumber() { return sessionNumber; }
+    public void setSessionNumber(Integer sessionNumber) { this.sessionNumber = sessionNumber; }
+    public Integer getClientMoodRating() { return clientMoodRating; }
+    public void setClientMoodRating(Integer clientMoodRating) { this.clientMoodRating = clientMoodRating; }
+    public RiskLevelAssessed getRiskLevelAssessed() { return riskLevelAssessed; }
+    public void setRiskLevelAssessed(RiskLevelAssessed riskLevelAssessed) { this.riskLevelAssessed = riskLevelAssessed; }
+    public String getGoalsAddressed() { return goalsAddressed; }
+    public void setGoalsAddressed(String goalsAddressed) { this.goalsAddressed = goalsAddressed; }
+    public String getHomeworkAssigned() { return homeworkAssigned; }
+    public void setHomeworkAssigned(String homeworkAssigned) { this.homeworkAssigned = homeworkAssigned; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+
+    public enum RiskLevelAssessed {
+        LOW, MODERATE, HIGH, CRITICAL
+    }
 
     public enum SessionType {
         INDIVIDUAL("Individual Counseling"),

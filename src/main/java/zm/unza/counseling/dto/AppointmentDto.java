@@ -24,7 +24,13 @@ public class AppointmentDto {
     private Appointment.AppointmentType type;
     private Appointment.AppointmentStatus status;
     private Appointment.SessionMode sessionMode;
+    private Appointment.UrgencyLevel urgencyLevel;
     private String description;
+    private String presentingConcern;
+    private String referralSource;
+    private Boolean previousCounseling;
+    private Boolean consentAcknowledged;
+    private String cancellationReason;
     private String meetingLink;
     private String meetingProvider;
     private String location;
@@ -64,8 +70,20 @@ public class AppointmentDto {
     public void setStatus(Appointment.AppointmentStatus status) { this.status = status; }
     public Appointment.SessionMode getSessionMode() { return sessionMode; }
     public void setSessionMode(Appointment.SessionMode sessionMode) { this.sessionMode = sessionMode; }
+    public Appointment.UrgencyLevel getUrgencyLevel() { return urgencyLevel; }
+    public void setUrgencyLevel(Appointment.UrgencyLevel urgencyLevel) { this.urgencyLevel = urgencyLevel; }
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
+    public String getPresentingConcern() { return presentingConcern; }
+    public void setPresentingConcern(String presentingConcern) { this.presentingConcern = presentingConcern; }
+    public String getReferralSource() { return referralSource; }
+    public void setReferralSource(String referralSource) { this.referralSource = referralSource; }
+    public Boolean getPreviousCounseling() { return previousCounseling; }
+    public void setPreviousCounseling(Boolean previousCounseling) { this.previousCounseling = previousCounseling; }
+    public Boolean getConsentAcknowledged() { return consentAcknowledged; }
+    public void setConsentAcknowledged(Boolean consentAcknowledged) { this.consentAcknowledged = consentAcknowledged; }
+    public String getCancellationReason() { return cancellationReason; }
+    public void setCancellationReason(String cancellationReason) { this.cancellationReason = cancellationReason; }
     public String getMeetingLink() { return meetingLink; }
     public void setMeetingLink(String meetingLink) { this.meetingLink = meetingLink; }
     public String getMeetingProvider() { return meetingProvider; }
@@ -93,8 +111,7 @@ public class AppointmentDto {
             dto.setClientId(appointment.getClient().getId());
             dto.setClientName(appointment.getClient().getFullName());
         }
-        
-        // Handle null counselor (unassigned appointments)
+
         if (appointment.getCounselor() != null) {
             dto.setCounselorId(appointment.getCounselor().getId());
             dto.setCounselorName(appointment.getCounselor().getFirstName() + " " + appointment.getCounselor().getLastName());
@@ -107,13 +124,19 @@ public class AppointmentDto {
             dto.setCaseId(appointment.getCaseEntity().getId());
             dto.setCaseNumber(appointment.getCaseEntity().getCaseNumber());
         }
-        
+
         dto.setAppointmentDate(appointment.getAppointmentDate());
         dto.setDuration(appointment.getDuration());
         dto.setType(appointment.getType());
         dto.setStatus(appointment.getStatus());
         dto.setSessionMode(appointment.getSessionMode());
+        dto.setUrgencyLevel(appointment.getUrgencyLevel());
         dto.setDescription(appointment.getDescription());
+        dto.setPresentingConcern(appointment.getPresentingConcern());
+        dto.setReferralSource(appointment.getReferralSource());
+        dto.setPreviousCounseling(appointment.getPreviousCounseling());
+        dto.setConsentAcknowledged(appointment.getConsentAcknowledged());
+        dto.setCancellationReason(appointment.getCancellationReason());
         dto.setMeetingLink(appointment.getMeetingLink());
         dto.setMeetingProvider(appointment.getMeetingProvider());
         dto.setLocation(appointment.getLocation());

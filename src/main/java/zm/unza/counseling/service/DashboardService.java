@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import zm.unza.counseling.dto.AppointmentDto;
 import zm.unza.counseling.dto.response.DashboardStatsResponse;
 import zm.unza.counseling.entity.Appointment;
@@ -71,28 +72,27 @@ public class DashboardService {
         return clientRepository.findTop10ByOrderByCreatedAtDesc(PageRequest.of(0, 10));
     }
 
+    @Transactional(readOnly = true)
     public Map<String, Object> getPerformanceMetrics() {
         Map<String, Object> metrics = new HashMap<>();
-        
-        long totalAppointments = appointmentRepository.count();
-        List<Appointment> completedList = appointmentRepository.findByStatus(Appointment.AppointmentStatus.COMPLETED);
-        List<Appointment> cancelledList = appointmentRepository.findByStatus(Appointment.AppointmentStatus.CANCELLED);
-        List<Appointment> scheduledList = appointmentRepository.findByStatus(Appointment.AppointmentStatus.SCHEDULED);
-        
-        long completedAppointments = completedList.size();
-        long cancelledAppointments = cancelledList.size();
-        long scheduledAppointments = scheduledList.size();
-        
-        double completionRate = totalAppointments > 0 
-                ? (double) completedAppointments / totalAppointments * 100 
+
+        long totalAppointments      = appointmentRepository.count();
+        long completedAppointments  = appointmentRepository.countByStatus(Appointment.AppointmentStatus.COMPLETED);
+        long cancelledAppointments  = appointmentRepository.countByStatus(Appointment.AppointmentStatus.CANCELLED);
+        long scheduledAppointments  = appointmentRepository.countByStatus(Appointment.AppointmentStatus.SCHEDULED);
+        long inProgressAppointments = appointmentRepository.countByStatus(Appointment.AppointmentStatus.IN_PROGRESS);
+
+        double completionRate = totalAppointments > 0
+                ? (double) completedAppointments / totalAppointments * 100
                 : 0;
-        
-        metrics.put("totalAppointments", totalAppointments);
-        metrics.put("completedAppointments", completedAppointments);
-        metrics.put("cancelledAppointments", cancelledAppointments);
-        metrics.put("scheduledAppointments", scheduledAppointments);
-        metrics.put("completionRate", Math.round(completionRate * 100.0) / 100.0);
-        
+
+        metrics.put("totalAppointments",      totalAppointments);
+        metrics.put("completedAppointments",  completedAppointments);
+        metrics.put("cancelledAppointments",  cancelledAppointments);
+        metrics.put("scheduledAppointments",  scheduledAppointments);
+        metrics.put("inProgressAppointments", inProgressAppointments);
+        metrics.put("completionRate",         Math.round(completionRate * 100.0) / 100.0);
+
         return metrics;
     }
 

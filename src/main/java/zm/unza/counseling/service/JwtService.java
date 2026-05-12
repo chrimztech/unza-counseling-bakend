@@ -139,6 +139,13 @@ public class JwtService {
     }
 
     /**
+     * Extract issued-at date from token — used for logout-all validation.
+     */
+    public Date extractIssuedAt(String token) {
+        return extractClaim(token, Claims::getIssuedAt);
+    }
+
+    /**
      * Check if token is expired
      */
     private boolean isTokenExpired(String token) {

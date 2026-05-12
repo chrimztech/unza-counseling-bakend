@@ -74,10 +74,25 @@ public class Appointment {
     @Column(length = 2000)
     private String cancellationReason;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "urgency_level")
+    private UrgencyLevel urgencyLevel = UrgencyLevel.ROUTINE;
+
+    @Column(name = "presenting_concern", length = 2000)
+    private String presentingConcern;
+
+    @Column(name = "referral_source", length = 200)
+    private String referralSource;
+
+    @Column(name = "previous_counseling")
+    private Boolean previousCounseling;
+
+    @Column(name = "consent_acknowledged")
+    private Boolean consentAcknowledged;
+
     private Boolean reminderSent = false;
 
-    @Lob
-    @Column(name = "intake_data_json")
+    @Column(name = "intake_data_json", columnDefinition = "text")
     @JsonIgnore
     private String intakeDataJson;
 
@@ -146,6 +161,21 @@ public class Appointment {
     public String getCancellationReason() { return cancellationReason; }
     public void setCancellationReason(String cancellationReason) { this.cancellationReason = cancellationReason; }
 
+    public UrgencyLevel getUrgencyLevel() { return urgencyLevel; }
+    public void setUrgencyLevel(UrgencyLevel urgencyLevel) { this.urgencyLevel = urgencyLevel; }
+
+    public String getPresentingConcern() { return presentingConcern; }
+    public void setPresentingConcern(String presentingConcern) { this.presentingConcern = presentingConcern; }
+
+    public String getReferralSource() { return referralSource; }
+    public void setReferralSource(String referralSource) { this.referralSource = referralSource; }
+
+    public Boolean getPreviousCounseling() { return previousCounseling; }
+    public void setPreviousCounseling(Boolean previousCounseling) { this.previousCounseling = previousCounseling; }
+
+    public Boolean getConsentAcknowledged() { return consentAcknowledged; }
+    public void setConsentAcknowledged(Boolean consentAcknowledged) { this.consentAcknowledged = consentAcknowledged; }
+
     public Boolean getReminderSent() { return reminderSent; }
     public void setReminderSent(Boolean reminderSent) { this.reminderSent = reminderSent; }
 
@@ -168,6 +198,12 @@ public class Appointment {
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 
     // Enums
+    public enum UrgencyLevel {
+        ROUTINE,
+        URGENT,
+        CRISIS
+    }
+
     public enum AppointmentType {
         INITIAL_CONSULTATION,
         FOLLOW_UP,

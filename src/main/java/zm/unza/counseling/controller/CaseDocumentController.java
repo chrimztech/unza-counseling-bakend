@@ -1,9 +1,9 @@
 package zm.unza.counseling.controller;
 
-import zm.unza.counseling.dto.request.CaseDocumentRequest;
 import zm.unza.counseling.dto.response.CaseDocumentResponse;
 import zm.unza.counseling.service.CaseDocumentService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -11,6 +11,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping({"/api/v1/cases/documents", "/api/cases/documents", "/v1/cases/documents", "/cases/documents"})
+@PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
 public class CaseDocumentController {
 
     private final CaseDocumentService caseDocumentService;

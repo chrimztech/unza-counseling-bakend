@@ -35,6 +35,7 @@ import zm.unza.counseling.service.AppointmentService;
 import zm.unza.counseling.service.AuditLogService;
 import zm.unza.counseling.service.ClientIdentityService;
 import zm.unza.counseling.service.NotificationService;
+import zm.unza.counseling.service.impl.EmailServiceImpl;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -66,6 +67,7 @@ public class AppointmentServiceImpl implements AppointmentService {
     private final AuditLogService auditLogService;
     private final ClientIdentityService clientIdentityService;
     private final NotificationService notificationService;
+    private final EmailServiceImpl emailService;
     private final ObjectMapper objectMapper;
 
     @Value("${app.meeting.jitsi-domain:meet.jit.si}")
@@ -146,6 +148,22 @@ public class AppointmentServiceImpl implements AppointmentService {
         Map<String, Object> bookingDetails = sanitizeMap(request.getBookingDetails());
         appointment.setDescription(resolveAppointmentDescription(request.getDescription(), bookingDetails));
         appointment.setIntakeDataJson(writeJson(bookingDetails));
+
+        // Persist typed clinical fields (prefer explicit request values, fall back to bookingDetails)
+        appointment.setPresentingConcern(
+            request.getPresentingConcern() != null ? normalize(request.getPresentingConcern())
+            : extractString(bookingDetails, "presentingConcern", "conceptualizationOfProblem"));
+        appointment.setReferralSource(
+            request.getReferralSource() != null ? normalize(request.getReferralSource())
+            : extractString(bookingDetails, "referralSource", "referralPointFrom"));
+        appointment.setPreviousCounseling(
+            request.getPreviousCounseling() != null ? request.getPreviousCounseling()
+            : extractBoolean(bookingDetails, "previousCounselling"));
+        appointment.setConsentAcknowledged(
+            request.getConsentAcknowledged() != null ? request.getConsentAcknowledged()
+            : extractBoolean(bookingDetails, "consentAcknowledged"));
+        appointment.setUrgencyLevel(resolveUrgencyLevel(request.getUrgencyLevel(), bookingDetails));
+
         appointment.setCounselor(counselor);
         appointment.setStatus(counselor != null
                 ? Appointment.AppointmentStatus.SCHEDULED
@@ -840,9 +858,34 @@ public class AppointmentServiceImpl implements AppointmentService {
         if (normalizedDescription != null) {
             return normalizedDescription;
         }
-
         Object presentingConcern = bookingDetails.get("presentingConcern");
         return presentingConcern != null ? String.valueOf(presentingConcern) : null;
+    }
+
+    private String extractString(Map<String, Object> map, String... keys) {
+        for (String key : keys) {
+            Object val = map.get(key);
+            if (val != null) {
+                String s = String.valueOf(val).trim();
+                if (!s.isEmpty()) return s;
+            }
+        }
+        return null;
+    }
+
+    private Boolean extractBoolean(Map<String, Object> map, String key) {
+        Object val = map.get(key);
+        if (val instanceof Boolean) return (Boolean) val;
+        if (val instanceof String) return Boolean.parseBoolean((String) val);
+        return null;
+    }
+
+    private Appointment.UrgencyLevel resolveUrgencyLevel(String rawLevel, Map<String, Object> bookingDetails) {
+        String raw = rawLevel != null ? rawLevel : extractString(bookingDetails, "urgencyLevel", "urgency");
+        if (raw != null) {
+            try { return Appointment.UrgencyLevel.valueOf(raw.toUpperCase()); } catch (IllegalArgumentException e) { /* fall through */ }
+        }
+        return Appointment.UrgencyLevel.ROUTINE;
     }
 
     private Appointment.AppointmentType resolveAppointmentType(CreateAppointmentRequest request) {
@@ -1122,17 +1165,44 @@ public class AppointmentServiceImpl implements AppointmentService {
                 String.format("Your appointment with %s has been scheduled for %s.",
                         describeCounselor(appointment),
                         formatAppointmentDate(appointment)));
+        sendConfirmationEmail(appointment);
     }
 
     private void notifyStudent(Appointment appointment, String title, String message) {
-        if (appointment.getStudent() == null || appointment.getStudent().getId() == null) {
-            return;
-        }
+        Long recipientId = appointment.getStudent() != null ? appointment.getStudent().getId()
+                : appointment.getClient() != null ? appointment.getClient().getId() : null;
+        if (recipientId == null) return;
 
         try {
-            notificationService.sendSystemNotification(appointment.getStudent().getId(), title, message, "MEDIUM");
+            notificationService.sendSystemNotification(recipientId, title, message, "MEDIUM");
         } catch (Exception ex) {
             log.warn("Failed to create notification for appointment {}", appointment.getId(), ex);
+        }
+    }
+
+    private void sendConfirmationEmail(Appointment appointment) {
+        try {
+            String email = appointment.getClient() != null ? appointment.getClient().getEmail()
+                    : appointment.getStudent() != null ? appointment.getStudent().getEmail() : null;
+            if (email == null) return;
+
+            String clientName = appointment.getClient() != null
+                    ? appointment.getClient().getFirstName() + " " + appointment.getClient().getLastName()
+                    : appointment.getStudent() != null
+                    ? appointment.getStudent().getFirstName() + " " + appointment.getStudent().getLastName()
+                    : "Client";
+
+            String counselorName = describeCounselor(appointment);
+            String date = appointment.getAppointmentDate() != null
+                    ? appointment.getAppointmentDate().format(DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy"))
+                    : "TBD";
+            String time = appointment.getAppointmentDate() != null
+                    ? appointment.getAppointmentDate().format(DateTimeFormatter.ofPattern("HH:mm"))
+                    : "TBD";
+
+            emailService.sendAppointmentConfirmation(email, clientName, counselorName, date, time);
+        } catch (Exception ex) {
+            log.warn("Failed to send confirmation email for appointment {}", appointment.getId(), ex);
         }
     }
 
