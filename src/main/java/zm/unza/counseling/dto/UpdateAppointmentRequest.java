@@ -1,5 +1,6 @@
 package zm.unza.counseling.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.Data;
 import zm.unza.counseling.entity.Appointment;
 
@@ -8,6 +9,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Data
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class UpdateAppointmentRequest {
     private String title;
     private String description;

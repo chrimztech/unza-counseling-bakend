@@ -252,12 +252,12 @@ public class MultiSourceAuthService {
         try {
             System.out.println("=== STUDENT AUTHENTICATION START ===");
             System.out.println("Identifier: " + request.getIdentifier());
-            
+
             ExternalAuthResponse externalResponse = sisAuthenticationService.authenticate(request.getIdentifier(), request.getPassword());
 
             System.out.println("SIS Response - Authenticated: " + externalResponse.isAuthenticated());
             System.out.println("SIS Response - Message: " + externalResponse.getMessage());
-            
+
             if (externalResponse.isAuthenticated()) {
                 User provisionedUser = provisionUser(externalResponse.getUser());
                 System.out.println("Provisioned User - Username: " + provisionedUser.getUsername() + ", Email: " + provisionedUser.getEmail());
@@ -268,18 +268,30 @@ public class MultiSourceAuthService {
         } catch (ExternalAuthenticationException e) {
             String errorMsg = e.getMessage();
             System.err.println("SIS Authentication failed: " + errorMsg);
-            
-            // Provide user-friendly error messages based on the error type
-            if (errorMsg != null && errorMsg.contains("500")) {
-                throw new ValidationException("Student authentication service is temporarily unavailable. Please try again later or contact support if the problem persists.");
-            } else if (errorMsg != null && errorMsg.contains("401")) {
+
+            boolean sisUnavailable = errorMsg != null && (
+                errorMsg.contains("timeout") || errorMsg.contains("Connect timed out") ||
+                errorMsg.contains("Connection refused") || errorMsg.contains("I/O error") ||
+                errorMsg.contains("500")
+            );
+
+            // When SIS is unreachable, fall back to local DB if the student already has a local account
+            if (sisUnavailable) {
+                System.out.println("SIS unavailable - attempting local fallback for: " + request.getIdentifier());
+                try {
+                    return authenticateAgainstDatabase(request, AuthenticationSource.SIS);
+                } catch (Exception localEx) {
+                    System.err.println("Local fallback also failed: " + localEx.getMessage());
+                }
+                throw new ValidationException("Student authentication service is temporarily unavailable. Please try again later.");
+            }
+
+            if (errorMsg != null && errorMsg.contains("401")) {
                 throw new ValidationException("Invalid student number or password. Please check your credentials and try again.");
             } else if (errorMsg != null && errorMsg.contains("404")) {
                 throw new ValidationException("Student not found in the system. Please verify your student number.");
-            } else if (errorMsg != null && (errorMsg.contains("timeout") || errorMsg.contains("Connection refused"))) {
-                throw new ValidationException("Unable to connect to student authentication service. Please try again later.");
             }
-            
+
             throw new ValidationException("Student authentication failed: " + (errorMsg != null ? errorMsg : "Unknown error"));
         }
     }

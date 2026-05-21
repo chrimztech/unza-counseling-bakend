@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(PGPASSWORD=11111111 psql -U postgres -d unza_counseling_db -c \"SELECT id, username, LEFT\\(password,30\\) as pwd_start, authentication_source FROM users WHERE id=138;\")",
+      "Bash(python3 -c \"from passlib.hash import bcrypt; print\\(bcrypt.hash\\('2022531784'\\)\\)\")",
+      "Bash(PGPASSWORD=11111111 psql -U postgres -d unza_counseling_db -c 'UPDATE users SET password='\\\\''__TRACKED_VAR__'\\\\'' WHERE id=138;')",
+      "Bash(PGPASSWORD=11111111 psql -U postgres -d unza_counseling_db -c \"\\\\dt clinic*\")"
+    ]
+  }
+}

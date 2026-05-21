@@ -1,0 +1,25 @@
+-- Clinical / record-keeping fields added to the cases table
+
+ALTER TABLE cases
+    ADD COLUMN IF NOT EXISTS presenting_problem         TEXT,
+    ADD COLUMN IF NOT EXISTS clinical_impression        TEXT,
+    ADD COLUMN IF NOT EXISTS treatment_modality         VARCHAR(50),
+    ADD COLUMN IF NOT EXISTS treatment_goals            TEXT,
+    ADD COLUMN IF NOT EXISTS treatment_plan             TEXT,
+    ADD COLUMN IF NOT EXISTS risk_level                 VARCHAR(20),
+    ADD COLUMN IF NOT EXISTS risk_notes                 TEXT,
+    ADD COLUMN IF NOT EXISTS crisis_plan                TEXT,
+    ADD COLUMN IF NOT EXISTS referral_source            VARCHAR(200),
+    ADD COLUMN IF NOT EXISTS referral_notes             TEXT,
+    ADD COLUMN IF NOT EXISTS previous_counseling_history TEXT,
+    ADD COLUMN IF NOT EXISTS medication_notes           TEXT,
+    ADD COLUMN IF NOT EXISTS intake_date                DATE,
+    ADD COLUMN IF NOT EXISTS consent_obtained           BOOLEAN,
+    ADD COLUMN IF NOT EXISTS consent_date               DATE,
+    ADD COLUMN IF NOT EXISTS confidential               BOOLEAN DEFAULT FALSE,
+    ADD COLUMN IF NOT EXISTS review_date                TIMESTAMP,
+    ADD COLUMN IF NOT EXISTS outcome_at_closure         TEXT,
+    ADD COLUMN IF NOT EXISTS discharge_reason           TEXT,
+    ADD COLUMN IF NOT EXISTS discharge_summary          TEXT,
+    ADD COLUMN IF NOT EXISTS follow_up_date             TIMESTAMP,
+    ADD COLUMN IF NOT EXISTS follow_up_notes            TEXT;

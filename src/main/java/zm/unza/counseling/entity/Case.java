@@ -5,6 +5,7 @@ import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -70,6 +71,78 @@ public class Case {
     @Column(name = "custom_fields", length = 2000)
     private String customFields;
 
+    // ── Clinical / Record-keeping fields ───────────────────────────────────
+
+    @Column(name = "presenting_problem", columnDefinition = "text")
+    private String presentingProblem;
+
+    @Column(name = "clinical_impression", columnDefinition = "text")
+    private String clinicalImpression;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "treatment_modality", length = 50)
+    private TreatmentModality treatmentModality;
+
+    @Column(name = "treatment_goals", columnDefinition = "text")
+    private String treatmentGoals;
+
+    @Column(name = "treatment_plan", columnDefinition = "text")
+    private String treatmentPlan;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "risk_level", length = 20)
+    private RiskAssessmentLevel riskLevel;
+
+    @Column(name = "risk_notes", columnDefinition = "text")
+    private String riskNotes;
+
+    @Column(name = "crisis_plan", columnDefinition = "text")
+    private String crisisPlan;
+
+    @Column(name = "referral_source", length = 200)
+    private String referralSource;
+
+    @Column(name = "referral_notes", columnDefinition = "text")
+    private String referralNotes;
+
+    @Column(name = "previous_counseling_history", columnDefinition = "text")
+    private String previousCounselingHistory;
+
+    @Column(name = "medication_notes", columnDefinition = "text")
+    private String medicationNotes;
+
+    @Column(name = "intake_date")
+    private LocalDate intakeDate;
+
+    @Column(name = "consent_obtained")
+    private Boolean consentObtained;
+
+    @Column(name = "consent_date")
+    private LocalDate consentDate;
+
+    @Column(name = "confidential")
+    private Boolean confidential = false;
+
+    @Column(name = "review_date")
+    private LocalDateTime reviewDate;
+
+    @Column(name = "outcome_at_closure", columnDefinition = "text")
+    private String outcomeAtClosure;
+
+    @Column(name = "discharge_reason", columnDefinition = "text")
+    private String dischargeReason;
+
+    @Column(name = "discharge_summary", columnDefinition = "text")
+    private String dischargeSummary;
+
+    @Column(name = "follow_up_date")
+    private LocalDateTime followUpDate;
+
+    @Column(name = "follow_up_notes", columnDefinition = "text")
+    private String followUpNotes;
+
+    // ── Audit ──────────────────────────────────────────────────────────────
+
     @CreatedDate
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -84,12 +157,12 @@ public class Case {
     private List<Appointment> appointments = new ArrayList<>();
 
     public enum CaseStatus {
-        OPEN,         // Case is active and being worked on
-        IN_PROGRESS,  // Case is actively being worked on
-        CLOSED,       // Case has been resolved
-        ON_HOLD,      // Case is temporarily paused
-        RESOLVED,     // Case has been resolved successfully
-        REFERRED      // Case has been referred to external services
+        OPEN,
+        IN_PROGRESS,
+        CLOSED,
+        ON_HOLD,
+        RESOLVED,
+        REFERRED
     }
 
     public enum CasePriority {
@@ -97,6 +170,27 @@ public class Case {
         MEDIUM,
         HIGH,
         CRITICAL
+    }
+
+    public enum TreatmentModality {
+        COGNITIVE_BEHAVIOURAL,
+        PERSON_CENTRED,
+        PSYCHODYNAMIC,
+        SOLUTION_FOCUSED,
+        DIALECTICAL_BEHAVIOUR,
+        MINDFULNESS_BASED,
+        CRISIS_INTERVENTION,
+        PSYCHOEDUCATION,
+        GROUP_THERAPY,
+        INTEGRATIVE,
+        OTHER
+    }
+
+    public enum RiskAssessmentLevel {
+        LOW,
+        MODERATE,
+        HIGH,
+        CRISIS
     }
 
     @PrePersist
@@ -244,6 +338,72 @@ public class Case {
     public void setCustomFields(String customFields) {
         this.customFields = customFields;
     }
+
+    public String getPresentingProblem() { return presentingProblem; }
+    public void setPresentingProblem(String presentingProblem) { this.presentingProblem = presentingProblem; }
+
+    public String getClinicalImpression() { return clinicalImpression; }
+    public void setClinicalImpression(String clinicalImpression) { this.clinicalImpression = clinicalImpression; }
+
+    public TreatmentModality getTreatmentModality() { return treatmentModality; }
+    public void setTreatmentModality(TreatmentModality treatmentModality) { this.treatmentModality = treatmentModality; }
+
+    public String getTreatmentGoals() { return treatmentGoals; }
+    public void setTreatmentGoals(String treatmentGoals) { this.treatmentGoals = treatmentGoals; }
+
+    public String getTreatmentPlan() { return treatmentPlan; }
+    public void setTreatmentPlan(String treatmentPlan) { this.treatmentPlan = treatmentPlan; }
+
+    public RiskAssessmentLevel getRiskLevel() { return riskLevel; }
+    public void setRiskLevel(RiskAssessmentLevel riskLevel) { this.riskLevel = riskLevel; }
+
+    public String getRiskNotes() { return riskNotes; }
+    public void setRiskNotes(String riskNotes) { this.riskNotes = riskNotes; }
+
+    public String getCrisisPlan() { return crisisPlan; }
+    public void setCrisisPlan(String crisisPlan) { this.crisisPlan = crisisPlan; }
+
+    public String getReferralSource() { return referralSource; }
+    public void setReferralSource(String referralSource) { this.referralSource = referralSource; }
+
+    public String getReferralNotes() { return referralNotes; }
+    public void setReferralNotes(String referralNotes) { this.referralNotes = referralNotes; }
+
+    public String getPreviousCounselingHistory() { return previousCounselingHistory; }
+    public void setPreviousCounselingHistory(String previousCounselingHistory) { this.previousCounselingHistory = previousCounselingHistory; }
+
+    public String getMedicationNotes() { return medicationNotes; }
+    public void setMedicationNotes(String medicationNotes) { this.medicationNotes = medicationNotes; }
+
+    public LocalDate getIntakeDate() { return intakeDate; }
+    public void setIntakeDate(LocalDate intakeDate) { this.intakeDate = intakeDate; }
+
+    public Boolean getConsentObtained() { return consentObtained; }
+    public void setConsentObtained(Boolean consentObtained) { this.consentObtained = consentObtained; }
+
+    public LocalDate getConsentDate() { return consentDate; }
+    public void setConsentDate(LocalDate consentDate) { this.consentDate = consentDate; }
+
+    public Boolean getConfidential() { return confidential; }
+    public void setConfidential(Boolean confidential) { this.confidential = confidential; }
+
+    public LocalDateTime getReviewDate() { return reviewDate; }
+    public void setReviewDate(LocalDateTime reviewDate) { this.reviewDate = reviewDate; }
+
+    public String getOutcomeAtClosure() { return outcomeAtClosure; }
+    public void setOutcomeAtClosure(String outcomeAtClosure) { this.outcomeAtClosure = outcomeAtClosure; }
+
+    public String getDischargeReason() { return dischargeReason; }
+    public void setDischargeReason(String dischargeReason) { this.dischargeReason = dischargeReason; }
+
+    public String getDischargeSummary() { return dischargeSummary; }
+    public void setDischargeSummary(String dischargeSummary) { this.dischargeSummary = dischargeSummary; }
+
+    public LocalDateTime getFollowUpDate() { return followUpDate; }
+    public void setFollowUpDate(LocalDateTime followUpDate) { this.followUpDate = followUpDate; }
+
+    public String getFollowUpNotes() { return followUpNotes; }
+    public void setFollowUpNotes(String followUpNotes) { this.followUpNotes = followUpNotes; }
 
     public LocalDateTime getCreatedAt() {
         return createdAt;

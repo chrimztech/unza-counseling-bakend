@@ -2,6 +2,7 @@ package zm.unza.counseling.dto;
 
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.Data;
 import zm.unza.counseling.entity.Appointment;
 
@@ -10,6 +11,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Data
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class CreateAppointmentRequest {
     // studentId is now obtained from the authenticated user
     private String studentId;

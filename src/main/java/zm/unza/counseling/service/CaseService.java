@@ -108,16 +108,19 @@ public class CaseService {
         return convertToResponse(savedCase);
     }
 
+    @Transactional(readOnly = true)
     public CaseResponse getCaseById(Long id) {
         return convertToResponse(getCaseOrThrow(id));
     }
 
+    @Transactional(readOnly = true)
     public CaseResponse getCaseByCaseNumber(String caseNumber) {
         Case caseEntity = caseRepository.findByCaseNumber(caseNumber)
                 .orElseThrow(() -> new ResourceNotFoundException("Case not found with case number: " + caseNumber));
         return convertToResponse(caseEntity);
     }
 
+    @Transactional(readOnly = true)
     public List<CaseResponse> getCasesByClient(Long clientId) {
         Client client = getClientOrThrow(clientId);
         return caseRepository.findByClient(client).stream()
@@ -125,6 +128,7 @@ public class CaseService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public List<CaseResponse> getCasesByCounselor(Long counselorId) {
         Counselor counselor = getCounselorOrThrow(counselorId);
         return caseRepository.findByCounselor(counselor).stream()
@@ -132,6 +136,7 @@ public class CaseService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public List<CaseResponse> getAllCases() {
         return caseRepository.findAll().stream()
                 .map(this::convertToResponse)
@@ -257,6 +262,7 @@ public class CaseService {
         return convertToAssignmentResponse(assignment);
     }
 
+    @Transactional(readOnly = true)
     public List<CaseAssignmentResponse> getCaseAssignmentHistory(Long caseId) {
         Case caseEntity = getCaseOrThrow(caseId);
         return caseAssignmentRepository.findByCaseEntity(caseEntity).stream()
@@ -264,6 +270,7 @@ public class CaseService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public List<CaseAssignmentResponse> getActiveAssignmentsForCounselor(Long counselorId) {
         Counselor counselor = getCounselorOrThrow(counselorId);
         return caseAssignmentRepository.findByAssignedToAndStatus(counselor, "ACTIVE").stream()
@@ -271,10 +278,12 @@ public class CaseService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public Object getCaseStatistics() {
         return buildCaseStatistics(caseRepository.findAll());
     }
 
+    @Transactional(readOnly = true)
     public Object getCaseStatisticsByCounselor(Long counselorId) {
         Counselor counselor = getCounselorOrThrow(counselorId);
         return buildCaseStatistics(caseRepository.findByCounselor(counselor));
@@ -285,6 +294,32 @@ public class CaseService {
         caseEntity.setSubject(normalize(request.getSubject()));
         caseEntity.setDescription(normalizeRequired(request.getDescription(), "Case description is required"));
         caseEntity.setNotes(normalize(request.getNotes()));
+
+        // Clinical fields
+        caseEntity.setPresentingProblem(normalize(request.getPresentingProblem()));
+        caseEntity.setClinicalImpression(normalize(request.getClinicalImpression()));
+        caseEntity.setTreatmentModality(request.getTreatmentModality());
+        caseEntity.setTreatmentGoals(normalize(request.getTreatmentGoals()));
+        caseEntity.setTreatmentPlan(normalize(request.getTreatmentPlan()));
+        caseEntity.setRiskLevel(request.getRiskLevel());
+        caseEntity.setRiskNotes(normalize(request.getRiskNotes()));
+        caseEntity.setCrisisPlan(normalize(request.getCrisisPlan()));
+        caseEntity.setReferralSource(normalize(request.getReferralSource()));
+        caseEntity.setReferralNotes(normalize(request.getReferralNotes()));
+        caseEntity.setPreviousCounselingHistory(normalize(request.getPreviousCounselingHistory()));
+        caseEntity.setMedicationNotes(normalize(request.getMedicationNotes()));
+        caseEntity.setIntakeDate(request.getIntakeDate());
+        caseEntity.setConsentObtained(request.getConsentObtained());
+        caseEntity.setConsentDate(request.getConsentDate());
+        if (request.getConfidential() != null) {
+            caseEntity.setConfidential(request.getConfidential());
+        }
+        caseEntity.setReviewDate(request.getReviewDate());
+        caseEntity.setOutcomeAtClosure(normalize(request.getOutcomeAtClosure()));
+        caseEntity.setDischargeReason(normalize(request.getDischargeReason()));
+        caseEntity.setDischargeSummary(normalize(request.getDischargeSummary()));
+        caseEntity.setFollowUpDate(request.getFollowUpDate());
+        caseEntity.setFollowUpNotes(normalize(request.getFollowUpNotes()));
     }
 
     private void applyAssignmentMetadata(Case caseEntity, Counselor counselor, User assignedBy) {
@@ -619,6 +654,30 @@ public class CaseService {
         response.setTags(caseEntity.getTags());
         response.setCustomFields(caseEntity.getCustomFields());
         response.setAppointmentCount(Math.toIntExact(appointmentRepository.countByCaseEntity(caseEntity)));
+
+        // Clinical fields
+        response.setPresentingProblem(caseEntity.getPresentingProblem());
+        response.setClinicalImpression(caseEntity.getClinicalImpression());
+        response.setTreatmentModality(caseEntity.getTreatmentModality());
+        response.setTreatmentGoals(caseEntity.getTreatmentGoals());
+        response.setTreatmentPlan(caseEntity.getTreatmentPlan());
+        response.setRiskLevel(caseEntity.getRiskLevel());
+        response.setRiskNotes(caseEntity.getRiskNotes());
+        response.setCrisisPlan(caseEntity.getCrisisPlan());
+        response.setReferralSource(caseEntity.getReferralSource());
+        response.setReferralNotes(caseEntity.getReferralNotes());
+        response.setPreviousCounselingHistory(caseEntity.getPreviousCounselingHistory());
+        response.setMedicationNotes(caseEntity.getMedicationNotes());
+        response.setIntakeDate(caseEntity.getIntakeDate());
+        response.setConsentObtained(caseEntity.getConsentObtained());
+        response.setConsentDate(caseEntity.getConsentDate());
+        response.setConfidential(caseEntity.getConfidential());
+        response.setReviewDate(caseEntity.getReviewDate());
+        response.setOutcomeAtClosure(caseEntity.getOutcomeAtClosure());
+        response.setDischargeReason(caseEntity.getDischargeReason());
+        response.setDischargeSummary(caseEntity.getDischargeSummary());
+        response.setFollowUpDate(caseEntity.getFollowUpDate());
+        response.setFollowUpNotes(caseEntity.getFollowUpNotes());
         return response;
     }
 
