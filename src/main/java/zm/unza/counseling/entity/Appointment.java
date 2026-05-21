@@ -92,6 +92,12 @@ public class Appointment {
 
     private Boolean reminderSent = false;
 
+    @Column(name = "is_critical", nullable = false)
+    private Boolean isCritical = false;
+
+    @Column(name = "crisis_keywords", length = 500)
+    private String crisisKeywords;
+
     @Column(name = "intake_data_json", columnDefinition = "text")
     @JsonIgnore
     private String intakeDataJson;
@@ -178,6 +184,12 @@ public class Appointment {
 
     public Boolean getReminderSent() { return reminderSent; }
     public void setReminderSent(Boolean reminderSent) { this.reminderSent = reminderSent; }
+
+    public Boolean getIsCritical() { return isCritical; }
+    public void setIsCritical(Boolean isCritical) { this.isCritical = isCritical; }
+
+    public String getCrisisKeywords() { return crisisKeywords; }
+    public void setCrisisKeywords(String crisisKeywords) { this.crisisKeywords = crisisKeywords; }
 
     public String getIntakeDataJson() { return intakeDataJson; }
     public void setIntakeDataJson(String intakeDataJson) { this.intakeDataJson = intakeDataJson; }

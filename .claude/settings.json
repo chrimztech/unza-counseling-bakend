@@ -4,7 +4,14 @@
       "Bash(PGPASSWORD=11111111 psql -U postgres -d unza_counseling_db -c \"SELECT id, username, LEFT\\(password,30\\) as pwd_start, authentication_source FROM users WHERE id=138;\")",
       "Bash(python3 -c \"from passlib.hash import bcrypt; print\\(bcrypt.hash\\('2022531784'\\)\\)\")",
       "Bash(PGPASSWORD=11111111 psql -U postgres -d unza_counseling_db -c 'UPDATE users SET password='\\\\''__TRACKED_VAR__'\\\\'' WHERE id=138;')",
-      "Bash(PGPASSWORD=11111111 psql -U postgres -d unza_counseling_db -c \"\\\\dt clinic*\")"
+      "Bash(PGPASSWORD=11111111 psql -U postgres -d unza_counseling_db -c \"\\\\dt clinic*\")",
+      "Bash(PGPASSWORD=11111111 psql -U postgres -d unza_counseling_db -c \"SELECT id, recipient_id, title, type, is_read, created_at FROM notifications ORDER BY created_at DESC LIMIT 10;\")",
+      "Bash(PGPASSWORD=11111111 psql -U postgres -d unza_counseling_db -c \"\\\\dT notification_type\" -c \"\\\\dT notification_priority\")",
+      "Bash(PGPASSWORD=11111111 psql -U postgres -d unza_counseling_db -c \"SELECT id, recipient_id, title, type, priority, is_read FROM notifications ORDER BY id DESC LIMIT 5;\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8080/api/auth/login -X POST -H \"Content-Type: application/json\" -d '{\"username\":\"test\",\"password\":\"test\"}')",
+      "Bash(pkill -f \"unza-counseling-backend\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8080/api/auth/login -X POST -H \"Content-Type: application/json\" -d '{\"username\":\"x\",\"password\":\"x\"}')",
+      "Bash(grep -E \"\\\\.\\(tsx|ts\\)$\")"
     ]
   }
 }

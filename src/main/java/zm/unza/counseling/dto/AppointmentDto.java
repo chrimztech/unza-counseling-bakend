@@ -37,6 +37,8 @@ public class AppointmentDto {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private Map<String, Object> bookingDetails;
+    private Boolean isCritical;
+    private String crisisKeywords;
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -97,6 +99,11 @@ public class AppointmentDto {
     public Map<String, Object> getBookingDetails() { return bookingDetails; }
     public void setBookingDetails(Map<String, Object> bookingDetails) { this.bookingDetails = bookingDetails; }
 
+    public Boolean getIsCritical() { return isCritical; }
+    public void setIsCritical(Boolean isCritical) { this.isCritical = isCritical; }
+    public String getCrisisKeywords() { return crisisKeywords; }
+    public void setCrisisKeywords(String crisisKeywords) { this.crisisKeywords = crisisKeywords; }
+
     public static AppointmentDto from(Appointment appointment) {
         return from(appointment, null);
     }
@@ -143,6 +150,8 @@ public class AppointmentDto {
         dto.setCreatedAt(appointment.getCreatedAt());
         dto.setUpdatedAt(appointment.getUpdatedAt());
         dto.setBookingDetails(bookingDetails);
+        dto.setIsCritical(appointment.getIsCritical());
+        dto.setCrisisKeywords(appointment.getCrisisKeywords());
         return dto;
     }
 }

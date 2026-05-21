@@ -8,11 +8,16 @@ import zm.unza.counseling.dto.request.MessageRequest;
 import zm.unza.counseling.dto.response.ConversationDto;
 import zm.unza.counseling.dto.response.MessageAuditDto;
 import zm.unza.counseling.entity.Appointment;
+import zm.unza.counseling.entity.CrisisAlert;
 import zm.unza.counseling.entity.Message;
+import zm.unza.counseling.entity.Role;
 import zm.unza.counseling.entity.User;
 import zm.unza.counseling.repository.AppointmentRepository;
+import zm.unza.counseling.repository.CrisisAlertRepository;
 import zm.unza.counseling.repository.MessageRepository;
 import zm.unza.counseling.repository.UserRepository;
+
+import java.util.List;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -21,11 +26,14 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class MessageService {
-    
+
     private final MessageRepository messageRepository;
     private final UserRepository userRepository;
     private final AppointmentRepository appointmentRepository;
     private final AuditLogService auditLogService;
+    private final NotificationService notificationService;
+    private final CrisisDetectionService crisisDetectionService;
+    private final CrisisAlertRepository crisisAlertRepository;
 
     @Transactional
     public Message sendMessage(Long senderId, MessageRequest request) {
@@ -45,6 +53,52 @@ public class MessageService {
 
         Message saved = messageRepository.save(message);
         auditMessageAction("MESSAGE_SENT", saved, senderId, buildAuditDetails(saved));
+
+        String senderName = sender.getFirstName() != null
+                ? sender.getFirstName() + " " + (sender.getLastName() != null ? sender.getLastName() : "")
+                : sender.getUsername();
+        String subject = request.getSubject() != null && !request.getSubject().isBlank()
+                ? request.getSubject() : "New Message";
+        try {
+            notificationService.sendNotification(
+                    recipient.getId(),
+                    "New Message: " + subject,
+                    "You have a new message from " + senderName.trim() + ".",
+                    "MESSAGE",
+                    "MEDIUM",
+                    "/messages"
+            );
+        } catch (Exception e) {
+            // Non-critical — message is already saved
+        }
+
+        try {
+            CrisisDetectionService.CrisisResult crisis = crisisDetectionService.scan(
+                    request.getSubject(), request.getContent());
+            if (crisis.isCrisis()) {
+                CrisisAlert alert = new CrisisAlert();
+                alert.setSourceType(CrisisAlert.SourceType.MESSAGE);
+                alert.setSourceId(saved.getId());
+                alert.setClient(sender);
+                alert.setSeverity(crisis.severity() == CrisisDetectionService.Severity.CRITICAL
+                        ? CrisisAlert.Severity.CRITICAL : CrisisAlert.Severity.HIGH);
+                alert.setTriggeredKeywords(String.join(", ", crisis.triggeredKeywords()));
+                crisisAlertRepository.save(alert);
+
+                String notifTitle = "⚠ Crisis Indicators in Message";
+                String notifBody = senderName.trim() + " sent a message with potential crisis indicators. Immediate review recommended.";
+                List<User> counselors = userRepository.findByRolesName(Role.ERole.ROLE_COUNSELOR);
+                List<User> admins    = userRepository.findByRolesName(Role.ERole.ROLE_ADMIN);
+                java.util.Set<Long> ids = new java.util.HashSet<>();
+                counselors.forEach(u -> ids.add(u.getId()));
+                admins.forEach(u -> ids.add(u.getId()));
+                notificationService.sendNotifications(ids, notifTitle, notifBody,
+                        "CRISIS_ALERT", "CRITICAL", "/counselor/crisis-alerts");
+            }
+        } catch (Exception e) {
+            // Non-critical — message is already saved
+        }
+
         return saved;
     }
 

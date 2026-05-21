@@ -34,8 +34,12 @@ import zm.unza.counseling.repository.UserRepository;
 import zm.unza.counseling.service.AppointmentService;
 import zm.unza.counseling.service.AuditLogService;
 import zm.unza.counseling.service.ClientIdentityService;
+import zm.unza.counseling.service.CrisisDetectionService;
 import zm.unza.counseling.service.NotificationService;
 import zm.unza.counseling.service.impl.EmailServiceImpl;
+import zm.unza.counseling.entity.CrisisAlert;
+import zm.unza.counseling.entity.Role;
+import zm.unza.counseling.repository.CrisisAlertRepository;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -69,14 +73,10 @@ public class AppointmentServiceImpl implements AppointmentService {
     private final NotificationService notificationService;
     private final EmailServiceImpl emailService;
     private final ObjectMapper objectMapper;
+    private final CrisisDetectionService crisisDetectionService;
+    private final CrisisAlertRepository crisisAlertRepository;
 
-    @Value("${app.meeting.jitsi-domain:meet.jit.si}")
-    private String jitsiDomain;
-
-    @Value("${app.meeting.custom-domain:meet.unza.edu.zm}")
-    private String customMeetingDomain;
-
-    @Value("${app.meeting.default-provider:jitsi}")
+    @Value("${app.meeting.default-provider:google-meet}")
     private String defaultMeetingProvider;
 
     @Override
@@ -175,6 +175,7 @@ public class AppointmentServiceImpl implements AppointmentService {
         notifyStudentOnCreate(savedAppointment);
         touchCaseTransition(null, savedAppointment.getCaseEntity());
         auditAppointment("APPOINTMENT_CREATED", savedAppointment, "Appointment created");
+        checkAndHandleCrisis(savedAppointment, request.getTitle(), request.getDescription(), request.getPresentingConcern(), student);
         return toAppointmentDto(savedAppointment);
     }
 
@@ -1261,22 +1262,22 @@ public class AppointmentServiceImpl implements AppointmentService {
     }
 
     private String generateMeetingLink(Appointment appointment) {
-        String domain = customMeetingDomain != null && !customMeetingDomain.isBlank()
-                ? customMeetingDomain
-                : jitsiDomain;
-        String roomName = generateRoomName(appointment);
-        return String.format("https://%s/%s", domain, roomName);
+        return "https://meet.google.com/" + generateGoogleMeetCode();
     }
 
-    private String generateRoomName(Appointment appointment) {
-        String randomPart = UUID.randomUUID().toString().substring(0, 8);
-        Long counselorId = appointment.getCounselor() != null ? appointment.getCounselor().getId() : 0L;
-        return String.format("unza-counseling-%d-%d-%d-%s",
-                counselorId,
-                appointment.getStudent().getId(),
-                System.currentTimeMillis(),
-                randomPart
-        );
+    // Generates a Google Meet-format code: xxx-xxxx-xxx (lowercase a-z)
+    private String generateGoogleMeetCode() {
+        String chars = "abcdefghijklmnopqrstuvwxyz";
+        java.util.Random rng = new java.util.Random();
+        return randomSegment(rng, chars, 3) + "-"
+                + randomSegment(rng, chars, 4) + "-"
+                + randomSegment(rng, chars, 3);
+    }
+
+    private String randomSegment(java.util.Random rng, String alphabet, int length) {
+        StringBuilder sb = new StringBuilder(length);
+        for (int i = 0; i < length; i++) sb.append(alphabet.charAt(rng.nextInt(alphabet.length())));
+        return sb.toString();
     }
 
     private void auditAppointment(String action, Appointment appointment, String details) {
@@ -1453,24 +1454,56 @@ public class AppointmentServiceImpl implements AppointmentService {
 
     private void authorizeCaseRead(Case caseEntity) {
         User currentUser = resolveCurrentUser();
-        if (currentUser == null || isAdministrator(currentUser)) {
+        if (currentUser == null || isAdministrator(currentUser) || isCounselorUser(currentUser)) {
             return;
-        }
-        if (isCounselorUser(currentUser)) {
-            if (caseEntity.getCounselor() != null && currentUser.getId().equals(caseEntity.getCounselor().getId())) {
-                return;
-            }
-            boolean hasLinkedAppointment = appointmentRepository.findByCaseEntity(caseEntity).stream()
-                    .anyMatch(appointment -> appointment.getCounselor() != null
-                            && currentUser.getId().equals(appointment.getCounselor().getId()));
-            if (hasLinkedAppointment) {
-                return;
-            }
-            throw new AccessDeniedException("You do not have access to this case appointment history");
         }
         if (caseEntity.getClient() != null && currentUser.getId().equals(caseEntity.getClient().getId())) {
             return;
         }
         throw new AccessDeniedException("You do not have access to this case appointment history");
+    }
+
+    private void checkAndHandleCrisis(Appointment appointment, String title, String description, String presentingConcern, User client) {
+        try {
+            CrisisDetectionService.CrisisResult result = crisisDetectionService.scan(title, description, presentingConcern);
+            if (!result.isCrisis()) return;
+
+            // Flag the appointment
+            appointment.setIsCritical(true);
+            appointment.setCrisisKeywords(String.join(", ", result.triggeredKeywords()));
+            appointmentRepository.save(appointment);
+
+            // Persist alert
+            CrisisAlert alert = new CrisisAlert();
+            alert.setSourceType(CrisisAlert.SourceType.APPOINTMENT);
+            alert.setSourceId(appointment.getId());
+            alert.setClient(client);
+            alert.setSeverity(result.severity() == CrisisDetectionService.Severity.CRITICAL
+                    ? CrisisAlert.Severity.CRITICAL : CrisisAlert.Severity.HIGH);
+            alert.setTriggeredKeywords(String.join(", ", result.triggeredKeywords()));
+            crisisAlertRepository.save(alert);
+
+            // Notify all counselors and admins
+            String clientName = (client.getFirstName() != null ? client.getFirstName() : "") +
+                    " " + (client.getLastName() != null ? client.getLastName() : "");
+            String notifTitle = result.severity() == CrisisDetectionService.Severity.CRITICAL
+                    ? "⚠ CRITICAL: Crisis Indicators Detected"
+                    : "⚠ High-Risk: Concern Detected";
+            String notifBody = "Client " + clientName.trim() + " submitted an appointment with potential crisis indicators: "
+                    + String.join(", ", result.triggeredKeywords()) + ". Immediate review required.";
+
+            List<User> counselors = userRepository.findByRolesName(Role.ERole.ROLE_COUNSELOR);
+            List<User> admins = userRepository.findByRolesName(Role.ERole.ROLE_ADMIN);
+            java.util.Set<Long> recipientIds = new java.util.HashSet<>();
+            counselors.forEach(u -> recipientIds.add(u.getId()));
+            admins.forEach(u -> recipientIds.add(u.getId()));
+
+            notificationService.sendNotifications(recipientIds, notifTitle, notifBody, "CRISIS_ALERT", "CRITICAL",
+                    "/counselor/crisis-alerts");
+            log.warn("CRISIS ALERT [{}] — appointment {} for client {}: {}",
+                    result.severity(), appointment.getId(), client.getId(), result.triggeredKeywords());
+        } catch (Exception e) {
+            log.error("Crisis detection failed for appointment {}: {}", appointment.getId(), e.getMessage());
+        }
     }
 }
