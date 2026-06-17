@@ -20,7 +20,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 
-import org.springframework.context.annotation.Profile;
 
 /**
  * Student Information System (SIS) Authentication Service
@@ -31,32 +30,12 @@ import org.springframework.context.annotation.Profile;
 @Slf4j
 public class SisAuthenticationService implements ExternalAuthenticationService {
 
-    @Value("${app.sis.api.baseUrls.undergraduate:https://devoap.unza.zm}")
-    private String undergraduateUrl;
-    
-    @Value("${app.sis.api.baseUrls.postgraduate:https://pgonline.unza.zm}")
-    private String postgraduateUrl;
-    
-    @Value("${app.sis.api.baseUrls.distance:https://online.unza.zm}")
-    private String distanceUrl;
-    
-    @Value("${app.sis.api.baseUrls.gsb:https://gsbonline.unza.zm}")
-    private String gsbUrl;
-    
-    @Value("${app.sis.api.baseUrls.zou:https://zouonline.unza.zm}")
-    private String zouUrl;
-    
-    @Value("${app.sis.api.baseUrls.ecampus:https://ecampusonline.unza.zm}")
-    private String ecampusUrl;
-    
+    // Single endpoint for all student types — the `instance` field in the body differentiates them
+    @Value("${app.sis.api.baseUrl:https://devoap.unza.zm}")
+    private String sisBaseUrl;
+
     @Value("${app.sis.api.loginEndpoint:/api/v1/customers/login}")
     private String loginEndpoint;
-    
-    @Value("${app.sis.api.tokenEndpoint:/StudentApp/get_student_token.json}")
-    private String tokenEndpoint;
-    
-    @Value("${app.sis.api.instanceKey:undergraduate}")
-    private String defaultInstanceKey;
 
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
@@ -64,32 +43,24 @@ public class SisAuthenticationService implements ExternalAuthenticationService {
     @Override
     public ExternalAuthResponse authenticate(String username, String password) throws ExternalAuthenticationException {
         System.out.println("Attempting SIS authentication for student: " + username);
-        
-        try {
-            // Try multiple instances in case the user doesn't specify
-            String[] instances = getInstanceKeys();
-            
-            for (String instance : instances) {
-                try {
-                    ExternalAuthResponse response = attemptAuthentication(username, password, instance);
-                    if (response.isAuthenticated()) {
-                        System.out.println("SIS authentication successful for student: " + username + " via " + instance);
-                        return response;
-                    }
-                } catch (ExternalAuthenticationException e) {
-                    System.out.println("SIS authentication failed for instance " + instance + ": " + e.getMessage());
-                    // Continue to try next instance
+
+        String lastError = "Invalid credentials or student not found";
+        for (String instance : getInstanceKeys()) {
+            try {
+                ExternalAuthResponse response = attemptAuthentication(username, password, instance);
+                if (response.isAuthenticated()) {
+                    System.out.println("SIS authentication successful for student: " + username + " via " + instance);
+                    return response;
                 }
+                lastError = response.getMessage() != null ? response.getMessage() : lastError;
+            } catch (Exception e) {
+                // Catches HttpClientErrorException (4xx/5xx) and any other error — try next instance
+                System.out.println("SIS instance " + instance + " failed: " + e.getMessage());
             }
-            
-            // If all instances failed
-            System.out.println("SIS authentication failed for student: " + username + " across all instances");
-            return new ExternalAuthResponse(false, "Invalid credentials or student not found in any SIS instance");
-            
-        } catch (Exception e) {
-            System.out.println("SIS authentication error for student: " + username + " - " + e.getMessage());
-            throw new ExternalAuthenticationException("SIS authentication failed: " + e.getMessage(), e);
         }
+
+        System.out.println("SIS authentication failed for student: " + username + " across all instances");
+        return new ExternalAuthResponse(false, lastError);
     }
 
     @Override
@@ -103,8 +74,9 @@ public class SisAuthenticationService implements ExternalAuthenticationService {
                     System.out.println("SIS authentication successful via hint: " + instanceHint);
                     return response;
                 }
-            } catch (ExternalAuthenticationException e) {
-                System.out.println("SIS authentication failed for hinted instance " + instanceHint + ": " + e.getMessage());
+            } catch (Exception e) {
+                // Catches HttpClientErrorException (4xx/5xx) — fall through to try all instances
+                System.out.println("SIS hinted instance " + instanceHint + " failed: " + e.getMessage());
             }
         }
 
@@ -113,12 +85,6 @@ public class SisAuthenticationService implements ExternalAuthenticationService {
     }
 
     private ExternalAuthResponse attemptAuthentication(String username, String password, String instance) throws ExternalAuthenticationException {
-        String baseUrl = getBaseUrlForInstance(instance);
-        
-        if (baseUrl == null || baseUrl.isEmpty()) {
-            throw new ExternalAuthenticationException("Unknown SIS instance: " + instance);
-        }
-        
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.set("Accept", "application/json");
@@ -130,7 +96,7 @@ public class SisAuthenticationService implements ExternalAuthenticationService {
 
         HttpEntity<Map<String, String>> entity = new HttpEntity<>(request, headers);
         
-        String loginUrl = UriComponentsBuilder.fromHttpUrl(baseUrl + loginEndpoint)
+        String loginUrl = UriComponentsBuilder.fromHttpUrl(sisBaseUrl + loginEndpoint)
                 .build()
                 .toUriString();
         
@@ -434,28 +400,7 @@ public class SisAuthenticationService implements ExternalAuthenticationService {
     }
 
     private String[] getInstanceKeys() {
-        return new String[]{defaultInstanceKey, "undergraduate", "postgraduate", "distance", "gsb", "zou", "ecampus"};
-    }
-
-    private String getBaseUrlForInstance(String instance) {
-        switch (instance.toLowerCase()) {
-            case "undergraduate":
-                return undergraduateUrl;
-            case "postgraduate":
-                return postgraduateUrl;
-            case "distance":
-            case "distance education":
-                return distanceUrl;
-            case "gsb":
-            case "graduate school of business":
-                return gsbUrl;
-            case "zou":
-                return zouUrl;
-            case "ecampus":
-                return ecampusUrl;
-            default:
-                return undergraduateUrl; // Default fallback
-        }
+        return new String[]{"undergraduate", "postgraduate", "gsb", "distance", "ecampus", "zou"};
     }
 
     // Helper method to safely extract text from JSON node (handles both string and numeric values)
@@ -632,47 +577,77 @@ public class SisAuthenticationService implements ExternalAuthenticationService {
         // Set student ID
         user.setStudentId(studentId != null ? studentId : "");
         
-        // Extract phone number
-        user.setPhoneNumber(getJsonText(userNode, "phone"));
-        
-        // Academic information from dataNode
-        if (dataNode != null) {
-            String[] yearFields = {"yr_of_study", "year_of_study", "year", "level"};
+        // Extract phone number (SIS uses phone_number field)
+        String phone = getJsonText(userNode, "phone_number");
+        if (phone == null || phone.isEmpty()) phone = getJsonText(userNode, "phone");
+        user.setPhoneNumber(phone);
+
+        // Extract gender (SIS returns "M" or "F")
+        String genderStr = getJsonText(userNode, "gender");
+        if ("M".equalsIgnoreCase(genderStr) || "male".equalsIgnoreCase(genderStr)) {
+            user.setGender(User.Gender.MALE);
+        } else if ("F".equalsIgnoreCase(genderStr) || "female".equalsIgnoreCase(genderStr)) {
+            user.setGender(User.Gender.FEMALE);
+        }
+
+        // Extract date of birth (SIS returns "yyyy-MM-dd")
+        String dob = getJsonText(userNode, "date_of_birth");
+        if (dob == null || dob.isEmpty()) dob = getJsonText(userNode, "dob");
+        if (dob != null && !dob.isEmpty()) {
+            try {
+                user.setDateOfBirth(LocalDateTime.parse(dob + "T00:00:00"));
+            } catch (Exception e) {
+                System.out.println("Could not parse date_of_birth: " + dob);
+            }
+        }
+
+        // Academic information — check userNode first, then dataNode
+        String[] yearFields = {"year_of_program", "year_of_study", "yr_of_study", "year", "level"};
+        for (String fieldName : yearFields) {
+            String val = getJsonText(userNode, fieldName);
+            if (val != null && !val.isEmpty()) {
+                try { user.setYearOfStudy(Integer.parseInt(val)); break; } catch (NumberFormatException ignored) {}
+            }
+        }
+        if (user.getYearOfStudy() == null && dataNode != null) {
             for (String fieldName : yearFields) {
-                if (dataNode.has(fieldName)) {
-                    try {
-                        user.setYearOfStudy(Integer.parseInt(getJsonText(dataNode, fieldName)));
-                        break;
-                    } catch (NumberFormatException e) {
-                        // Handle non-numeric year of study
-                    }
+                String val = getJsonText(dataNode, fieldName);
+                if (val != null && !val.isEmpty()) {
+                    try { user.setYearOfStudy(Integer.parseInt(val)); break; } catch (NumberFormatException ignored) {}
                 }
             }
-            
-            // Program from userNode
+        }
+
+        // Program from userNode
+        if (userNode != null) {
             String[] programFields = {"major", "program", "programme", "degree", "course"};
             for (String fieldName : programFields) {
-                if (userNode.has(fieldName) && !getJsonText(userNode, fieldName).isEmpty()) {
-                    user.setProgram(getJsonText(userNode, fieldName));
-                    break;
-                }
+                String val = getJsonText(userNode, fieldName);
+                if (val != null && !val.isEmpty()) { user.setProgram(val); break; }
             }
-            
-            // Extract program information if available
-            if (dataNode.has("student_program_info")) {
-                JsonNode programInfo = dataNode.get("student_program_info");
-                
-                if (programInfo.has("Program") && programInfo.get("Program").has("program_description")) {
-                    user.setProgram(programInfo.get("Program").get("program_description").asText());
-                }
-                
-                if (programInfo.has("School") && programInfo.get("School").has("school_description")) {
-                    user.setDepartment(programInfo.get("School").get("school_description").asText());
-                }
-                
-                if (programInfo.has("Campus") && programInfo.get("Campus").has("campus_description")) {
-                    user.setDepartment(user.getDepartment() + " - " + programInfo.get("Campus").get("campus_description").asText());
-                }
+        }
+
+        // Department: prefer school field, fall back to instance (e.g. "GSB", "UG")
+        if (userNode != null) {
+            String school = getJsonText(userNode, "school");
+            if (school == null || school.isEmpty()) school = getJsonText(userNode, "school_location");
+            if (school == null || school.isEmpty()) {
+                String inst = getJsonText(userNode, "instance");
+                if (inst != null && !inst.isEmpty()) school = inst + " Programme";
+            }
+            if (school != null && !school.isEmpty()) user.setDepartment(school);
+        }
+
+        if (dataNode != null && dataNode.has("student_program_info")) {
+            JsonNode programInfo = dataNode.get("student_program_info");
+            if (programInfo.has("Program") && programInfo.get("Program").has("program_description")) {
+                user.setProgram(programInfo.get("Program").get("program_description").asText());
+            }
+            if (programInfo.has("School") && programInfo.get("School").has("school_description")) {
+                user.setDepartment(programInfo.get("School").get("school_description").asText());
+            }
+            if (programInfo.has("Campus") && programInfo.get("Campus").has("campus_description")) {
+                user.setDepartment(user.getDepartment() + " - " + programInfo.get("Campus").get("campus_description").asText());
             }
         }
         
