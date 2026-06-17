@@ -106,6 +106,13 @@ public class SecurityConfig {
                         "/health"
                 ).permitAll()
 
+                // 🔓 WebSocket handshake (auth happens at the STOMP CONNECT frame level,
+                // since WebSocket handshakes can't reliably carry an Authorization header)
+                .requestMatchers(
+                        "/ws/**",
+                        "/api/ws/**"
+                ).permitAll()
+
                 // 🔐 Everything else requires authentication
                 .anyRequest().authenticated()
             );
