@@ -92,6 +92,26 @@ public class SisAuthenticationService implements ExternalAuthenticationService {
         }
     }
 
+    @Override
+    public ExternalAuthResponse authenticate(String username, String password, String instanceHint) throws ExternalAuthenticationException {
+        System.out.println("Attempting SIS authentication for student: " + username + " with instance hint: " + instanceHint);
+
+        if (instanceHint != null && !instanceHint.trim().isEmpty()) {
+            try {
+                ExternalAuthResponse response = attemptAuthentication(username, password, instanceHint.trim().toLowerCase());
+                if (response.isAuthenticated()) {
+                    System.out.println("SIS authentication successful via hint: " + instanceHint);
+                    return response;
+                }
+            } catch (ExternalAuthenticationException e) {
+                System.out.println("SIS authentication failed for hinted instance " + instanceHint + ": " + e.getMessage());
+            }
+        }
+
+        // Fall back to trying all instances
+        return authenticate(username, password);
+    }
+
     private ExternalAuthResponse attemptAuthentication(String username, String password, String instance) throws ExternalAuthenticationException {
         String baseUrl = getBaseUrlForInstance(instance);
         
@@ -106,7 +126,8 @@ public class SisAuthenticationService implements ExternalAuthenticationService {
         Map<String, String> request = new HashMap<>();
         request.put("username", username);
         request.put("password", password);
-        
+        request.put("instance", instance);
+
         HttpEntity<Map<String, String>> entity = new HttpEntity<>(request, headers);
         
         String loginUrl = UriComponentsBuilder.fromHttpUrl(baseUrl + loginEndpoint)

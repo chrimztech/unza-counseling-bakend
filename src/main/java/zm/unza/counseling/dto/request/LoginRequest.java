@@ -15,7 +15,9 @@ public class LoginRequest {
     @Size(min = 6, message = "Password must be at least 6 characters")
     private String password;
 
-    // Explicit getters and setters to ensure they work
+    // Optional: SIS instance hint for student login (undergraduate, postgraduate, gsb, distance, ecampus, zou)
+    private String instance;
+
     public String getIdentifier() {
         return identifier;
     }
@@ -30,5 +32,13 @@ public class LoginRequest {
 
     public void setPassword(String password) {
         this.password = password;
+    }
+
+    public String getInstance() {
+        return instance;
+    }
+
+    public void setInstance(String instance) {
+        this.instance = instance;
     }
 }

@@ -253,7 +253,8 @@ public class MultiSourceAuthService {
             System.out.println("=== STUDENT AUTHENTICATION START ===");
             System.out.println("Identifier: " + request.getIdentifier());
 
-            ExternalAuthResponse externalResponse = sisAuthenticationService.authenticate(request.getIdentifier(), request.getPassword());
+            String instanceHint = request.getInstance();
+            ExternalAuthResponse externalResponse = sisAuthenticationService.authenticate(request.getIdentifier(), request.getPassword(), instanceHint);
 
             System.out.println("SIS Response - Authenticated: " + externalResponse.isAuthenticated());
             System.out.println("SIS Response - Message: " + externalResponse.getMessage());

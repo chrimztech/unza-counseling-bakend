@@ -16,6 +16,14 @@ public interface ExternalAuthenticationService {
      * @throws ExternalAuthenticationException if authentication fails
      */
     ExternalAuthResponse authenticate(String username, String password) throws ExternalAuthenticationException;
+
+    /**
+     * Authenticate with an instance hint (used by SIS to target a specific student system).
+     * Default implementation ignores the hint and calls the two-arg version.
+     */
+    default ExternalAuthResponse authenticate(String username, String password, String instanceHint) throws ExternalAuthenticationException {
+        return authenticate(username, password);
+    }
     
     /**
      * Validate if user exists in external system
