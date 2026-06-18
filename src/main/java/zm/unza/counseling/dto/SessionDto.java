@@ -16,27 +16,29 @@ import java.time.LocalDateTime;
 public class SessionDto {
     private Long id;
     private Long appointmentId;
-    
+
     @JsonProperty("clientId")
     private Long studentId;
-    
+
     private String studentName;
     private Long counselorId;
     private String counselorName;
     private LocalDateTime sessionDate;
-    
+
     @JsonProperty("duration")
     private Integer durationMinutes;
-    
+
     @JsonProperty("sessionType")
     private String type;
-    
+
     private String status;
     private String title;
     private String presentingIssue;
     @JsonProperty("notes")
     private String sessionNotes;
     private String outcome;
+    private String riskLevel;
+    private Integer clientMoodRating;
 
     public static SessionDto from(Session session) {
         return SessionDto.builder()
@@ -54,6 +56,8 @@ public class SessionDto {
                 .presentingIssue(session.getPresentingIssue())
                 .sessionNotes(session.getSessionNotes())
                 .outcome(session.getOutcome() != null ? session.getOutcome().name() : null)
+                .riskLevel(session.getRiskLevelAssessed() != null ? session.getRiskLevelAssessed().name() : null)
+                .clientMoodRating(session.getClientMoodRating())
                 .build();
     }
     
@@ -68,4 +72,6 @@ public class SessionDto {
     public String getPresentingIssue() { return presentingIssue; }
     public String getSessionNotes() { return sessionNotes; }
     public String getOutcome() { return outcome; }
+    public String getRiskLevel() { return riskLevel; }
+    public Integer getClientMoodRating() { return clientMoodRating; }
 }

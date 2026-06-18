@@ -112,8 +112,10 @@ public class AppointmentDto {
         AppointmentDto dto = new AppointmentDto();
         dto.setId(appointment.getId());
         dto.setTitle(appointment.getTitle());
-        dto.setStudentId(appointment.getStudent().getId());
-        dto.setStudentName(appointment.getStudent().getFirstName() + " " + appointment.getStudent().getLastName());
+        if (appointment.getStudent() != null) {
+            dto.setStudentId(appointment.getStudent().getId());
+            dto.setStudentName(appointment.getStudent().getFirstName() + " " + appointment.getStudent().getLastName());
+        }
         if (appointment.getClient() != null) {
             dto.setClientId(appointment.getClient().getId());
             dto.setClientName(appointment.getClient().getFullName());

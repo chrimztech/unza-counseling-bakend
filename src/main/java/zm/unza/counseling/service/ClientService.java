@@ -167,22 +167,18 @@ public class ClientService {
     }
 
     public Page<Client> getAllClients(Pageable pageable) {
-        syncClientDirectory();
         return clientRepository.findAll(pageable);
     }
 
     public Page<Client> searchClients(String searchTerm, Pageable pageable) {
-        syncClientDirectory();
         return clientRepository.searchClients(searchTerm, pageable);
     }
 
     public Page<Client> getClientsByStatus(Client.ClientStatus status, Pageable pageable) {
-        syncClientDirectory();
         return clientRepository.findByClientStatus(status, pageable);
     }
 
     public Page<Client> getClientsByRiskLevel(Client.RiskLevel riskLevel, Pageable pageable) {
-        syncClientDirectory();
         return clientRepository.findByRiskLevel(riskLevel, pageable);
     }
 
@@ -217,12 +213,10 @@ public class ClientService {
     }
 
     public Long getActiveClientCount() {
-        syncClientDirectory();
         return clientRepository.countByClientStatus(Client.ClientStatus.ACTIVE);
     }
 
     public Long getHighRiskClientCount() {
-        syncClientDirectory();
         return clientRepository.countByRiskLevels(
                 List.of(Client.RiskLevel.HIGH, Client.RiskLevel.CRITICAL)
         );

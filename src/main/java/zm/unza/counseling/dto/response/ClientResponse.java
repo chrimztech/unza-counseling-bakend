@@ -12,6 +12,10 @@ public class ClientResponse {
     private String studentId;
     private Client.ClientStatus status;
     private Client.RiskLevel riskLevel;
+    private String programme;
+    private String faculty;
+    private Integer yearOfStudy;
+    private String phoneNumber;
 
     public static ClientResponse from(Client client) {
         ClientResponse response = new ClientResponse();
@@ -22,6 +26,10 @@ public class ClientResponse {
         response.setStudentId(client.getStudentId());
         response.setStatus(client.getClientStatus());
         response.setRiskLevel(client.getRiskLevel());
+        response.setProgramme(client.getProgramme());
+        response.setFaculty(client.getFaculty());
+        response.setYearOfStudy(client.getYearOfStudy());
+        response.setPhoneNumber(client.getPhoneNumber());
         return response;
     }
 }

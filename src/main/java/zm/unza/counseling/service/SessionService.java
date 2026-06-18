@@ -126,7 +126,19 @@ public class SessionService {
                 // Handle invalid outcome
             }
         }
-        
+
+        if (sessionDto.getRiskLevel() != null) {
+            try {
+                session.setRiskLevelAssessed(Session.RiskLevelAssessed.valueOf(sessionDto.getRiskLevel().toUpperCase()));
+            } catch (IllegalArgumentException e) {
+                // ignore invalid risk level
+            }
+        }
+
+        if (sessionDto.getClientMoodRating() != null) {
+            session.setClientMoodRating(sessionDto.getClientMoodRating());
+        }
+
         session.setCreatedAt(LocalDateTime.now());
         session.setConfidential(true);
 
@@ -203,7 +215,19 @@ public class SessionService {
                 // Handle invalid outcome
             }
         }
-        
+
+        if (sessionDto.getRiskLevel() != null) {
+            try {
+                session.setRiskLevelAssessed(Session.RiskLevelAssessed.valueOf(sessionDto.getRiskLevel().toUpperCase()));
+            } catch (IllegalArgumentException e) {
+                // ignore invalid risk level
+            }
+        }
+
+        if (sessionDto.getClientMoodRating() != null) {
+            session.setClientMoodRating(sessionDto.getClientMoodRating());
+        }
+
         Session updatedSession = sessionRepository.save(session);
         return SessionDto.from(updatedSession);
     }
