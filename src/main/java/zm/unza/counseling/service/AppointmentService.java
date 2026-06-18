@@ -41,6 +41,8 @@ public interface AppointmentService {
      */
     Page<AppointmentDto> getAppointmentsByClientId(Long clientId, Pageable pageable);
 
+    List<AppointmentDto> getAllAppointmentsByClientId(Long clientId);
+
     /**
      * Get appointments by counselor ID
      * @param counselorId the counselor ID

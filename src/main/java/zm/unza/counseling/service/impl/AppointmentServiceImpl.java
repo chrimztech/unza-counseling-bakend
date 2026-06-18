@@ -99,6 +99,18 @@ public class AppointmentServiceImpl implements AppointmentService {
     }
 
     @Override
+    public List<AppointmentDto> getAllAppointmentsByClientId(Long clientId) {
+        User user = userRepository.findById(clientId)
+                .orElseThrow(() -> new NoSuchElementException("Client not found with id: " + clientId));
+        authorizeClientScopedRead(user);
+        ensureAppointmentClientUser(user);
+        return appointmentRepository.findByStudent(user).stream()
+                .sorted(java.util.Comparator.comparing(Appointment::getAppointmentDate, java.util.Comparator.nullsLast(java.util.Comparator.reverseOrder())))
+                .map(this::toAppointmentDto)
+                .toList();
+    }
+
+    @Override
     public Page<AppointmentDto> getAppointmentsByCounselorId(Long counselorId, Pageable pageable) {
         User counselor = resolveCounselorUser(counselorId);
         validateCounselorScopedRead(counselor);

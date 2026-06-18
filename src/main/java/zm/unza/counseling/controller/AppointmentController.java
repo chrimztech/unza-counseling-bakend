@@ -116,6 +116,16 @@ public class AppointmentController {
     }
 
     /**
+     * Get ALL appointments for a client without pagination (used by mobile app)
+     * GET /appointments/client/{clientId}/all
+     */
+    @GetMapping("/client/{clientId}/all")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<List<AppointmentDto>>> getAllAppointmentsByClient(@PathVariable Long clientId) {
+        return ResponseEntity.ok(ApiResponse.success(appointmentService.getAllAppointmentsByClientId(clientId)));
+    }
+
+    /**
      * Get appointments by student identifier
      * GET /appointments/student/{studentId}
      */

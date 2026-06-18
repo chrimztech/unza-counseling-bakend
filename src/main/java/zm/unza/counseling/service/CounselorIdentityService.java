@@ -31,8 +31,13 @@ public class CounselorIdentityService {
         this.userRepository = userRepository;
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     public List<Counselor> getAllCounselors() {
+        return counselorRepository.findAll();
+    }
+
+    @Transactional
+    public List<Counselor> syncAndGetAllCounselors() {
         userRepository.findByRolesName(Role.ERole.ROLE_COUNSELOR)
                 .forEach(user -> getOrCreateCounselor(user.getId()));
         return counselorRepository.findAll();

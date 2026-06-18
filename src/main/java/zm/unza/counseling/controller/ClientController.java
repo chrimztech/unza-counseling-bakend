@@ -43,7 +43,7 @@ public class ClientController {
     }
     
      @GetMapping
-     public ResponseEntity<Page<Client>> getAllClients(
+     public ResponseEntity<ApiResponse<Page<ClientResponse>>> getAllClients(
              @RequestParam(defaultValue = "0") int page,
              @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "createdAt") String sortBy,
@@ -54,7 +54,7 @@ public class ClientController {
     ) {
         Sort sort = Sort.by(Sort.Direction.fromString(sortDirection), sortBy);
         Pageable pageable = PageRequest.of(page, size, sort);
-        
+
         Page<Client> clients;
         if (search != null && !search.isEmpty()) {
             clients = clientService.searchClients(search, pageable);
@@ -65,8 +65,8 @@ public class ClientController {
         } else {
             clients = clientService.getAllClients(pageable);
         }
-        
-        return ResponseEntity.ok(clients);
+
+        return ResponseEntity.ok(ApiResponse.success(clients.map(ClientResponse::from)));
     }
     
     @GetMapping("/{id}")
