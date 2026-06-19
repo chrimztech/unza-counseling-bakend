@@ -183,8 +183,11 @@ public class AcademicPerformanceController {
         if (response.isSuccess()) {
             return ResponseEntity.ok(ApiResponse.success(response, "Results synced successfully from SIS"));
         } else {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(ApiResponse.error(response.getMessage()));
+            HttpStatus status = "auth".equals(response.getErrorType()) ? HttpStatus.BAD_GATEWAY
+                    : "network".equals(response.getErrorType()) ? HttpStatus.BAD_GATEWAY
+                    : "notFound".equals(response.getErrorType()) ? HttpStatus.NOT_FOUND
+                    : HttpStatus.BAD_REQUEST;
+            return ResponseEntity.status(status).body(ApiResponse.error(response.getMessage()));
         }
     }
 
@@ -216,13 +219,15 @@ public class AcademicPerformanceController {
         System.out.println("Counselor fetching SIS results for student: " + studentId);
         SyncResultsResponse response = sisResultsService.fetchResultsForCounselor(studentId);
         if (response.isSuccess()) {
-            return ResponseEntity.ok(ApiResponse.success(response, 
+            return ResponseEntity.ok(ApiResponse.success(response,
                     "Results retrieved successfully from SIS"));
         } else {
-            HttpStatus status = "auth".equals(response.getErrorType()) ? 
-                    HttpStatus.UNAUTHORIZED : HttpStatus.BAD_REQUEST;
-            return ResponseEntity.status(status)
-                    .body(ApiResponse.error(response.getMessage()));
+            // Use 502 Bad Gateway for SIS auth/network failures — NOT 401, which would
+            // confuse the frontend's JWT refresh interceptor into retrying indefinitely.
+            HttpStatus status = "auth".equals(response.getErrorType()) ? HttpStatus.BAD_GATEWAY
+                    : "network".equals(response.getErrorType()) ? HttpStatus.BAD_GATEWAY
+                    : HttpStatus.BAD_REQUEST;
+            return ResponseEntity.status(status).body(ApiResponse.error(response.getMessage()));
         }
     }
 
@@ -239,13 +244,14 @@ public class AcademicPerformanceController {
         System.out.println("Counselor fetching SIS results for client ID: " + clientId);
         SyncResultsResponse response = sisResultsService.fetchResultsForClient(clientId, null, true);
         if (response.isSuccess()) {
-            return ResponseEntity.ok(ApiResponse.success(response, 
+            return ResponseEntity.ok(ApiResponse.success(response,
                     "Results retrieved successfully from SIS"));
         } else {
-            HttpStatus status = "auth".equals(response.getErrorType()) ? 
-                    HttpStatus.UNAUTHORIZED : HttpStatus.BAD_REQUEST;
-            return ResponseEntity.status(status)
-                    .body(ApiResponse.error(response.getMessage()));
+            HttpStatus status = "auth".equals(response.getErrorType()) ? HttpStatus.BAD_GATEWAY
+                    : "network".equals(response.getErrorType()) ? HttpStatus.BAD_GATEWAY
+                    : "notFound".equals(response.getErrorType()) ? HttpStatus.NOT_FOUND
+                    : HttpStatus.BAD_REQUEST;
+            return ResponseEntity.status(status).body(ApiResponse.error(response.getMessage()));
         }
     }
 }

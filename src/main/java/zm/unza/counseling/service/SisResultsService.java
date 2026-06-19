@@ -45,13 +45,16 @@ public class SisResultsService {
         this.academicQualificationRepository = academicQualificationRepository;
     }
 
-    @Value("${app.sis.api.baseUrl:https://sis.unza.zm}")
+    @Value("${app.sis.api.resultsBaseUrl:https://sis.unza.zm}")
     private String sisBaseUrl;
+
+    @Value("${app.sis.api.authBaseUrl:https://devoap.unza.zm}")
+    private String sisAuthBaseUrl;
 
     @Value("${app.sis.api.resultsEndpoint:/StudentApp/getStudentResults.json}")
     private String resultsEndpoint;
 
-    @Value("${app.sis.api.loginEndpoint:/StudentApp/student_login.json}")
+    @Value("${app.sis.api.loginEndpoint:/api/v1/customers/login}")
     private String loginEndpoint;
 
     @Value("${app.sis.api.tokenEndpoint:/StudentApp/get_student_token.json}")
@@ -181,10 +184,10 @@ public class SisResultsService {
     }
 
     /**
-     * Build login URL
+     * Build login URL — uses devoap.unza.zm (auth service), separate from the SIS results base URL
      */
     private String buildLoginUrl() {
-        return sisBaseUrl + loginEndpoint;
+        return sisAuthBaseUrl + loginEndpoint;
     }
 
     /**
@@ -299,9 +302,15 @@ public class SisResultsService {
      * Fetch results for a client by their internal ID
      */
     public SyncResultsResponse fetchResultsForClient(Long clientId, String token, boolean forceRefresh) {
-        Client client = clientRepository.findById(clientId)
-                .orElseThrow(() -> new ResourceNotFoundException("Client not found with ID: " + clientId));
-        
+        Client client = clientRepository.findById(clientId).orElse(null);
+        if (client == null) {
+            return SyncResultsResponse.builder()
+                    .success(false)
+                    .message("No client record found with ID: " + clientId)
+                    .errorType("notFound")
+                    .build();
+        }
+
         if (client.getStudentId() == null || client.getStudentId().isEmpty()) {
             return SyncResultsResponse.builder()
                     .success(false)
@@ -330,8 +339,14 @@ public class SisResultsService {
      * Get cached results for a client
      */
     public SyncResultsResponse getCachedResults(Long clientId) {
-        Client client = clientRepository.findById(clientId)
-                .orElseThrow(() -> new ResourceNotFoundException("Client not found with ID: " + clientId));
+        Client client = clientRepository.findById(clientId).orElse(null);
+        if (client == null) {
+            return SyncResultsResponse.builder()
+                    .success(false)
+                    .message("No client record found with ID: " + clientId)
+                    .errorType("notFound")
+                    .build();
+        }
 
         List<AcademicQualification> qualifications = getEffectiveCachedQualifications(clientId);
 
@@ -368,7 +383,7 @@ public class SisResultsService {
      */
     private ResponseEntity<String> makeRequest(String url) {
         HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
         headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
 
         HttpEntity<String> entity = new HttpEntity<>(headers);

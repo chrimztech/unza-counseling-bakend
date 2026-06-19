@@ -124,12 +124,17 @@ app:
   # External Authentication System Configuration
   sis:
     api:
+      # Student login (SisAuthenticationService) — devoap, standard HTTPS port
       baseUrl: ${SIS_BASE_URL:https://devoap.unza.zm}
+      # SIS results/token (SisResultsService) — sis.unza.zm
+      resultsBaseUrl: ${SIS_RESULTS_BASE_URL:https://sis.unza.zm}
+      # Fallback silent login from SisResultsService uses the same auth URL
+      authBaseUrl: ${SIS_AUTH_BASE_URL:https://devoap.unza.zm}
       resultsEndpoint: ${SIS_RESULTS_ENDPOINT:/StudentApp/getStudentResults.json}
       loginEndpoint: ${SIS_LOGIN_ENDPOINT:/api/v1/customers/login}
       tokenEndpoint: ${SIS_TOKEN_ENDPOINT:/StudentApp/get_student_token.json}
       baseUrls:
-        undergraduate: ${SIS_UNDERGRADUATE_URL:https://devoap.unza.zm}
+        undergraduate: ${SIS_UNDERGRADUATE_URL:https://sis.unza.zm}
         postgraduate: ${SIS_POSTGRADUATE_URL:https://pgonline.unza.zm}
         distance: ${SIS_DISTANCE_URL:https://online.unza.zm}
         gsb: ${SIS_GSB_URL:https://gsbonline.unza.zm}
