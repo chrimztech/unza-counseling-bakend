@@ -475,6 +475,11 @@ public class MultiSourceAuthService {
             userToSave.setStudentId(externalUser.getStudentId());
         }
 
+        if (safeTrim(externalUser.getSisToken()) != null) {
+            userToSave.setSisToken(externalUser.getSisToken());
+            userToSave.setSisTokenType(externalUser.getSisTokenType());
+        }
+
         userToSave.setAuthenticationSource(externalUser.getAuthenticationSource());
         userToSave.setActive(true);
         userToSave.setEmailVerified(true);
@@ -558,6 +563,8 @@ public class MultiSourceAuthService {
         response.setExpiresIn((int) jwtService.getExpirationTime());
         response.setFirstLogin(isFirstLogin);
         response.setRequiresConsent(requiresConsent);
+        response.setSisToken(userForToken.getSisToken());
+        response.setSisTokenType(userForToken.getSisTokenType());
 
         return response;
     }

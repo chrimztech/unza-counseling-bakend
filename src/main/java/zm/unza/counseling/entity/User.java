@@ -168,6 +168,15 @@ public class User implements UserDetails {
     @Column(name = "token_issued_before")
     private LocalDateTime tokenIssuedBefore;
 
+    // Non-expiring bearer token issued by the external SIS student login (devoap.unza.zm/api/v1/students/login)
+    @JsonIgnore
+    @Column(name = "sis_token", columnDefinition = "TEXT")
+    private String sisToken;
+
+    @JsonIgnore
+    @Column(name = "sis_token_type")
+    private String sisTokenType;
+
     // Default constructor
     public User() {}
 
@@ -321,6 +330,12 @@ public class User implements UserDetails {
 
     public LocalDateTime getTokenIssuedBefore() { return tokenIssuedBefore; }
     public void setTokenIssuedBefore(LocalDateTime tokenIssuedBefore) { this.tokenIssuedBefore = tokenIssuedBefore; }
+
+    public String getSisToken() { return sisToken; }
+    public void setSisToken(String sisToken) { this.sisToken = sisToken; }
+
+    public String getSisTokenType() { return sisTokenType; }
+    public void setSisTokenType(String sisTokenType) { this.sisTokenType = sisTokenType; }
 
     // Helper methods
     public String getFullName() {

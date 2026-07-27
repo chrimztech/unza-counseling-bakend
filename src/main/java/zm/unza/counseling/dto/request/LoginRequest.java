@@ -15,7 +15,7 @@ public class LoginRequest {
     @Size(min = 6, message = "Password must be at least 6 characters")
     private String password;
 
-    // Optional: SIS instance hint for student login (undergraduate, postgraduate, gsb, distance, ecampus, zou)
+    // Optional: SIS instance hint for student login (ug, pg, gsb, ide, ecampus, zou)
     private String instance;
 
     public String getIdentifier() {

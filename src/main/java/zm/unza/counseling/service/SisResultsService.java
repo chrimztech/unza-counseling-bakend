@@ -54,7 +54,7 @@ public class SisResultsService {
     @Value("${app.sis.api.resultsEndpoint:/StudentApp/getStudentResults.json}")
     private String resultsEndpoint;
 
-    @Value("${app.sis.api.loginEndpoint:/api/v1/customers/login}")
+    @Value("${app.sis.api.loginEndpoint:/api/v1/students/login}")
     private String loginEndpoint;
 
     @Value("${app.sis.api.tokenEndpoint:/StudentApp/get_student_token.json}")
@@ -66,8 +66,19 @@ public class SisResultsService {
      */
     public SyncResultsResponse fetchResultsForCounselor(String studentId) {
         System.out.println("Counselor requesting results for student: " + studentId);
-        
+
         try {
+            // Prefer the non-expiring token captured at the student's last login over
+            // silently re-authenticating with SIS on every request.
+            String storedToken = getStoredSisToken(studentId);
+            if (storedToken != null && !storedToken.isEmpty()) {
+                SyncResultsResponse storedTokenResponse = fetchStudentResults(studentId, storedToken, true);
+                if (storedTokenResponse.isSuccess()) {
+                    return storedTokenResponse;
+                }
+                System.out.println("Stored SIS token rejected for " + studentId + ", falling back to silent login");
+            }
+
             // Step 1: Get token from SIS by silently logging in
             String token = getSisToken(studentId);
             
@@ -99,6 +110,16 @@ public class SisResultsService {
                     .errorType("unknown")
                     .build();
         }
+    }
+
+    /**
+     * Look up the non-expiring SIS token captured at the student's last login, if any.
+     */
+    private String getStoredSisToken(String studentId) {
+        return clientRepository.findByStudentId(studentId)
+                .map(client -> client.getSisToken())
+                .filter(token -> token != null && !token.isEmpty())
+                .orElse(null);
     }
 
     /**

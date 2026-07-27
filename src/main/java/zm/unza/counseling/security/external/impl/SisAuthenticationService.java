@@ -34,7 +34,7 @@ public class SisAuthenticationService implements ExternalAuthenticationService {
     @Value("${app.sis.api.baseUrl:https://devoap.unza.zm}")
     private String sisBaseUrl;
 
-    @Value("${app.sis.api.loginEndpoint:/api/v1/customers/login}")
+    @Value("${app.sis.api.loginEndpoint:/api/v1/students/login}")
     private String loginEndpoint;
 
     private final RestTemplate restTemplate;
@@ -232,8 +232,9 @@ public class SisAuthenticationService implements ExternalAuthenticationService {
                         System.out.println("Extracted - Email: " + email + ", FirstName: " + firstName + ", LastName: " + lastName + ", StudentId: " + studentId);
                         
                         User user = mapSisUserData(userNode, dataNode, username, email, firstName, lastName, studentId);
-                        
-                        return new ExternalAuthResponse(true, "Authentication successful", user, 
+                        applySisToken(user, dataNode);
+
+                        return new ExternalAuthResponse(true, "Authentication successful", user,
                                                       studentId != null ? studentId : username, "SIS_" + instance.toUpperCase());
                     }
                 }
@@ -347,8 +348,9 @@ public class SisAuthenticationService implements ExternalAuthenticationService {
                         System.out.println("Old Format - ComputerNo: " + computerNo + ", FirstName: " + firstName + ", LastName: " + lastName);
                         
                         User user = mapSisUserData(userNode, dataNode, username, email, firstName, lastName, computerNo);
-                        
-                        return new ExternalAuthResponse(true, "Authentication successful", user, 
+                        applySisToken(user, dataNode);
+
+                        return new ExternalAuthResponse(true, "Authentication successful", user,
                                                       computerNo, "SIS_" + instance.toUpperCase());
                     }
                 }
@@ -400,7 +402,17 @@ public class SisAuthenticationService implements ExternalAuthenticationService {
     }
 
     private String[] getInstanceKeys() {
-        return new String[]{"undergraduate", "postgraduate", "gsb", "distance", "ecampus", "zou"};
+        return new String[]{"ug", "pg", "gsb", "ide", "ecampus", "zou"};
+    }
+
+    // Captures the non-expiring bearer token SIS issues at login so it can be reused later
+    // (e.g. by SisResultsService) instead of re-authenticating on every request.
+    private void applySisToken(User user, JsonNode dataNode) {
+        String token = getJsonText(dataNode, "token");
+        if (token == null || token.isEmpty()) return;
+        user.setSisToken(token);
+        String tokenType = getJsonText(dataNode, "token_type");
+        user.setSisTokenType(tokenType != null && !tokenType.isEmpty() ? tokenType : "Bearer");
     }
 
     // Helper method to safely extract text from JSON node (handles both string and numeric values)

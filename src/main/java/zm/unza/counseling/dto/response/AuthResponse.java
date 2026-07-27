@@ -11,6 +11,8 @@ public class AuthResponse {
     private int expiresIn;
     private boolean requiresConsent;
     private boolean isFirstLogin;
+    private String sisToken;
+    private String sisTokenType;
 
     // Explicit getters and setters to ensure they work
     public String getToken() {
@@ -59,5 +61,21 @@ public class AuthResponse {
 
     public void setFirstLogin(boolean firstLogin) {
         isFirstLogin = firstLogin;
+    }
+
+    public String getSisToken() {
+        return sisToken;
+    }
+
+    public void setSisToken(String sisToken) {
+        this.sisToken = sisToken;
+    }
+
+    public String getSisTokenType() {
+        return sisTokenType;
+    }
+
+    public void setSisTokenType(String sisTokenType) {
+        this.sisTokenType = sisTokenType;
     }
 }
