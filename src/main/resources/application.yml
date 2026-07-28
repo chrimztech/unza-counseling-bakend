@@ -147,6 +147,15 @@ app:
       loginEndpoint: ${HR_LOGIN_ENDPOINT:/api/auth-login2}
       metaDataEndpoint: ${HR_METADATA_ENDPOINT:/api/get-meta-data-on-user}
 
+  # University clinic system — used to push/receive SecurityAlert records
+  clinic:
+    base-url: ${CLINIC_SYSTEM_URL:https://clinic.unza.ac.zm}
+
+  # Shared static API key for service-to-service SecurityAlert sync between this
+  # system and the clinic system (X-Service-Api-Key header). Must match on both sides.
+  cross-system:
+    api-key: ${CROSS_SYSTEM_API_KEY:}
+
 # External API Configuration
   external-api:
     connection-timeout: ${EXTERNAL_API_CONNECTION_TIMEOUT:10000}

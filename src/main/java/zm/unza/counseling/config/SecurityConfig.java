@@ -113,6 +113,14 @@ public class SecurityConfig {
                         "/api/ws/**"
                 ).permitAll()
 
+                // 🔓 Service-to-service SecurityAlert sync from the clinic system.
+                // Not user auth — protected instead by the X-Service-Api-Key header
+                // checked inside ClinicController (see app.cross-system.api-key).
+                .requestMatchers(
+                        "/clinic/security-alerts/inbound/**",
+                        "/api/clinic/security-alerts/inbound/**"
+                ).permitAll()
+
                 // 🔐 Everything else requires authentication
                 .anyRequest().authenticated()
             );

@@ -40,6 +40,7 @@ import zm.unza.counseling.service.impl.EmailServiceImpl;
 import zm.unza.counseling.entity.CrisisAlert;
 import zm.unza.counseling.entity.Role;
 import zm.unza.counseling.repository.CrisisAlertRepository;
+import zm.unza.counseling.service.SecurityAlertService;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -75,6 +76,7 @@ public class AppointmentServiceImpl implements AppointmentService {
     private final ObjectMapper objectMapper;
     private final CrisisDetectionService crisisDetectionService;
     private final CrisisAlertRepository crisisAlertRepository;
+    private final SecurityAlertService securityAlertService;
 
     @Value("${app.meeting.default-provider:google-meet}")
     private String defaultMeetingProvider;
@@ -1494,6 +1496,16 @@ public class AppointmentServiceImpl implements AppointmentService {
                     ? CrisisAlert.Severity.CRITICAL : CrisisAlert.Severity.HIGH);
             alert.setTriggeredKeywords(String.join(", ", result.triggeredKeywords()));
             crisisAlertRepository.save(alert);
+
+            // Escalate CRITICAL-severity crisis detections to Security as well (HIGH is left
+            // as-is — only CrisisAlert/counselor notification, no SecurityAlert).
+            if (result.severity() == CrisisDetectionService.Severity.CRITICAL) {
+                try {
+                    securityAlertService.createFromCrisisDetection(client, result.triggeredKeywords());
+                } catch (Exception e) {
+                    log.warn("Failed to create SecurityAlert for appointment {}: {}", appointment.getId(), e.getMessage());
+                }
+            }
 
             // Notify all counselors and admins
             String clientName = (client.getFirstName() != null ? client.getFirstName() : "") +

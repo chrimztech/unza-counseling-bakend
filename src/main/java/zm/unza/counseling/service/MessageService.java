@@ -16,6 +16,7 @@ import zm.unza.counseling.repository.AppointmentRepository;
 import zm.unza.counseling.repository.CrisisAlertRepository;
 import zm.unza.counseling.repository.MessageRepository;
 import zm.unza.counseling.repository.UserRepository;
+import zm.unza.counseling.service.SecurityAlertService;
 
 import java.util.List;
 
@@ -34,6 +35,7 @@ public class MessageService {
     private final NotificationService notificationService;
     private final CrisisDetectionService crisisDetectionService;
     private final CrisisAlertRepository crisisAlertRepository;
+    private final SecurityAlertService securityAlertService;
 
     @Transactional
     public Message sendMessage(Long senderId, MessageRequest request) {
@@ -84,6 +86,16 @@ public class MessageService {
                         ? CrisisAlert.Severity.CRITICAL : CrisisAlert.Severity.HIGH);
                 alert.setTriggeredKeywords(String.join(", ", crisis.triggeredKeywords()));
                 crisisAlertRepository.save(alert);
+
+                // Escalate CRITICAL-severity crisis detections to Security as well (HIGH is left
+                // as-is — only CrisisAlert/counselor notification, no SecurityAlert).
+                if (crisis.severity() == CrisisDetectionService.Severity.CRITICAL) {
+                    try {
+                        securityAlertService.createFromCrisisDetection(sender, crisis.triggeredKeywords());
+                    } catch (Exception e) {
+                        // Non-critical — message and CrisisAlert are already saved
+                    }
+                }
 
                 String notifTitle = "⚠ Crisis Indicators in Message";
                 String notifBody = senderName.trim() + " sent a message with potential crisis indicators. Immediate review recommended.";

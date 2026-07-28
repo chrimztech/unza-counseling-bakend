@@ -98,6 +98,7 @@ public class Role {
         ROLE_COUNSELOR,     // Professional counselors
         ROLE_ADMIN,         // System administrators
         ROLE_SUPER_ADMIN,
-        ROLE_CLIENT    // Super administrators with full access
+        ROLE_CLIENT,   // Super administrators with full access
+        ROLE_SECURITY       // University security staff reviewing sensitive-case alerts
     }
 }

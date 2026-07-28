@@ -3,6 +3,8 @@ package zm.unza.counseling.controller;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -12,14 +14,18 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 import zm.unza.counseling.dto.request.ClinicReferralRequest;
+import zm.unza.counseling.dto.request.ClinicSecurityAlertInboundRequest;
+import zm.unza.counseling.dto.request.ClinicSecurityAlertStatusUpdateRequest;
 import zm.unza.counseling.dto.request.ClinicVisitRequest;
 import zm.unza.counseling.dto.response.ApiResponse;
 import zm.unza.counseling.dto.response.ClinicReferralResponse;
 import zm.unza.counseling.dto.response.ClinicVisitFrequencyResponse;
 import zm.unza.counseling.dto.response.ClinicVisitResponse;
 import zm.unza.counseling.entity.ClinicReferral;
+import zm.unza.counseling.entity.SecurityAlert;
 import zm.unza.counseling.repository.UserRepository;
 import zm.unza.counseling.service.ClinicService;
+import zm.unza.counseling.service.SecurityAlertService;
 
 import java.util.List;
 import java.util.Map;
@@ -28,14 +34,21 @@ import java.util.NoSuchElementException;
 @RestController
 @RequestMapping("/clinic")
 @Tag(name = "Clinic Integration", description = "Referrals to the university clinic and visit frequency tracking")
+@Slf4j
 public class ClinicController {
 
     private final ClinicService clinicService;
     private final UserRepository userRepository;
+    private final SecurityAlertService securityAlertService;
 
-    public ClinicController(ClinicService clinicService, UserRepository userRepository) {
+    @Value("${app.cross-system.api-key:}")
+    private String crossSystemApiKey;
+
+    public ClinicController(ClinicService clinicService, UserRepository userRepository,
+                             SecurityAlertService securityAlertService) {
         this.clinicService = clinicService;
         this.userRepository = userRepository;
+        this.securityAlertService = securityAlertService;
     }
 
     // ── Referrals ─────────────────────────────────────────────────────────
@@ -161,6 +174,52 @@ public class ClinicController {
             @RequestParam(defaultValue = "90") int withinDays) {
         return ResponseEntity.ok(ApiResponse.success(
                 clinicService.getFrequentVisitors(threshold, withinDays)));
+    }
+
+    // ── Security Alerts (inbound from the clinic system) ────────────────
+    //
+    // These two endpoints are called by the clinic system's ClinicAlertSyncService
+    // equivalent, never by a logged-in user. They bypass normal JWT auth entirely
+    // (see SecurityConfig permitAll matchers for "/clinic/security-alerts/inbound/**")
+    // and are instead protected by a static shared API key header.
+
+    @PostMapping("/security-alerts/inbound")
+    @Operation(summary = "Inbound security alert from the clinic system",
+               description = "Service-to-service only. Requires header X-Service-Api-Key.")
+    public ResponseEntity<?> inboundSecurityAlert(
+            @Valid @RequestBody ClinicSecurityAlertInboundRequest request,
+            @RequestHeader(value = "X-Service-Api-Key", required = false) String apiKey) {
+        ResponseEntity<?> authError = checkServiceApiKey(apiKey);
+        if (authError != null) return authError;
+
+        SecurityAlert saved = securityAlertService.createFromExternal(request);
+        return ResponseEntity.ok(Map.of("localAlertId", String.valueOf(saved.getId())));
+    }
+
+    @PatchMapping("/security-alerts/inbound/{id}/status")
+    @Operation(summary = "Inbound status update from the clinic system for a locally-known alert",
+               description = "Service-to-service only. Requires header X-Service-Api-Key. " +
+                             "{id} is OUR OWN local alert id (the one we returned from the create call).")
+    public ResponseEntity<?> inboundSecurityAlertStatus(
+            @PathVariable("id") Long localAlertId,
+            @Valid @RequestBody ClinicSecurityAlertStatusUpdateRequest request,
+            @RequestHeader(value = "X-Service-Api-Key", required = false) String apiKey) {
+        ResponseEntity<?> authError = checkServiceApiKey(apiKey);
+        if (authError != null) return authError;
+
+        securityAlertService.applyExternalStatusUpdate(
+                localAlertId, request.getStatus(), request.getActorName(), request.getResolutionNotes());
+        return ResponseEntity.ok(Map.of("updated", true));
+    }
+
+    private ResponseEntity<?> checkServiceApiKey(String providedKey) {
+        if (crossSystemApiKey == null || crossSystemApiKey.isBlank()
+                || providedKey == null || !crossSystemApiKey.equals(providedKey)) {
+            log.warn("Rejected cross-system request: missing or invalid X-Service-Api-Key");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "Missing or invalid X-Service-Api-Key header"));
+        }
+        return null;
     }
 
     // ── Helper ────────────────────────────────────────────────────────────
