@@ -26,6 +26,7 @@ public class UserController {
     private final UserService userService;
 
      @GetMapping
+     @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
      public ResponseEntity<ApiResponse<Page<User>>> getAllUsers(Pageable pageable) {
          return ResponseEntity.ok(ApiResponse.success(userService.getAllUsers(pageable)));
      }
@@ -135,6 +136,13 @@ public class UserController {
     @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
     public ResponseEntity<ApiResponse<Page<User>>> getInactiveUsers(Pageable pageable) {
         return ResponseEntity.ok(ApiResponse.success(userService.getInactiveUsers(pageable)));
+    }
+
+    @PutMapping("/{id}/role")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    public ResponseEntity<ApiResponse<User>> assignRole(@PathVariable Long id, @RequestParam String role) {
+        User updatedUser = userService.assignRole(id, role);
+        return ResponseEntity.ok(ApiResponse.success(updatedUser, "Role updated successfully"));
     }
 
     @PutMapping("/{id}/activate")

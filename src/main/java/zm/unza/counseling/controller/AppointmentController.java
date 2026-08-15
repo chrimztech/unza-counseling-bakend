@@ -270,8 +270,12 @@ public class AppointmentController {
      * Check counselor availability
      * GET /appointments/availability
      */
+    // Public per SecurityConfig's "Public appointment endpoints" permitAll rule — lets an
+    // anonymous (pre-login) caller check slots before booking. hasAnyRole(...) here would
+    // 403 a truly unauthenticated request even though the filter chain already permits it,
+    // since Spring's anonymous principal carries no application role.
     @GetMapping("/availability")
-    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'STUDENT', 'CLIENT')")
+    @PreAuthorize("permitAll()")
     public ResponseEntity<ApiResponse<List<AvailabilitySlot>>> checkCounselorAvailability(
             @RequestParam Long counselorId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime dateTime) {
@@ -284,8 +288,11 @@ public class AppointmentController {
      * Get appointment statistics
      * GET /appointments/stats
      */
+    // Public per SecurityConfig's "Public appointment endpoints" permitAll rule (aggregate
+    // counts only, no PII). See note on checkCounselorAvailability above for why permitAll()
+    // is required here rather than a role check.
     @GetMapping("/stats")
-    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
+    @PreAuthorize("permitAll()")
     public ResponseEntity<ApiResponse<AppointmentStats>> getAppointmentStatistics() {
         return ResponseEntity.ok(ApiResponse.success(appointmentService.getAppointmentStatistics()));
     }

@@ -22,7 +22,7 @@ import java.util.NoSuchElementException;
 @RestController
 @RequestMapping("/crisis-alerts")
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyRole('ROLE_COUNSELOR','ROLE_ADMIN','ROLE_SUPER_ADMIN')")
+@PreAuthorize("hasAnyRole('COUNSELOR','ADMIN','SUPER_ADMIN')")
 public class CrisisAlertController {
 
     private final CrisisAlertRepository crisisAlertRepository;

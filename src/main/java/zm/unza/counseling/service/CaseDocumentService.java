@@ -22,7 +22,11 @@ public class CaseDocumentService {
 
     private final CaseDocumentRepository caseDocumentRepository;
     private final CaseRepository caseRepository;
-    private final String uploadDirectory = "uploads/case-documents/";
+    // Must be absolute: MultipartFile#transferTo() resolves a relative destination
+    // against the multipart temp storage location (e.g. Tomcat's work dir), not the
+    // application's working directory, so a relative path here would silently create
+    // directories in one place while transferTo() tries to write to a different one.
+    private final String uploadDirectory = Paths.get("uploads/case-documents/").toAbsolutePath().normalize() + "/";
 
     public CaseDocumentService(CaseDocumentRepository caseDocumentRepository, CaseRepository caseRepository) {
         this.caseDocumentRepository = caseDocumentRepository;

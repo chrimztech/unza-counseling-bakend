@@ -5,6 +5,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.security.access.expression.method.DefaultMethodSecurityExpressionHandler;
+import org.springframework.security.access.hierarchicalroles.RoleHierarchy;
+import org.springframework.security.access.hierarchicalroles.RoleHierarchyImpl;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -34,6 +37,27 @@ public class SecurityConfig {
     private final UserDetailsService userDetailsService;
     private final JwtAuthenticationEntryPoint unauthorizedHandler;
     private final CorsConfigurationSource corsConfigurationSource;
+
+    // Without an explicit hierarchy, Spring Security treats roles as flat: a
+    // @PreAuthorize("hasRole('ADMIN')") check only matches ROLE_ADMIN exactly, so
+    // a SUPER_ADMIN-only account (no separate ROLE_ADMIN grant) was silently
+    // locked out of every admin-only endpoint across the app. SUPER_ADMIN must
+    // imply everything ADMIN can do.
+    // Beans are static per Spring Security's guidance, so the role hierarchy is
+    // available before the rest of this @Configuration class is initialized.
+    @Bean
+    static RoleHierarchy roleHierarchy() {
+        RoleHierarchyImpl roleHierarchy = new RoleHierarchyImpl();
+        roleHierarchy.setHierarchy("ROLE_SUPER_ADMIN > ROLE_ADMIN");
+        return roleHierarchy;
+    }
+
+    @Bean
+    static DefaultMethodSecurityExpressionHandler methodSecurityExpressionHandler(RoleHierarchy roleHierarchy) {
+        DefaultMethodSecurityExpressionHandler expressionHandler = new DefaultMethodSecurityExpressionHandler();
+        expressionHandler.setRoleHierarchy(roleHierarchy);
+        return expressionHandler;
+    }
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -80,17 +104,20 @@ public class SecurityConfig {
                          "/appointments/availability"
                  ).permitAll()
 
-                 // 🔓 Public counselor availability (needed for anonymous appointment booking)
-                .requestMatchers(
-                        "/api/counselors/available",
-                        "/counselors/available",
-                        "/api/v1/counselors/available",
-                        "/v1/counselors/available",
-                        "/api/counselors/*/availability",
-                        "/counselors/*/availability",
-                        "/api/v1/counselors/*/availability",
-                        "/v1/counselors/*/availability"
-                ).permitAll()
+                 // 🔓 Public headline stats (login screen stat cards — no session yet)
+                 .requestMatchers(
+                         "/api/public/stats",
+                         "/public/stats"
+                 ).permitAll()
+
+                // NOTE: previously there was a "public counselor availability" permitAll rule
+                // here for "/counselors/available" and "/counselors/*/availability". Neither
+                // route exists in CounselorController (dead config) and no live frontend flow
+                // calls them (the reachable anonymous booking screen never checks per-counselor
+                // availability — it submits a preference and staff assign a counselor
+                // afterwards). Removed rather than implementing an endpoint nothing calls; see
+                // the "Public appointment endpoints" rule above for the availability check that
+                // IS actually used (/appointments/availability).
 
                 // 🔓 Swagger / documentation
                 .requestMatchers(
@@ -113,12 +140,16 @@ public class SecurityConfig {
                         "/api/ws/**"
                 ).permitAll()
 
-                // 🔓 Service-to-service SecurityAlert sync from the clinic system.
-                // Not user auth — protected instead by the X-Service-Api-Key header
-                // checked inside ClinicController (see app.cross-system.api-key).
+                // 🔓 Service-to-service webhooks from the clinic system (visit records and
+                // SecurityAlert sync). Not user auth — protected instead by the
+                // X-Service-Api-Key header checked inside ClinicController
+                // (see app.cross-system.api-key). Both webhooks now share the same
+                // auth mechanism so the external clinic system only needs one integration.
                 .requestMatchers(
                         "/clinic/security-alerts/inbound/**",
-                        "/api/clinic/security-alerts/inbound/**"
+                        "/api/clinic/security-alerts/inbound/**",
+                        "/clinic/visits/inbound",
+                        "/api/clinic/visits/inbound"
                 ).permitAll()
 
                 // 🔐 Everything else requires authentication

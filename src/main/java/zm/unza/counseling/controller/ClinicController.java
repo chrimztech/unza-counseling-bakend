@@ -131,17 +131,22 @@ public class ClinicController {
      * Inbound webhook — the university clinic system calls this endpoint to push
      * visit records into the counseling system automatically.
      *
-     * Security: protect this endpoint with an API key header in a real deployment.
-     * For now it shares the same ADMIN/COUNSELOR auth; the clinic system should
-     * have a dedicated service account.
+     * Service-to-service only, same pattern as the security-alerts inbound endpoints below:
+     * bypasses JWT auth entirely (see SecurityConfig permitAll matcher for
+     * "/clinic/visits/inbound") and is instead protected by the shared X-Service-Api-Key
+     * header. Previously this required an ADMIN/COUNSELOR JWT, which meant the external
+     * clinic system needed two different auth mechanisms for its two webhooks — now both
+     * use the same API key.
      */
     @PostMapping("/visits/inbound")
-    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
     @Operation(summary = "Inbound webhook for clinic system",
-               description = "The university clinic calls this endpoint to push visit records automatically. " +
-                             "In production, secure this with an API key or a dedicated service account.")
-    public ResponseEntity<ApiResponse<ClinicVisitResponse>> inboundVisit(
-            @Valid @RequestBody ClinicVisitRequest request) {
+               description = "Service-to-service only. Requires header X-Service-Api-Key.")
+    public ResponseEntity<?> inboundVisit(
+            @Valid @RequestBody ClinicVisitRequest request,
+            @RequestHeader(value = "X-Service-Api-Key", required = false) String apiKey) {
+        ResponseEntity<?> authError = checkServiceApiKey(apiKey);
+        if (authError != null) return authError;
+
         request.setRecordedBy("CLINIC_WEBHOOK");
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(clinicService.recordVisit(request), "Visit recorded via webhook"));

@@ -3,6 +3,7 @@ package zm.unza.counseling.service;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import zm.unza.counseling.entity.Counselor;
 import zm.unza.counseling.entity.Role;
@@ -43,7 +44,13 @@ public class CounselorIdentityService {
         return counselorRepository.findAll();
     }
 
-    @Transactional
+    // REQUIRES_NEW: this method is called from several read-only query paths
+    // (e.g. CaseService#getCasesByCounselor) to lazily provision a Counselor
+    // row for a user on first access. Joining the caller's read-only
+    // transaction would make the UPDATE below fail with "cannot execute
+    // UPDATE in a read-only transaction", so it always runs in its own,
+    // independently-committed writable transaction instead.
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public Counselor getOrCreateCounselor(Long userId) {
         return counselorRepository.findById(userId)
                 .orElseGet(() -> promoteUserToCounselor(userId));

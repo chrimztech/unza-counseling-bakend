@@ -15,13 +15,19 @@ import zm.unza.counseling.dto.response.CaseResponse;
 import zm.unza.counseling.dto.response.ClientResponse;
 import zm.unza.counseling.entity.Case;
 import zm.unza.counseling.entity.Client;
+import zm.unza.counseling.entity.Role;
 import zm.unza.counseling.entity.User;
 import zm.unza.counseling.exception.ResourceNotFoundException;
+import zm.unza.counseling.exception.ValidationException;
 import zm.unza.counseling.repository.ClientRepository;
+import zm.unza.counseling.repository.RoleRepository;
 import zm.unza.counseling.repository.UserRepository;
+import zm.unza.counseling.security.AuthenticationSource;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -35,6 +41,7 @@ public class ClientService {
     private final CaseService caseService;
     private final ClientIdentityService clientIdentityService;
     private final UserRepository userRepository;
+    private final RoleRepository roleRepository;
 
     public Client createClient(RegisterRequest request) {
         log.info("Creating new client: {}", request.getEmail());
@@ -61,11 +68,23 @@ public class ClientService {
     public ClientWithCaseResponse createClientWithCase(CreateClientRequest request) {
         log.info("Creating new client with case option: {}", request.getEmail());
 
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new ValidationException("A user with this email already exists");
+        }
+
         // Create the client
         Client client = new Client();
         client.setEmail(request.getEmail());
+        client.setUsername(request.getEmail());
         if (request.getPassword() != null && !request.getPassword().isEmpty()) {
             client.setPassword(passwordEncoder.encode(request.getPassword()));
+            client.setAuthenticationSource(AuthenticationSource.INTERNAL);
+        } else {
+            // No password collected at intake time — this client authenticates
+            // externally (SIS) once they have real login credentials, same
+            // convention as MultiSourceAuthService#provisionUser.
+            client.setPassword("EXTERNALLY_AUTHENTICATED");
+            client.setAuthenticationSource(AuthenticationSource.SIS);
         }
         client.setFirstName(request.getFirstName());
         client.setLastName(request.getLastName());
@@ -76,8 +95,14 @@ public class ClientService {
         client.setYearOfStudy(request.getYearOfStudy());
         client.setGpa(request.getGpa());
         client.setActive(true);
+        client.setEmailVerified(true);
         client.setClientStatus(Client.ClientStatus.ACTIVE);
         client.setRegistrationDate(LocalDateTime.now());
+
+        Set<Role> roles = new HashSet<>();
+        roleRepository.findByName(Role.ERole.ROLE_STUDENT).ifPresent(roles::add);
+        roleRepository.findByName(Role.ERole.ROLE_CLIENT).ifPresent(roles::add);
+        client.setRoles(roles);
 
         Client savedClient = clientRepository.save(client);
 

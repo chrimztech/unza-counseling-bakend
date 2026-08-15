@@ -138,15 +138,15 @@ END $$;
 
 DO $$
 BEGIN
-    IF EXISTS (SELECT 1 FROM information_schema.sequences WHERE sequence_name = 'user_id_seq') THEN
-        EXECUTE 'ALTER SEQUENCE user_id_seq RESTART WITH 1';
+    IF EXISTS (SELECT 1 FROM information_schema.sequences WHERE sequence_name = 'users_id_seq') THEN
+        EXECUTE 'ALTER SEQUENCE users_id_seq RESTART WITH 1';
     END IF;
 END $$;
 
 DO $$
 BEGIN
-    IF EXISTS (SELECT 1 FROM information_schema.sequences WHERE sequence_name = 'appointment_id_seq') THEN
-        EXECUTE 'ALTER SEQUENCE appointment_id_seq RESTART WITH 1';
+    IF EXISTS (SELECT 1 FROM information_schema.sequences WHERE sequence_name = 'appointments_id_seq') THEN
+        EXECUTE 'ALTER SEQUENCE appointments_id_seq RESTART WITH 1';
     END IF;
 END $$;
 
@@ -159,29 +159,29 @@ END $$;
 
 DO $$
 BEGIN
-    IF EXISTS (SELECT 1 FROM information_schema.sequences WHERE sequence_name = 'risk_assessment_id_seq') THEN
-        EXECUTE 'ALTER SEQUENCE risk_assessment_id_seq RESTART WITH 1';
+    IF EXISTS (SELECT 1 FROM information_schema.sequences WHERE sequence_name = 'risk_assessments_id_seq') THEN
+        EXECUTE 'ALTER SEQUENCE risk_assessments_id_seq RESTART WITH 1';
     END IF;
 END $$;
 
 DO $$
 BEGIN
-    IF EXISTS (SELECT 1 FROM information_schema.sequences WHERE sequence_name = 'self_assessment_id_seq') THEN
-        EXECUTE 'ALTER SEQUENCE self_assessment_id_seq RESTART WITH 1';
+    IF EXISTS (SELECT 1 FROM information_schema.sequences WHERE sequence_name = 'self_assessments_id_seq') THEN
+        EXECUTE 'ALTER SEQUENCE self_assessments_id_seq RESTART WITH 1';
     END IF;
 END $$;
 
 DO $$
 BEGIN
-    IF EXISTS (SELECT 1 FROM information_schema.sequences WHERE sequence_name = 'session_id_seq') THEN
-        EXECUTE 'ALTER SEQUENCE session_id_seq RESTART WITH 1';
+    IF EXISTS (SELECT 1 FROM information_schema.sequences WHERE sequence_name = 'sessions_id_seq') THEN
+        EXECUTE 'ALTER SEQUENCE sessions_id_seq RESTART WITH 1';
     END IF;
 END $$;
 
 DO $$
 BEGIN
-    IF EXISTS (SELECT 1 FROM information_schema.sequences WHERE sequence_name = 'session_note_id_seq') THEN
-        EXECUTE 'ALTER SEQUENCE session_note_id_seq RESTART WITH 1';
+    IF EXISTS (SELECT 1 FROM information_schema.sequences WHERE sequence_name = 'session_notes_id_seq') THEN
+        EXECUTE 'ALTER SEQUENCE session_notes_id_seq RESTART WITH 1';
     END IF;
 END $$;
 
@@ -201,15 +201,15 @@ END $$;
 
 DO $$
 BEGIN
-    IF EXISTS (SELECT 1 FROM information_schema.sequences WHERE sequence_name = 'message_id_seq') THEN
-        EXECUTE 'ALTER SEQUENCE message_id_seq RESTART WITH 1';
+    IF EXISTS (SELECT 1 FROM information_schema.sequences WHERE sequence_name = 'messages_id_seq') THEN
+        EXECUTE 'ALTER SEQUENCE messages_id_seq RESTART WITH 1';
     END IF;
 END $$;
 
 DO $$
 BEGIN
-    IF EXISTS (SELECT 1 FROM information_schema.sequences WHERE sequence_name = 'notification_id_seq') THEN
-        EXECUTE 'ALTER SEQUENCE notification_id_seq RESTART WITH 1';
+    IF EXISTS (SELECT 1 FROM information_schema.sequences WHERE sequence_name = 'notifications_id_seq') THEN
+        EXECUTE 'ALTER SEQUENCE notifications_id_seq RESTART WITH 1';
     END IF;
 END $$;
 
@@ -222,8 +222,8 @@ END $$;
 
 DO $$
 BEGIN
-    IF EXISTS (SELECT 1 FROM information_schema.sequences WHERE sequence_name = 'resource_id_seq') THEN
-        EXECUTE 'ALTER SEQUENCE resource_id_seq RESTART WITH 1';
+    IF EXISTS (SELECT 1 FROM information_schema.sequences WHERE sequence_name = 'resources_id_seq') THEN
+        EXECUTE 'ALTER SEQUENCE resources_id_seq RESTART WITH 1';
     END IF;
 END $$;
 
@@ -577,16 +577,16 @@ VALUES
     (3, 8, 5, '2026-01-08 12:00:00', 'HIGH', '{"exam_anxiety": "severe", "panic_attacks": "frequent", "sleep_deprivation": "severe"}', '{"intellectual_ability": "high", "family_support": "moderate"}', true, false, false, true, 85.00, 'UNZA Counseling Risk Assessment Tool', 'Student in acute distress with high risk of academic dropout. Immediate intervention required.', 'Intensive counseling (2x/week), psychiatric referral, academic accommodation request, daily check-ins', true, '2026-01-11', '2026-01-08 12:00:00', '2026-01-08 12:00:00');
 
 -- Reset sequences to avoid conflicts with auto-generated IDs
-ALTER SEQUENCE user_id_seq RESTART WITH 11;
+ALTER SEQUENCE users_id_seq RESTART WITH 11;
 ALTER SEQUENCE roles_id_seq RESTART WITH 6;
-ALTER SEQUENCE appointment_id_seq RESTART WITH 9;
-ALTER SEQUENCE session_id_seq RESTART WITH 5;
+ALTER SEQUENCE appointments_id_seq RESTART WITH 9;
+ALTER SEQUENCE sessions_id_seq RESTART WITH 5;
 ALTER SEQUENCE academic_performance_id_seq RESTART WITH 4;
-ALTER SEQUENCE risk_assessment_id_seq RESTART WITH 4;
-ALTER SEQUENCE self_assessment_id_seq RESTART WITH 6;
-ALTER SEQUENCE session_note_id_seq RESTART WITH 6;
+ALTER SEQUENCE risk_assessments_id_seq RESTART WITH 4;
+ALTER SEQUENCE self_assessments_id_seq RESTART WITH 6;
+ALTER SEQUENCE session_notes_id_seq RESTART WITH 6;
 ALTER SEQUENCE consent_form_id_seq RESTART WITH 3;
 ALTER SEQUENCE user_consent_id_seq RESTART WITH 7;
-ALTER SEQUENCE resource_id_seq RESTART WITH 4;
+ALTER SEQUENCE resources_id_seq RESTART WITH 4;
 
 

@@ -12,7 +12,8 @@ spring:
   main:
     allow-bean-definition-overriding: true
   datasource:
-    url: jdbc:postgresql://localhost:5432/unza_counseling_db
+    ##url: jdbc:postgresql://localhost:5432/unza_counseling_db
+    url: jdbc:postgresql://localhost:5433/unza_counseling_db
     username: postgres
     password: 11111111
     driver-class-name: org.postgresql.Driver
@@ -25,7 +26,7 @@ spring:
   
   jpa:
     hibernate:
-      ddl-auto: none
+      ddl-auto: update
     show-sql: true
     properties:
       hibernate:

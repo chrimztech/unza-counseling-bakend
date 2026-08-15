@@ -43,7 +43,7 @@ public class GoalController {
      * Get goal by ID
      */
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'CLIENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'CLIENT', 'STUDENT')")
     public ResponseEntity<ApiResponse<GoalResponse>> getGoalById(@PathVariable Long id) {
         log.info("Fetching goal with id: {}", id);
         return ResponseEntity.ok(ApiResponse.success(goalService.getGoalById(id)));
@@ -53,7 +53,7 @@ public class GoalController {
      * Get goals by client ID
      */
     @GetMapping("/client/{clientId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'CLIENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'CLIENT', 'STUDENT')")
     public ResponseEntity<ApiResponse<List<GoalResponse>>> getGoalsByClient(@PathVariable Long clientId) {
         log.info("Fetching goals for client: {}", clientId);
         return ResponseEntity.ok(ApiResponse.success(goalService.getGoalsByClient(clientId)));
@@ -63,7 +63,7 @@ public class GoalController {
      * Get goals by client ID with pagination
      */
     @GetMapping("/client/{clientId}/paginated")
-    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'CLIENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'CLIENT', 'STUDENT')")
     public ResponseEntity<ApiResponse<Page<GoalResponse>>> getGoalsByClientPaginated(
             @PathVariable Long clientId, Pageable pageable) {
         log.info("Fetching paginated goals for client: {}", clientId);
@@ -74,7 +74,7 @@ public class GoalController {
      * Get goals by client and status
      */
     @GetMapping("/client/{clientId}/status/{status}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'CLIENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'CLIENT', 'STUDENT')")
     public ResponseEntity<ApiResponse<List<GoalResponse>>> getGoalsByClientAndStatus(
             @PathVariable Long clientId,
             @PathVariable GoalStatus status) {
@@ -86,7 +86,7 @@ public class GoalController {
      * Get goals by client and category
      */
     @GetMapping("/client/{clientId}/category/{category}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'CLIENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'CLIENT', 'STUDENT')")
     public ResponseEntity<ApiResponse<List<GoalResponse>>> getGoalsByClientAndCategory(
             @PathVariable Long clientId,
             @PathVariable GoalCategory category) {
@@ -98,7 +98,7 @@ public class GoalController {
      * Create a new goal
      */
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'CLIENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'CLIENT', 'STUDENT')")
     public ResponseEntity<ApiResponse<GoalResponse>> createGoal(@Valid @RequestBody GoalRequest request) {
         log.info("Creating goal for client: {}", request.getClientId());
         return ResponseEntity.ok(ApiResponse.success(goalService.createGoal(request), "Goal created successfully"));
@@ -108,7 +108,7 @@ public class GoalController {
      * Update a goal
      */
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'CLIENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'CLIENT', 'STUDENT')")
     public ResponseEntity<ApiResponse<GoalResponse>> updateGoal(
             @PathVariable Long id,
             @Valid @RequestBody GoalRequest request) {
@@ -131,7 +131,7 @@ public class GoalController {
      * Update goal progress
      */
     @PutMapping("/{id}/progress")
-    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'CLIENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'CLIENT', 'STUDENT')")
     public ResponseEntity<ApiResponse<GoalResponse>> updateProgress(
             @PathVariable Long id,
             @RequestParam Integer currentValue) {
@@ -143,7 +143,7 @@ public class GoalController {
      * Update goal status
      */
     @PutMapping("/{id}/status")
-    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'CLIENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'CLIENT', 'STUDENT')")
     public ResponseEntity<ApiResponse<GoalResponse>> updateStatus(
             @PathVariable Long id,
             @RequestParam GoalStatus status) {
@@ -155,7 +155,7 @@ public class GoalController {
      * Get goal statistics for a client
      */
     @GetMapping("/client/{clientId}/stats")
-    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'CLIENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'CLIENT', 'STUDENT')")
     public ResponseEntity<ApiResponse<GoalStatsResponse>> getGoalStats(@PathVariable Long clientId) {
         log.info("Fetching goal statistics for client: {}", clientId);
         return ResponseEntity.ok(ApiResponse.success(goalService.getGoalStats(clientId)));

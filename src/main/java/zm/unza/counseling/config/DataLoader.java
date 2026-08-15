@@ -49,9 +49,10 @@ public class DataLoader {
             Role counselorRole = createRole("ROLE_COUNSELOR", "Licensed counselor providing counseling services");
             Role studentRole = createRole("ROLE_STUDENT", "Student seeking counseling services");
             Role clientRole = createRole("ROLE_CLIENT", "General client role for counseling services");
+            Role securityRole = createRole("ROLE_SECURITY", "University security staff reviewing sensitive-case alerts");
 
             // Save roles first
-            roleRepository.saveAll(Set.of(superAdminRole, adminRole, counselorRole, studentRole, clientRole));
+            roleRepository.saveAll(Set.of(superAdminRole, adminRole, counselorRole, studentRole, clientRole, securityRole));
 
             // Create users
             User superAdmin = createUser("superadmin@unza.zm", "superadmin@unza.zm", "System", "Administrator", "+260971234567", 
@@ -108,13 +109,18 @@ public class DataLoader {
                 User.Gender.FEMALE, LocalDateTime.of(2002, 5, 14, 0, 0), "Medicine", "Bachelor of Medicine", 1, 
                 true, true, Set.of(studentRole));
 
-            User student5 = createUser("student5@unza.zm", "student5@unza.zm", "Peter", "Chanda", "+260970123456", 
-                User.Gender.MALE, LocalDateTime.of(2000, 8, 19, 0, 0), "Business", "Bachelor of Business Administration", 3, 
+            User student5 = createUser("student5@unza.zm", "student5@unza.zm", "Peter", "Chanda", "+260970123456",
+                User.Gender.MALE, LocalDateTime.of(2000, 8, 19, 0, 0), "Business", "Bachelor of Business Administration", 3,
                 true, true, Set.of(studentRole));
 
+            User securityStaff = createUser("Unza Security", "security@unza.ac.zm", "UNZA", "Security Officer", "+2609********",
+                User.Gender.MALE, LocalDateTime.of(1985, 6, 1, 0, 0), "Campus Security", "Security Operations", 0,
+                true, true, Set.of(securityRole));
+            securityStaff.setHasSignedConsent(true);
+
             // Save all users
-            userRepository.saveAll(Set.of(superAdmin, admin, counselor1, counselor2, counselor3, 
-                student1, student2, student3, student4, student5));
+            userRepository.saveAll(Set.of(superAdmin, admin, counselor1, counselor2, counselor3,
+                student1, student2, student3, student4, student5, securityStaff));
 
             // Create appointments
             Appointment appointment1 = new Appointment();

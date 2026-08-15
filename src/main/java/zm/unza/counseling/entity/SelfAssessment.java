@@ -2,6 +2,8 @@ package zm.unza.counseling.entity;
 
 import jakarta.persistence.*;
 import lombok.Data;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.time.LocalDateTime;
 import java.util.Map;
 
@@ -16,6 +18,7 @@ public class SelfAssessment {
     private String title;
     private String description;
     
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "questions_json", columnDefinition = "jsonb")
     private String questionsJson;
 
@@ -25,6 +28,7 @@ public class SelfAssessment {
     @Column(name = "assessment_date")
     private LocalDateTime assessmentDate;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "responses_json", columnDefinition = "jsonb")
     private String responsesJson;
 

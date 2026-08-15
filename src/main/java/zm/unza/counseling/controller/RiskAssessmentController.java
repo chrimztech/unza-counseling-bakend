@@ -106,7 +106,7 @@ public class RiskAssessmentController {
     }
 
     @GetMapping("/client/{clientId}/latest")
-    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'CLIENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'CLIENT', 'STUDENT')")
     @Operation(summary = "Get latest risk assessment for client", description = "Retrieves the most recent risk assessment for a client")
     public ResponseEntity<ApiResponse<RiskAssessment>> getLatestRiskAssessmentForClient(@PathVariable Long clientId) {
         RiskAssessment assessment = riskAssessmentService.getLatestRiskAssessmentForClient(clientId);

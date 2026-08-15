@@ -34,6 +34,8 @@ import zm.unza.counseling.repository.MessageRepository;
 import zm.unza.counseling.repository.NotificationRepository;
 import zm.unza.counseling.repository.PersonalDataFormRepository;
 import zm.unza.counseling.repository.ReportRepository;
+import zm.unza.counseling.repository.RoleRepository;
+import zm.unza.counseling.security.AuthenticationSource;
 import zm.unza.counseling.repository.RiskAssessmentRepository;
 import zm.unza.counseling.repository.SelfAssessmentRepository;
 import zm.unza.counseling.repository.SessionRepository;
@@ -54,6 +56,7 @@ import java.util.stream.Collectors;
 public class UserService {
     
     private final UserRepository userRepository;
+    private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
     private final NotificationRepository notificationRepository;
     private final ChatMessageRepository chatMessageRepository;
@@ -108,12 +111,59 @@ public class UserService {
     }
 
     public User createUser(RegisterRequest request) {
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new ValidationException("A user with this email already exists");
+        }
+
         User user = new User();
         user.setEmail(request.getEmail());
+        user.setUsername(request.getEmail());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setFirstName(request.getFirstName());
         user.setLastName(request.getLastName());
+        user.setPhoneNumber(request.getPhoneNumber());
+        user.setStudentId(request.getStudentId());
         user.setActive(true);
+        user.setEmailVerified(true);
+        user.setAuthenticationSource(AuthenticationSource.INTERNAL);
+
+        java.util.Set<Role> roles = new java.util.HashSet<>();
+        Role.ERole roleEnum;
+        try {
+            roleEnum = request.getRole() != null
+                    ? Role.ERole.valueOf(request.getRole().startsWith("ROLE_") ? request.getRole() : "ROLE_" + request.getRole())
+                    : Role.ERole.ROLE_STUDENT;
+        } catch (IllegalArgumentException e) {
+            throw new ValidationException("Invalid role specified: " + request.getRole());
+        }
+        Role role = roleRepository.findByName(roleEnum)
+                .orElseThrow(() -> new ValidationException("Role not found: " + roleEnum));
+        roles.add(role);
+
+        user.setRoles(roles);
+        return userRepository.save(user);
+    }
+
+    @Transactional
+    public User assignRole(Long id, String roleName) {
+        User user = getUserById(id);
+
+        Role.ERole roleEnum;
+        try {
+            roleEnum = Role.ERole.valueOf(roleName.startsWith("ROLE_") ? roleName : "ROLE_" + roleName);
+        } catch (IllegalArgumentException e) {
+            throw new ValidationException("Invalid role specified: " + roleName);
+        }
+        Role newRole = roleRepository.findByName(roleEnum)
+                .orElseThrow(() -> new ValidationException("Role not found: " + roleEnum));
+
+        // Changing away from ADMIN/SUPER_ADMIN must not leave the system with no
+        // active administrator, same guard used for deactivation/deletion.
+        if (!roleEnum.name().equals("ROLE_ADMIN") && !roleEnum.name().equals("ROLE_SUPER_ADMIN")) {
+            guardAgainstRemovingLastAdministrator(user);
+        }
+
+        user.setRoles(new java.util.HashSet<>(java.util.Set.of(newRole)));
         return userRepository.save(user);
     }
 

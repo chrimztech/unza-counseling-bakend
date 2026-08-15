@@ -35,6 +35,7 @@ public class ClientController {
      * This endpoint is used by the frontend PersonalDataForm component
      */
     @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
     @Operation(summary = "Create a new client with optional case creation")
     public ResponseEntity<ClientService.ClientWithCaseResponse> createClient(
             @Valid @RequestBody CreateClientRequest request) {
@@ -43,6 +44,7 @@ public class ClientController {
     }
     
      @GetMapping
+     @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
      public ResponseEntity<ApiResponse<Page<ClientResponse>>> getAllClients(
              @RequestParam(defaultValue = "0") int page,
              @RequestParam(defaultValue = "10") int size,

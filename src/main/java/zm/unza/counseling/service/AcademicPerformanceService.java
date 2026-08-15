@@ -193,13 +193,44 @@ public class AcademicPerformanceService {
     }
 
     private AcademicPerformanceResponse mapEntityToResponse(AcademicPerformance entity) {
+        BigDecimal completionRate = (entity.getTotalCredits() != null && entity.getTotalCredits() > 0 && entity.getCreditsCompleted() != null)
+                ? BigDecimal.valueOf(entity.getCreditsCompleted())
+                        .divide(BigDecimal.valueOf(entity.getTotalCredits()), 4, java.math.RoundingMode.HALF_UP)
+                        .multiply(BigDecimal.valueOf(100))
+                : null;
+        BigDecimal assignmentCompletionRate = (entity.getAssignmentsTotal() != null && entity.getAssignmentsTotal() > 0 && entity.getAssignmentsCompleted() != null)
+                ? BigDecimal.valueOf(entity.getAssignmentsCompleted())
+                        .divide(BigDecimal.valueOf(entity.getAssignmentsTotal()), 4, java.math.RoundingMode.HALF_UP)
+                        .multiply(BigDecimal.valueOf(100))
+                : null;
+
         return AcademicPerformanceResponse.builder()
                 .id(entity.getId())
                 .clientId(entity.getClient().getId())
                 .clientName(entity.getClient().getFirstName() + " " + entity.getClient().getLastName())
+                .studentNumber(entity.getClient().getStudentId())
+                .academicYear(entity.getAcademicYear())
+                .semester(entity.getSemester())
                 .gpa(entity.getGpa())
+                .totalCredits(entity.getTotalCredits())
+                .creditsCompleted(entity.getCreditsCompleted())
+                .creditsFailed(entity.getCreditsFailed())
+                .attendanceRate(entity.getAttendanceRate())
+                .assignmentsCompleted(entity.getAssignmentsCompleted())
+                .assignmentsTotal(entity.getAssignmentsTotal())
                 .academicStanding(entity.getAcademicStanding())
+                .coursesDropped(entity.getCoursesDropped())
+                .coursesWithdrawn(entity.getCoursesWithdrawn())
+                .studyProgram(entity.getStudyProgram())
+                .yearOfStudy(entity.getYearOfStudy())
+                .faculty(entity.getFaculty())
+                .department(entity.getDepartment())
                 .recordDate(entity.getRecordDate())
+                .notes(entity.getNotes())
+                .completionRate(completionRate)
+                .assignmentCompletionRate(assignmentCompletionRate)
+                .createdAt(entity.getCreatedAt())
+                .updatedAt(entity.getUpdatedAt())
                 .build();
     }
 

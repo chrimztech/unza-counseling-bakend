@@ -253,8 +253,10 @@ public class GoalServiceImpl implements GoalService {
      * Map Goal entity to GoalResponse DTO
      */
     private GoalResponse mapToResponse(Goal goal) {
-        String clientName = null;
-        
+        String clientName = clientRepository.findById(goal.getClientId())
+                .map(c -> (c.getFirstName() + " " + c.getLastName()).trim())
+                .orElse(null);
+
         return GoalResponse.builder()
                 .id(goal.getId())
                 .clientId(goal.getClientId())

@@ -3,6 +3,7 @@ package zm.unza.counseling.controller;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import zm.unza.counseling.dto.request.ConsentFormRequest;
 import zm.unza.counseling.dto.request.SignConsentRequest;
@@ -22,7 +23,6 @@ import java.util.Optional;
 @RestController
 @RequestMapping({"/api/v1/consent", "/api/consent", "/v1/consent", "/consent"})
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 public class ConsentFormController {
 
     private final ConsentFormService consentFormService;
@@ -32,6 +32,7 @@ public class ConsentFormController {
      * Create a new consent form
      */
     @PostMapping("/forms")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
     public ResponseEntity<ConsentFormResponse> createConsentForm(@RequestBody ConsentFormRequest request) {
         ConsentFormResponse response = consentFormService.createConsentForm(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
@@ -41,6 +42,7 @@ public class ConsentFormController {
      * Update an existing consent form
      */
     @PutMapping("/forms/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
     public ResponseEntity<ConsentFormResponse> updateConsentForm(@PathVariable Long id, @RequestBody ConsentFormRequest request) {
         ConsentFormResponse response = consentFormService.updateConsentForm(id, request);
         return ResponseEntity.ok(response);
@@ -50,6 +52,7 @@ public class ConsentFormController {
      * Get consent form by ID
      */
     @GetMapping("/forms/{id}")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ConsentFormResponse> getConsentForm(@PathVariable Long id) {
         ConsentFormResponse response = consentFormService.getConsentForm(id);
         return ResponseEntity.ok(response);
@@ -59,6 +62,7 @@ public class ConsentFormController {
      * Get all consent forms
      */
     @GetMapping("/forms")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
     public ResponseEntity<List<ConsentFormResponse>> getAllConsentForms() {
         List<ConsentFormResponse> responses = consentFormService.getAllConsentForms();
         return ResponseEntity.ok(responses);
@@ -68,6 +72,7 @@ public class ConsentFormController {
      * Get active consent forms
      */
     @GetMapping("/forms/active")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<ConsentFormResponse>> getActiveConsentForms() {
         List<ConsentFormResponse> responses = consentFormService.getActiveConsentForms();
         return ResponseEntity.ok(responses);
@@ -77,6 +82,7 @@ public class ConsentFormController {
      * Get the latest active consent form
      */
     @GetMapping("/forms/latest")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ConsentFormResponse> getLatestActiveConsentForm() {
         Optional<ConsentFormResponse> response = consentFormService.getLatestActiveConsentForm();
         return response.map(ResponseEntity::ok)
@@ -87,6 +93,7 @@ public class ConsentFormController {
      * Sign a consent form
      */
     @PostMapping("/sign")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<UserConsentResponse> signConsentForm(@RequestBody SignConsentRequest request, Principal principal) {
         String email = principal.getName();
         User user = userRepository.findByEmail(email)
@@ -101,6 +108,7 @@ public class ConsentFormController {
      * Check if user has signed the latest active consent form
      */
     @GetMapping("/check-signed")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Boolean> hasUserSignedLatestConsent(Principal principal) {
         // If no authentication, return false (user needs to sign consent)
         if (principal == null) {
@@ -126,6 +134,7 @@ public class ConsentFormController {
      * Get user's consent history
      */
     @GetMapping("/history")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<UserConsentResponse>> getUserConsentHistory(Principal principal) {
         String email = principal.getName();
         User user = userRepository.findByEmail(email)
@@ -140,6 +149,7 @@ public class ConsentFormController {
      * Get consent statistics
      */
     @GetMapping("/statistics")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
     public ResponseEntity<ConsentFormService.ConsentStatistics> getConsentStatistics() {
         ConsentFormService.ConsentStatistics statistics = consentFormService.getConsentStatistics();
         return ResponseEntity.ok(statistics);
@@ -149,6 +159,7 @@ public class ConsentFormController {
      * Delete a consent form
      */
     @DeleteMapping("/forms/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
     public ResponseEntity<Void> deleteConsentForm(@PathVariable Long id) {
         consentFormService.deleteConsentForm(id);
         return ResponseEntity.noContent().build();
@@ -158,6 +169,7 @@ public class ConsentFormController {
      * Activate a consent form
      */
     @PostMapping("/forms/{id}/activate")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
     public ResponseEntity<Void> activateConsentForm(@PathVariable Long id) {
         consentFormService.activateConsentForm(id);
         return ResponseEntity.ok().build();
@@ -167,6 +179,7 @@ public class ConsentFormController {
      * Deactivate a consent form
      */
     @PostMapping("/forms/{id}/deactivate")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
     public ResponseEntity<Void> deactivateConsentForm(@PathVariable Long id) {
         consentFormService.deactivateConsentForm(id);
         return ResponseEntity.ok().build();

@@ -49,7 +49,7 @@ public class SessionController {
     }
 
     @GetMapping("/client/{clientId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'CLIENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'CLIENT', 'STUDENT')")
     public ResponseEntity<ApiResponse<Page<SessionDto>>> getSessionsByClient(@PathVariable Long clientId, Pageable pageable) {
         return ResponseEntity.ok(ApiResponse.success(sessionService.getSessionsByClient(clientId, pageable)));
     }

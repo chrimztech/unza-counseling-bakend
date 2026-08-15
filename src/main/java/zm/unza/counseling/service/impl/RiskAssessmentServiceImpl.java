@@ -1,15 +1,23 @@
 package zm.unza.counseling.service.impl;
 
 import zm.unza.counseling.dto.request.RiskAssessmentRequest;
+import zm.unza.counseling.entity.Client;
 import zm.unza.counseling.entity.RiskAssessment;
+import zm.unza.counseling.entity.User;
+import zm.unza.counseling.exception.ResourceNotFoundException;
+import zm.unza.counseling.repository.ClientRepository;
 import zm.unza.counseling.repository.RiskAssessmentRepository;
+import zm.unza.counseling.repository.UserRepository;
 import zm.unza.counseling.service.RiskAssessmentService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -22,6 +30,12 @@ public class RiskAssessmentServiceImpl implements RiskAssessmentService {
     @Autowired
     private RiskAssessmentRepository riskAssessmentRepository;
 
+    @Autowired
+    private ClientRepository clientRepository;
+
+    @Autowired
+    private UserRepository userRepository;
+
     @Override
     public Page<RiskAssessment> getAllRiskAssessments(Pageable pageable) {
         return riskAssessmentRepository.findAll(pageable);
@@ -33,18 +47,40 @@ public class RiskAssessmentServiceImpl implements RiskAssessmentService {
                 .orElseThrow(() -> new RuntimeException("Risk assessment not found with id: " + id));
     }
 
+    private Long resolveCurrentUserId() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated()) {
+            return null;
+        }
+        return userRepository.findByEmail(auth.getName())
+                .or(() -> userRepository.findByUsername(auth.getName()))
+                .map(User::getId)
+                .orElse(null);
+    }
+
     @Override
     public RiskAssessment createRiskAssessment(RiskAssessmentRequest request) {
+        Client client = clientRepository.findById(request.getClientId())
+                .orElseThrow(() -> new ResourceNotFoundException("Client not found with id: " + request.getClientId()));
+
         RiskAssessment riskAssessment = new RiskAssessment();
+        riskAssessment.setClient(client);
         riskAssessment.setRiskScore(request.getRiskScore());
         riskAssessment.setRiskLevel(request.getRiskLevel());
         riskAssessment.setNotes(request.getNotes());
+        riskAssessment.setAssessmentDate(LocalDateTime.now());
+        riskAssessment.setAssessorId(resolveCurrentUserId());
         return riskAssessmentRepository.save(riskAssessment);
     }
 
     @Override
     public RiskAssessment updateRiskAssessment(Long id, RiskAssessmentRequest request) {
         RiskAssessment existing = getRiskAssessmentById(id);
+        if (request.getClientId() != null) {
+            Client client = clientRepository.findById(request.getClientId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Client not found with id: " + request.getClientId()));
+            existing.setClient(client);
+        }
         existing.setRiskScore(request.getRiskScore());
         existing.setRiskLevel(request.getRiskLevel());
         existing.setNotes(request.getNotes());

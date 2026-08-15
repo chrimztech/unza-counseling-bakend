@@ -50,12 +50,13 @@ public class FeedbackController {
     }
 
     /**
-     * Get user's own feedback
+     * Get user's own feedback. The user id is derived from the authenticated principal
+     * (not trusted from a request param) so a caller can only ever see their own feedback.
      */
     @GetMapping("/my")
-    public ResponseEntity<ApiResponse<List<UserFeedback>>> getMyFeedback(
-            @RequestParam Long userId) {
-        
+    public ResponseEntity<ApiResponse<List<UserFeedback>>> getMyFeedback(Authentication authentication) {
+
+        Long userId = resolveUserId(null, null, authentication);
         List<UserFeedback> feedback = feedbackRepository.findByUserIdOrderByCreatedAtDesc(userId);
         return ResponseEntity.ok(ApiResponse.success(feedback));
     }

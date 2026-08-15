@@ -206,4 +206,11 @@ public class MentalHealthAcademicAnalysisService {
         return repository.findById(id).orElse(null);
     }
 
+    @Transactional
+    public void deleteAnalysis(Long id) {
+        MentalHealthAcademicAnalysis analysis = repository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Analysis not found: " + id));
+        repository.delete(analysis);
+    }
+
 }

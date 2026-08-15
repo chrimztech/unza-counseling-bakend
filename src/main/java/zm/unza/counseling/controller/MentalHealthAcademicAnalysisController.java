@@ -57,7 +57,7 @@ public class MentalHealthAcademicAnalysisController {
     }
 
     @GetMapping("/client/{clientId}/latest")
-    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'CLIENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'CLIENT', 'STUDENT')")
     public ResponseEntity<ApiResponse<MentalHealthAcademicAnalysisResponse>> getLatestAnalysisForClient(@PathVariable Long clientId) {
         MentalHealthAcademicAnalysis analysis = service.getLatestAnalysisForClient(clientId);
         if (analysis == null) {
@@ -107,7 +107,7 @@ public class MentalHealthAcademicAnalysisController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'CLIENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'CLIENT', 'STUDENT')")
     public ResponseEntity<ApiResponse<MentalHealthAcademicAnalysisResponse>> getAnalysisById(@PathVariable Long id) {
         MentalHealthAcademicAnalysis analysis = service.getAnalysisById(id);
         if (analysis == null) {
@@ -120,7 +120,7 @@ public class MentalHealthAcademicAnalysisController {
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> deleteAnalysis(@PathVariable Long id) {
-        service.getAnalysisById(id);
+        service.deleteAnalysis(id);
         return ResponseEntity.ok(ApiResponse.success(null));
     }
 

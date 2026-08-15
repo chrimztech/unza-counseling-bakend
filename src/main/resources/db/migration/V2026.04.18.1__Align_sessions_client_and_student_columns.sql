@@ -14,12 +14,22 @@ WHERE s.appointment_id = a.id
   AND a.client_id IS NOT NULL;
 
 -- Backfill from student_id when the legacy clients row shares the same identifier.
-UPDATE sessions AS s
-SET client_id = s.student_id
-WHERE s.client_id IS NULL
-  AND s.student_id IS NOT NULL
-  AND EXISTS (
-      SELECT 1
-      FROM clients AS c
-      WHERE c.id = s.student_id
-  );
+-- Guarded: student_id is a Hibernate-managed column (ddl-auto=update) that is added
+-- AFTER Flyway runs on a fresh database, so it does not exist yet at this point here.
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'sessions' AND column_name = 'student_id'
+    ) THEN
+        UPDATE sessions AS s
+        SET client_id = s.student_id
+        WHERE s.client_id IS NULL
+          AND s.student_id IS NOT NULL
+          AND EXISTS (
+              SELECT 1
+              FROM clients AS c
+              WHERE c.id = s.student_id
+          );
+    END IF;
+END $$;

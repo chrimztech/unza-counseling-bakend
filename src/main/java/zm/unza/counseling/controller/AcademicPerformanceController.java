@@ -48,7 +48,7 @@ public class AcademicPerformanceController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'CLIENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'CLIENT', 'STUDENT')")
     @Operation(summary = "Get academic performance by ID", description = "Retrieves a specific academic performance record")
     public ResponseEntity<ApiResponse<AcademicPerformanceResponse>> getById(@PathVariable Long id) {
         AcademicPerformanceResponse response = academicPerformanceService.getById(id);
@@ -56,7 +56,7 @@ public class AcademicPerformanceController {
     }
 
     @GetMapping("/client/{clientId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'CLIENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'CLIENT', 'STUDENT')")
     @Operation(summary = "Get all records for a client", description = "Retrieves all academic performance records for a specific client")
     public ResponseEntity<ApiResponse<List<AcademicPerformanceResponse>>> getByClientId(@PathVariable Long clientId) {
         List<AcademicPerformanceResponse> response = academicPerformanceService.getByClientId(clientId);
@@ -64,7 +64,7 @@ public class AcademicPerformanceController {
     }
 
     @GetMapping("/client/{clientId}/paginated")
-    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'CLIENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'CLIENT', 'STUDENT')")
     @Operation(summary = "Get paginated records for a client", description = "Retrieves paginated academic performance records")
     public ResponseEntity<ApiResponse<Page<AcademicPerformanceResponse>>> getByClientIdPaginated(
             @PathVariable Long clientId, Pageable pageable) {
@@ -73,7 +73,7 @@ public class AcademicPerformanceController {
     }
 
     @GetMapping("/client/{clientId}/latest")
-    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'CLIENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'CLIENT', 'STUDENT')")
     @Operation(summary = "Get latest record for a client", description = "Retrieves the most recent academic performance record")
     public ResponseEntity<ApiResponse<AcademicPerformanceResponse>> getLatestForClient(@PathVariable Long clientId) {
         AcademicPerformanceResponse response = academicPerformanceService.getLatestForClient(clientId);
@@ -81,7 +81,7 @@ public class AcademicPerformanceController {
     }
 
     @GetMapping("/client/{clientId}/summary")
-    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'CLIENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'CLIENT', 'STUDENT')")
     @Operation(summary = "Get client summary", description = "Retrieves an academic performance summary for a client")
     public ResponseEntity<ApiResponse<AcademicPerformanceSummary>> getClientSummary(@PathVariable Long clientId) {
         AcademicPerformanceSummary response = academicPerformanceService.getClientSummary(clientId);
@@ -89,7 +89,7 @@ public class AcademicPerformanceController {
     }
 
     @GetMapping("/client/{clientId}/gpa-trend")
-    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'CLIENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'CLIENT', 'STUDENT')")
     @Operation(summary = "Get GPA trend", description = "Retrieves GPA trend data for a client")
     public ResponseEntity<ApiResponse<List<GpaTrendData>>> getGpaTrend(@PathVariable Long clientId) {
         List<GpaTrendData> response = academicPerformanceService.getGpaTrend(clientId);
@@ -157,7 +157,7 @@ public class AcademicPerformanceController {
     // ============ SIS Results Sync Endpoints ============
 
     @PostMapping("/sync/sis")
-    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'CLIENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'CLIENT', 'STUDENT')")
     @Operation(summary = "Sync results from SIS", description = "Fetches and syncs academic results from the external SIS API")
     public ResponseEntity<ApiResponse<SyncResultsResponse>> syncSisResults(
             @RequestParam String studentId,
@@ -173,7 +173,7 @@ public class AcademicPerformanceController {
     }
 
     @PostMapping("/client/{clientId}/sync/sis")
-    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'CLIENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'CLIENT', 'STUDENT')")
     @Operation(summary = "Sync results for client from SIS", description = "Fetches and syncs academic results for a specific client from the external SIS API")
     public ResponseEntity<ApiResponse<SyncResultsResponse>> syncClientSisResults(
             @PathVariable Long clientId,
@@ -192,7 +192,7 @@ public class AcademicPerformanceController {
     }
 
     @GetMapping("/client/{clientId}/cached/sis")
-    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'CLIENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'CLIENT', 'STUDENT')")
     @Operation(summary = "Get cached SIS results", description = "Retrieves cached academic results for a client")
     public ResponseEntity<ApiResponse<SyncResultsResponse>> getCachedSisResults(@PathVariable Long clientId) {
         SyncResultsResponse response = sisResultsService.getCachedResults(clientId);
