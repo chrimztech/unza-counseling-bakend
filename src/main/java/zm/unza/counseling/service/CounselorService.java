@@ -32,7 +32,13 @@ public class CounselorService {
     private final CounselorIdentityService counselorIdentityService;
 
     public List<Counselor> getAllCounselors() {
-        return counselorIdentityService.getAllCounselors();
+        // Sync first: a user can gain ROLE_COUNSELOR via role assignment (UserController)
+        // without ever going through POST /counselors, which leaves them with the right
+        // role but the wrong single-table discriminator (user_type='USER' instead of
+        // 'COUNSELOR') until something individually promotes them. Without this sync step
+        // such counselors are invisible here even though they function as counselors
+        // everywhere else in the app.
+        return counselorIdentityService.syncAndGetAllCounselors();
     }
 
     public Counselor getCounselorById(Long id) {
