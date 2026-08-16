@@ -254,6 +254,13 @@ public class MultiSourceAuthService {
             System.out.println("Identifier: " + request.getIdentifier());
 
             String instanceHint = request.getInstance();
+            if (instanceHint == null || instanceHint.trim().isEmpty()) {
+                // Reuse the instance (ug/pg/gsb/ide/zou/ecampus) from a prior successful
+                // login instead of brute-forcing all six instances again.
+                instanceHint = userRepository.findByStudentId(request.getIdentifier())
+                        .map(User::getSisInstance)
+                        .orElse(null);
+            }
             ExternalAuthResponse externalResponse = sisAuthenticationService.authenticate(request.getIdentifier(), request.getPassword(), instanceHint);
 
             System.out.println("SIS Response - Authenticated: " + externalResponse.isAuthenticated());
@@ -478,6 +485,10 @@ public class MultiSourceAuthService {
         if (safeTrim(externalUser.getSisToken()) != null) {
             userToSave.setSisToken(externalUser.getSisToken());
             userToSave.setSisTokenType(externalUser.getSisTokenType());
+        }
+
+        if (safeTrim(externalUser.getSisInstance()) != null) {
+            userToSave.setSisInstance(externalUser.getSisInstance());
         }
 
         userToSave.setAuthenticationSource(externalUser.getAuthenticationSource());

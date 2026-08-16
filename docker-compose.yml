@@ -67,6 +67,10 @@ services:
       MAIL_PORT: 587
       MAIL_USERNAME: ${MAIL_USERNAME:-your-email@unza.zm}
       MAIL_PASSWORD: ${MAIL_PASSWORD:-your-app-password}
+
+      # SIS Configuration - static bearer token for devoap.unza.zm student login gateway.
+      # Set SIS_API_TOKEN in a local .env file (never commit the real value).
+      SIS_API_TOKEN: ${SIS_API_TOKEN:-}
       
       # Application Configuration
       APP_ENVIRONMENT: development

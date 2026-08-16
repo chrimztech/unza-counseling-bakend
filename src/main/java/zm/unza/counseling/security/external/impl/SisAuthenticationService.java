@@ -37,6 +37,14 @@ public class SisAuthenticationService implements ExternalAuthenticationService {
     @Value("${app.sis.api.loginEndpoint:/api/v1/students/login}")
     private String loginEndpoint;
 
+    // The gateway requires a static bearer token identifying the CALLING SYSTEM
+    // (separate from the student's own username/password in the request body) —
+    // without it every request is rejected before the credentials are even
+    // checked. Intentionally has no default and is never committed: set it via
+    // the SIS_API_TOKEN environment variable in each environment's own secrets.
+    @Value("${SIS_API_TOKEN:}")
+    private String sisApiToken;
+
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
 
@@ -88,7 +96,10 @@ public class SisAuthenticationService implements ExternalAuthenticationService {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.set("Accept", "application/json");
-        
+        if (sisApiToken != null && !sisApiToken.isBlank()) {
+            headers.set("Authorization", "Bearer " + sisApiToken);
+        }
+
         Map<String, String> request = new HashMap<>();
         request.put("username", username);
         request.put("password", password);
@@ -233,6 +244,7 @@ public class SisAuthenticationService implements ExternalAuthenticationService {
                         
                         User user = mapSisUserData(userNode, dataNode, username, email, firstName, lastName, studentId);
                         applySisToken(user, dataNode);
+                        user.setSisInstance(instance);
 
                         return new ExternalAuthResponse(true, "Authentication successful", user,
                                                       studentId != null ? studentId : username, "SIS_" + instance.toUpperCase());
@@ -349,6 +361,7 @@ public class SisAuthenticationService implements ExternalAuthenticationService {
                         
                         User user = mapSisUserData(userNode, dataNode, username, email, firstName, lastName, computerNo);
                         applySisToken(user, dataNode);
+                        user.setSisInstance(instance);
 
                         return new ExternalAuthResponse(true, "Authentication successful", user,
                                                       computerNo, "SIS_" + instance.toUpperCase());

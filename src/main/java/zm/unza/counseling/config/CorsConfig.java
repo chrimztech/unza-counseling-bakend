@@ -19,6 +19,7 @@ public class CorsConfig {
         config.addAllowedOrigin("http://localhost:3000");
         config.addAllowedOrigin("http://localhost:8081");
         config.addAllowedOrigin("http://localhost:4200");
+        config.addAllowedOrigin("http://localhost:5000"); // Flutter web dev server
         
         config.addAllowedMethod("*");
         config.addAllowedHeader("*");

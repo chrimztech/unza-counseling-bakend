@@ -7,8 +7,8 @@ spring:
       production: production,security,monitoring,cache
   
   datasource:
-    #url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/unza_counseling_db}
-    url: ${DATABASE_URL:jdbc:postgresql://localhost:5433/unza_counseling_db}
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/unza_counseling_db}
+    #url: ${DATABASE_URL:jdbc:postgresql://localhost:5433/unza_counseling_db}
     username: ${DATABASE_USERNAME:postgres}
     password: ${DATABASE_PASSWORD:11111111}
     driver-class-name: org.postgresql.Driver
@@ -212,8 +212,8 @@ springdoc:
     description: ${OPENAPI_DESCRIPTION:Production API for UNZA Counseling Management System}
     version: ${OPENAPI_VERSION:1.0.0}
     contact:
-      name: ${OPENAPI_CONTACT_NAME:UNZA IT Department}
-      email: ${OPENAPI_CONTACT_EMAIL:it@unza.zm}
+      name: ${OPENAPI_CONTACT_NAME:CICT}
+      email: ${OPENAPI_CONTACT_EMAIL:chrishent.mutondo@unza.ac.zm}
     license:
       name: ${OPENAPI_LICENSE_NAME:UNZA License}
       url: ${OPENAPI_LICENSE_URL:https://unza.zm}

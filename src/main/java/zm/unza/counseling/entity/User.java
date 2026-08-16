@@ -177,6 +177,11 @@ public class User implements UserDetails {
     @Column(name = "sis_token_type")
     private String sisTokenType;
 
+    // Which SIS population this student authenticated against (ug, pg, gsb, ide, zou, ecampus).
+    // Cached from a successful login so future logins can skip brute-forcing every instance.
+    @Column(name = "sis_instance")
+    private String sisInstance;
+
     // Default constructor
     public User() {}
 
@@ -336,6 +341,9 @@ public class User implements UserDetails {
 
     public String getSisTokenType() { return sisTokenType; }
     public void setSisTokenType(String sisTokenType) { this.sisTokenType = sisTokenType; }
+
+    public String getSisInstance() { return sisInstance; }
+    public void setSisInstance(String sisInstance) { this.sisInstance = sisInstance; }
 
     // Helper methods
     public String getFullName() {
