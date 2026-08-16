@@ -204,8 +204,12 @@ public class ScholarshipController {
 
     private Long resolveUserId(UserDetails userDetails) {
         if (userDetails instanceof User u) return u.getId();
+        // UserDetailsServiceImpl sets the security principal's "username" to the
+        // user's email, not the DB `username` column — those two can differ (e.g.
+        // legacy seeded accounts), so email must be tried too, not just username.
         return userRepository.findByUsername(userDetails.getUsername())
+                .or(() -> userRepository.findByEmail(userDetails.getUsername()))
                 .map(User::getId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new RuntimeException("User not found: " + userDetails.getUsername()));
     }
 }

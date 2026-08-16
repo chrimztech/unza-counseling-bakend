@@ -5,6 +5,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import zm.unza.counseling.dto.request.CreateAdminRequest;
+import zm.unza.counseling.dto.request.UpdateAdminRequest;
 import zm.unza.counseling.entity.Admin;
 import zm.unza.counseling.entity.Role;
 import zm.unza.counseling.entity.User;
@@ -32,6 +33,10 @@ public class AdminService {
 
     public List<Admin> getAllAdmins() {
         return adminIdentityService.getAllAdmins();
+    }
+
+    public Admin getAdminById(Long id) {
+        return adminIdentityService.getOrCreateAdmin(id);
     }
 
     @Transactional
@@ -74,6 +79,44 @@ public class AdminService {
             ));
         }
         admin.setRoles(roles);
+
+        return adminRepository.save(admin);
+    }
+
+    // Note: intentionally does not touch `roles` (e.g. granting/revoking
+    // ROLE_SUPER_ADMIN) — that's security-sensitive and already has a
+    // dedicated, SUPER_ADMIN-only endpoint (UserController#assignRole).
+    // This only updates the admin's profile fields.
+    @Transactional
+    public Admin updateAdmin(Long id, UpdateAdminRequest request) {
+        Admin admin = adminIdentityService.getOrCreateAdmin(id);
+
+        if (request.getEmail() != null && !request.getEmail().trim().isEmpty()) {
+            String email = request.getEmail().trim();
+            if (!email.equalsIgnoreCase(admin.getEmail())) {
+                if (userRepository.existsByEmail(email)) {
+                    throw new ValidationException("A user with this email already exists");
+                }
+                admin.setEmail(email);
+                admin.setUsername(email);
+            }
+        }
+        if (request.getFirstName() != null && !request.getFirstName().trim().isEmpty()) {
+            admin.setFirstName(request.getFirstName().trim());
+        }
+        if (request.getLastName() != null && !request.getLastName().trim().isEmpty()) {
+            admin.setLastName(request.getLastName().trim());
+        }
+        if (request.getPhoneNumber() != null) {
+            admin.setPhoneNumber(trimToNull(request.getPhoneNumber()));
+        }
+        if (request.getAdminLevel() != null) {
+            admin.setAdminLevel(normalizeAdminLevel(request.getAdminLevel()));
+        }
+        if (request.getDepartmentManaged() != null) {
+            admin.setDepartmentManaged(trimToNull(request.getDepartmentManaged()));
+        }
+        admin.setUpdatedAt(LocalDateTime.now());
 
         return adminRepository.save(admin);
     }

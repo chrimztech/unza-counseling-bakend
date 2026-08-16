@@ -55,7 +55,7 @@ public class DataLoader {
             roleRepository.saveAll(Set.of(superAdminRole, adminRole, counselorRole, studentRole, clientRole, securityRole));
 
             // Create users
-            User superAdmin = createUser("superadmin@unza.zm", "superadmin@unza.zm", "System", "Administrator", "+260971234567", 
+            User superAdmin = createUser("superadmin@unza.zm", "superadmin@unza.zm", "System", "Administrator", "+260971234567",
                 User.Gender.MALE, LocalDateTime.of(1980, 1, 1, 0, 0), "IT", "Computer Science", 5, 
                 true, true, Set.of(superAdminRole));
                 
@@ -113,7 +113,7 @@ public class DataLoader {
                 User.Gender.MALE, LocalDateTime.of(2000, 8, 19, 0, 0), "Business", "Bachelor of Business Administration", 3,
                 true, true, Set.of(studentRole));
 
-            User securityStaff = createUser("Unza Security", "security@unza.ac.zm", "UNZA", "Security Officer", "+2609********",
+            User securityStaff = createUser("security@unza.zm", "security@unza.zm", "UNZA", "Security Officer", "+260976789012",
                 User.Gender.MALE, LocalDateTime.of(1985, 6, 1, 0, 0), "Campus Security", "Security Operations", 0,
                 true, true, Set.of(securityRole));
             securityStaff.setHasSignedConsent(true);

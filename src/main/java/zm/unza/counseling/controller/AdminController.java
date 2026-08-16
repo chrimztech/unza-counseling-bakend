@@ -9,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import zm.unza.counseling.dto.request.CreateAdminRequest;
+import zm.unza.counseling.dto.request.UpdateAdminRequest;
 import zm.unza.counseling.dto.response.MessageAuditDto;
 import zm.unza.counseling.entity.Admin;
 import zm.unza.counseling.dto.response.ApiResponse;
@@ -32,11 +33,24 @@ public class AdminController {
         return ResponseEntity.ok(ApiResponse.success(new PageImpl<>(adminService.getAllAdmins())));
     }
 
+    @GetMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Admin>> getAdminById(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.success(adminService.getAdminById(id)));
+    }
+
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Admin>> createAdmin(@Valid @RequestBody CreateAdminRequest request) {
         Admin admin = adminService.createAdmin(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(admin));
+    }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Admin>> updateAdmin(@PathVariable Long id, @Valid @RequestBody UpdateAdminRequest request) {
+        Admin admin = adminService.updateAdmin(id, request);
+        return ResponseEntity.ok(ApiResponse.success(admin));
     }
 
     @DeleteMapping("/{id}")

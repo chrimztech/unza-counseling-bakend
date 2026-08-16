@@ -66,8 +66,7 @@ public class CrisisAlertController {
 
         CrisisAlert alert = crisisAlertRepository.findById(id)
                 .orElseThrow(() -> new NoSuchElementException("Alert not found"));
-        User reviewer = userRepository.findByUsername(userDetails.getUsername())
-                .orElseThrow();
+        User reviewer = resolveReviewer(userDetails);
 
         alert.setStatus(CrisisAlert.AlertStatus.ACKNOWLEDGED);
         alert.setReviewedBy(reviewer);
@@ -85,8 +84,7 @@ public class CrisisAlertController {
 
         CrisisAlert alert = crisisAlertRepository.findById(id)
                 .orElseThrow(() -> new NoSuchElementException("Alert not found"));
-        User reviewer = userRepository.findByUsername(userDetails.getUsername())
-                .orElseThrow();
+        User reviewer = resolveReviewer(userDetails);
 
         alert.setStatus(CrisisAlert.AlertStatus.RESOLVED);
         alert.setReviewedBy(reviewer);
@@ -104,8 +102,7 @@ public class CrisisAlertController {
 
         CrisisAlert alert = crisisAlertRepository.findById(id)
                 .orElseThrow(() -> new NoSuchElementException("Alert not found"));
-        User reviewer = userRepository.findByUsername(userDetails.getUsername())
-                .orElseThrow();
+        User reviewer = resolveReviewer(userDetails);
 
         alert.setStatus(CrisisAlert.AlertStatus.FALSE_POSITIVE);
         alert.setReviewedBy(reviewer);
@@ -113,5 +110,14 @@ public class CrisisAlertController {
         if (body != null && body.get("notes") != null) alert.setCounselorNotes(body.get("notes"));
 
         return CrisisAlertResponse.from(crisisAlertRepository.save(alert));
+    }
+
+    // UserDetailsServiceImpl sets the security principal's "username" to the
+    // user's email, not the DB `username` column — those two can differ (e.g.
+    // legacy seeded accounts), so email must be tried too, not just username.
+    private User resolveReviewer(UserDetails userDetails) {
+        return userRepository.findByUsername(userDetails.getUsername())
+                .or(() -> userRepository.findByEmail(userDetails.getUsername()))
+                .orElseThrow(() -> new NoSuchElementException("User not found: " + userDetails.getUsername()));
     }
 }

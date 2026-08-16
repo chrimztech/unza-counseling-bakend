@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import zm.unza.counseling.dto.request.CreateCounselorRequest;
+import zm.unza.counseling.dto.request.UpdateCounselorRequest;
 import zm.unza.counseling.entity.Counselor;
 import zm.unza.counseling.dto.response.ApiResponse;
 import zm.unza.counseling.service.CounselorService;
@@ -35,6 +36,13 @@ public class CounselorController {
     public ResponseEntity<ApiResponse<Counselor>> createCounselor(@Valid @RequestBody CreateCounselorRequest request) {
         Counselor counselor = counselorService.createCounselor(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(counselor));
+    }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Counselor>> updateCounselor(@PathVariable Long id, @Valid @RequestBody UpdateCounselorRequest request) {
+        Counselor counselor = counselorService.updateCounselor(id, request);
+        return ResponseEntity.ok(ApiResponse.success(counselor));
     }
 
     @DeleteMapping("/{id}")

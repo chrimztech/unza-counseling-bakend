@@ -5,6 +5,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import zm.unza.counseling.dto.request.CreateCounselorRequest;
+import zm.unza.counseling.dto.request.UpdateCounselorRequest;
 import zm.unza.counseling.entity.Counselor;
 import zm.unza.counseling.entity.Role;
 import zm.unza.counseling.entity.User;
@@ -73,6 +74,50 @@ public class CounselorService {
         Set<Role> roles = new HashSet<>();
         roles.add(counselorRole);
         counselor.setRoles(roles);
+
+        return counselorRepository.save(counselor);
+    }
+
+    @Transactional
+    public Counselor updateCounselor(Long id, UpdateCounselorRequest request) {
+        Counselor counselor = counselorRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Counselor not found with id: " + id));
+
+        if (request.getEmail() != null && !request.getEmail().trim().isEmpty()) {
+            String email = request.getEmail().trim();
+            if (!email.equalsIgnoreCase(counselor.getEmail())) {
+                if (userRepository.existsByEmail(email)) {
+                    throw new ValidationException("A user with this email already exists");
+                }
+                counselor.setEmail(email);
+                counselor.setUsername(email);
+            }
+        }
+        if (request.getFirstName() != null && !request.getFirstName().trim().isEmpty()) {
+            counselor.setFirstName(request.getFirstName().trim());
+        }
+        if (request.getLastName() != null && !request.getLastName().trim().isEmpty()) {
+            counselor.setLastName(request.getLastName().trim());
+        }
+        if (request.getPhoneNumber() != null) {
+            counselor.setPhoneNumber(trimToNull(request.getPhoneNumber()));
+        }
+        if (request.getSpecialization() != null) {
+            counselor.setSpecialization(trimToNull(request.getSpecialization()));
+        }
+        if (request.getBio() != null) {
+            counselor.setBio(trimToNull(request.getBio()));
+        }
+        if (request.getOfficeLocation() != null) {
+            counselor.setOfficeLocation(trimToNull(request.getOfficeLocation()));
+        }
+        if (request.getDepartment() != null) {
+            counselor.setDepartment(trimToNull(request.getDepartment()));
+        }
+        if (request.getAvailable() != null) {
+            counselor.setAvailable(request.getAvailable());
+        }
+        counselor.setUpdatedAt(LocalDateTime.now());
 
         return counselorRepository.save(counselor);
     }
