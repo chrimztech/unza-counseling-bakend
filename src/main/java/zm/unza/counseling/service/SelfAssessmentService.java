@@ -35,6 +35,11 @@ public class SelfAssessmentService {
     private final ClientRepository clientRepository;
     private final AuditLogService auditLogService;
     private final ObjectMapper objectMapper;
+    private final SecurityAlertService securityAlertService;
+
+    // 0-indexed position of the PHQ-9 item that screens for suicidal ideation / self-harm,
+    // matching PHQ9_SELF_HARM_ITEM_INDEX in the frontend's selfAssessmentInstruments module.
+    private static final int PHQ9_SELF_HARM_ITEM_INDEX = 8;
 
     public List<SelfAssessment> getAllAssessments() {
         return selfAssessmentRepository.findAll();
@@ -88,6 +93,13 @@ public class SelfAssessmentService {
 
         SelfAssessment savedAssessment = selfAssessmentRepository.save(assessment);
         persistAssessmentResponses(savedAssessment, responses);
+
+        if (submittingUser != null && flaggedSelfHarm(responses)) {
+            securityAlertService.createFromCrisisDetection(
+                    submittingUser,
+                    List.of("Self-assessment: PHQ-9 item 9 (thoughts of self-harm) endorsed")
+            );
+        }
 
         auditLogService.logAction(
                 "SELF_ASSESSMENT_SUBMITTED",
@@ -143,6 +155,25 @@ public class SelfAssessmentService {
             response.setAnswer(String.valueOf(answer));
             assessmentResponseRepository.save(response);
         });
+    }
+
+    // Checks whether the PHQ-9 self-harm item was answered above "Not at all". Values in
+    // `responses` arrive as loosely-typed JSON (Integer/Double/String depending on how the
+    // client serialized them), so this reads defensively rather than assuming a type.
+    private boolean flaggedSelfHarm(Map<String, Object> responses) {
+        Object rawAnswers = responses.get("phq9Answers");
+        if (!(rawAnswers instanceof List<?> answers) || answers.size() <= PHQ9_SELF_HARM_ITEM_INDEX) {
+            return false;
+        }
+        Object value = answers.get(PHQ9_SELF_HARM_ITEM_INDEX);
+        if (value == null) {
+            return false;
+        }
+        try {
+            return Double.parseDouble(value.toString()) > 0;
+        } catch (NumberFormatException e) {
+            return false;
+        }
     }
 
     private Long resolveSubmittingUserId(AssessmentSubmissionRequest request, User submittingUser) {
