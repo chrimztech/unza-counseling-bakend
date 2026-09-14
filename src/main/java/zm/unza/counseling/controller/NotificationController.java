@@ -5,6 +5,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
+import zm.unza.counseling.dto.response.ApiResponse;
+import zm.unza.counseling.dto.response.NotificationPreferencesDto;
 import zm.unza.counseling.entity.Notification;
 import zm.unza.counseling.service.NotificationService;
 import zm.unza.counseling.service.UserService;
@@ -90,6 +92,22 @@ public class NotificationController {
             @PathVariable(required = false) String userId,
             @AuthenticationPrincipal UserDetails userDetails) {
         return ResponseEntity.ok(notificationService.getUnreadCount(resolveUserId(userId, userDetails)));
+    }
+
+    @GetMapping("/preferences")
+    public ResponseEntity<ApiResponse<NotificationPreferencesDto>> getPreferences(
+            @AuthenticationPrincipal UserDetails userDetails) {
+        return ResponseEntity.ok(ApiResponse.success(
+                notificationService.getPreferences(resolveCurrentUserId(userDetails))));
+    }
+
+    @PutMapping("/preferences")
+    public ResponseEntity<ApiResponse<NotificationPreferencesDto>> updatePreferences(
+            @RequestBody NotificationPreferencesDto request,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        NotificationPreferencesDto updated = notificationService.updatePreferences(
+                resolveCurrentUserId(userDetails), request);
+        return ResponseEntity.ok(ApiResponse.success(updated, "Notification preferences updated successfully"));
     }
 
     @DeleteMapping("/{id}")

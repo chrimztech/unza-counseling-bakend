@@ -10,14 +10,18 @@ import java.util.concurrent.CompletableFuture;
 import java.util.Collection;
 import java.util.List;
 import java.time.LocalDateTime;
+import zm.unza.counseling.dto.response.NotificationPreferencesDto;
 import zm.unza.counseling.entity.Notification;
+import zm.unza.counseling.entity.NotificationPreference;
+import zm.unza.counseling.repository.NotificationPreferenceRepository;
 import zm.unza.counseling.repository.NotificationRepository;
 
 @Service
 @RequiredArgsConstructor
 public class NotificationService {
-    
+
     private final NotificationRepository notificationRepository;
+    private final NotificationPreferenceRepository notificationPreferenceRepository;
 
     /**
      * Send system notification
@@ -128,6 +132,52 @@ public class NotificationService {
     public void deleteNotification(Long id, Long userId) {
         Notification notification = getOwnedNotification(id, userId);
         notificationRepository.delete(notification);
+    }
+
+    @Transactional(readOnly = true)
+    public NotificationPreferencesDto getPreferences(Long userId) {
+        NotificationPreference preference = notificationPreferenceRepository.findByUserId(userId)
+                .orElseGet(() -> defaultPreference(userId));
+        return toDto(preference);
+    }
+
+    @Transactional
+    public NotificationPreferencesDto updatePreferences(Long userId, NotificationPreferencesDto dto) {
+        NotificationPreference preference = notificationPreferenceRepository.findByUserId(userId)
+                .orElseGet(() -> defaultPreference(userId));
+
+        if (dto.getEmailNotifications() != null) preference.setEmailNotifications(dto.getEmailNotifications());
+        if (dto.getSmsNotifications() != null) preference.setSmsNotifications(dto.getSmsNotifications());
+        if (dto.getPushNotifications() != null) preference.setPushNotifications(dto.getPushNotifications());
+        if (dto.getAppointmentReminders() != null) preference.setAppointmentReminders(dto.getAppointmentReminders());
+        if (dto.getSessionUpdates() != null) preference.setSessionUpdates(dto.getSessionUpdates());
+        if (dto.getRiskAlerts() != null) preference.setRiskAlerts(dto.getRiskAlerts());
+        if (dto.getMessageNotifications() != null) preference.setMessageNotifications(dto.getMessageNotifications());
+        if (dto.getSystemUpdates() != null) preference.setSystemUpdates(dto.getSystemUpdates());
+        if (dto.getReminderHoursBefore() != null) preference.setReminderHoursBefore(dto.getReminderHoursBefore());
+
+        return toDto(notificationPreferenceRepository.save(preference));
+    }
+
+    private NotificationPreference defaultPreference(Long userId) {
+        NotificationPreference preference = new NotificationPreference();
+        preference.setUserId(userId);
+        return preference;
+    }
+
+    private NotificationPreferencesDto toDto(NotificationPreference preference) {
+        return new NotificationPreferencesDto(
+                String.valueOf(preference.getUserId()),
+                preference.getEmailNotifications(),
+                preference.getSmsNotifications(),
+                preference.getPushNotifications(),
+                preference.getAppointmentReminders(),
+                preference.getSessionUpdates(),
+                preference.getRiskAlerts(),
+                preference.getMessageNotifications(),
+                preference.getSystemUpdates(),
+                preference.getReminderHoursBefore()
+        );
     }
 
     private Notification getOwnedNotification(Long id, Long userId) {
