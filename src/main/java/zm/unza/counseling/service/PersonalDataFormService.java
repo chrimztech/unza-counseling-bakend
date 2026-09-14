@@ -57,6 +57,11 @@ public class PersonalDataFormService {
         return createPersonalDataForm(request);
     }
 
+    // @Transactional(readOnly = true) on these three: PersonalDataFormResponse.fromEntity()
+    // touches form.getClient()/getCaseEntity() properties beyond just the id, which are
+    // FetchType.LAZY — with open-in-view disabled, that throws LazyInitializationException
+    // once the repository call's own transaction has already closed.
+    @Transactional(readOnly = true)
     public PersonalDataFormResponse getPersonalDataFormByClientId(Long clientId) {
         Client client = getClient(clientId);
         PersonalDataForm form = personalDataFormRepository.findByClient(client)
@@ -66,6 +71,7 @@ public class PersonalDataFormService {
         return PersonalDataFormResponse.fromEntity(form);
     }
 
+    @Transactional(readOnly = true)
     public PersonalDataFormResponse getPersonalDataFormByClientFileNo(String clientFileNo) {
         PersonalDataForm form = personalDataFormRepository.findByClientFileNo(clientFileNo)
                 .orElseThrow(() -> new ResourceNotFoundException(
@@ -74,6 +80,7 @@ public class PersonalDataFormService {
         return PersonalDataFormResponse.fromEntity(form);
     }
 
+    @Transactional(readOnly = true)
     public PersonalDataFormResponse getPersonalDataFormByCaseId(Long caseId) {
         Case caseEntity = getCase(caseId);
         PersonalDataForm form = personalDataFormRepository.findByCaseEntity(caseEntity)

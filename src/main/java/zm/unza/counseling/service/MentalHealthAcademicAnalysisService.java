@@ -4,12 +4,14 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import zm.unza.counseling.dto.MentalHealthAcademicDtos.MentalHealthAcademicAnalysisRequest;
+import zm.unza.counseling.dto.MentalHealthAcademicDtos.MentalHealthAcademicAnalysisResponse;
 import zm.unza.counseling.entity.AcademicPerformance;
 import zm.unza.counseling.entity.Client;
 import zm.unza.counseling.entity.MentalHealthAcademicAnalysis;
 import zm.unza.counseling.entity.RiskAssessment;
 import zm.unza.counseling.entity.SelfAssessment;
 import zm.unza.counseling.entity.User;
+import zm.unza.counseling.mapper.MentalHealthAcademicMapper;
 import zm.unza.counseling.repository.AcademicPerformanceRepository;
 import zm.unza.counseling.repository.ClientRepository;
 import zm.unza.counseling.repository.MentalHealthAcademicAnalysisRepository;
@@ -22,60 +24,80 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 public class MentalHealthAcademicAnalysisService {
-    
+
     private final MentalHealthAcademicAnalysisRepository repository;
     private final ClientRepository clientRepository;
     private final UserRepository userRepository;
     private final AcademicPerformanceRepository academicPerformanceRepository;
     private final SelfAssessmentRepository selfAssessmentRepository;
     private final RiskAssessmentRepository riskAssessmentRepository;
+    private final MentalHealthAcademicMapper mapper;
 
-    public List<MentalHealthAcademicAnalysis> getHighRiskAnalyses() {
-        return repository.findHighRiskAnalyses();
+    // Every read method below is @Transactional(readOnly = true) because
+    // MentalHealthAcademicAnalysis has several FetchType.LAZY associations
+    // (analyzedBy, academicPerformance, selfAssessment, riskAssessment) that
+    // mapper.toResponse() dereferences (e.g. analyzedBy.getFirstName()) — with
+    // open-in-view disabled, doing that after the repository call's own
+    // transaction has already closed throws LazyInitializationException (500).
+
+    @Transactional(readOnly = true)
+    public List<MentalHealthAcademicAnalysisResponse> getHighRiskAnalyses() {
+        return repository.findHighRiskAnalyses().stream().map(mapper::toResponse).toList();
     }
 
-    public List<MentalHealthAcademicAnalysis> getUrgentInterventions() {
-        return repository.findUrgentInterventions();
+    @Transactional(readOnly = true)
+    public List<MentalHealthAcademicAnalysisResponse> getUrgentInterventions() {
+        return repository.findUrgentInterventions().stream().map(mapper::toResponse).toList();
     }
 
-    public List<MentalHealthAcademicAnalysis> getAnalysesByClient(Long clientId) {
-        return repository.findByClientId(clientId);
+    @Transactional(readOnly = true)
+    public List<MentalHealthAcademicAnalysisResponse> getAnalysesByClient(Long clientId) {
+        return repository.findByClientId(clientId).stream().map(mapper::toResponse).toList();
     }
 
-    public MentalHealthAcademicAnalysis getLatestAnalysisForClient(Long clientId) {
+    @Transactional(readOnly = true)
+    public MentalHealthAcademicAnalysisResponse getLatestAnalysisForClient(Long clientId) {
         return repository.findTopByClientIdOrderByCreatedAtDesc(clientId)
+                .map(mapper::toResponse)
                 .orElse(null);
     }
 
-    public Object getAnalysisTrendForClient(Long clientId) {
-        return repository.findByClientIdOrderByCreatedAtDesc(clientId);
+    @Transactional(readOnly = true)
+    public List<MentalHealthAcademicAnalysisResponse> getAnalysisTrendForClient(Long clientId) {
+        return repository.findByClientIdOrderByCreatedAtDesc(clientId).stream().map(mapper::toResponse).toList();
     }
 
+    @Transactional(readOnly = true)
     public Object getDashboardStats() {
         // Return dashboard statistics
         long totalAnalyses = repository.count();
         long highRiskCount = repository.findHighRiskAnalyses().size();
         long urgentCount = repository.findUrgentInterventions().size();
-        
+
         java.util.Map<String, Object> stats = new java.util.HashMap<>();
         stats.put("totalAnalyses", totalAnalyses);
         stats.put("highRiskCount", highRiskCount);
         stats.put("urgentCount", urgentCount);
-        stats.put("recentAnalyses", repository.findAll());
+        stats.put("recentAnalyses", repository.findAll().stream().map(mapper::toResponse).toList());
         return stats;
     }
 
+    @Transactional(readOnly = true)
     public Object getInterventionReport() {
         // Return intervention report
         java.util.Map<String, Object> report = new java.util.HashMap<>();
-        report.put("highRiskAnalyses", repository.findHighRiskAnalyses());
-        report.put("urgentInterventions", repository.findUrgentInterventions());
+        report.put("highRiskAnalyses", repository.findHighRiskAnalyses().stream().map(mapper::toResponse).toList());
+        report.put("urgentInterventions", repository.findUrgentInterventions().stream().map(mapper::toResponse).toList());
         report.put("generatedAt", java.time.LocalDateTime.now());
         return report;
     }
 
     @Transactional
-    public MentalHealthAcademicAnalysis createAnalysis(MentalHealthAcademicAnalysisRequest request) {
+    public MentalHealthAcademicAnalysisResponse createAnalysis(MentalHealthAcademicAnalysisRequest request) {
+        return mapper.toResponse(createAnalysisEntity(request));
+    }
+
+    private MentalHealthAcademicAnalysis createAnalysisEntity(MentalHealthAcademicAnalysisRequest request) {
         Client client = clientRepository.findById(request.getClientId())
                 .orElseThrow(() -> new IllegalArgumentException("Client not found: " + request.getClientId()));
         
@@ -155,7 +177,11 @@ public class MentalHealthAcademicAnalysisService {
     }
 
     @Transactional
-    public MentalHealthAcademicAnalysis updateAnalysis(Long id, MentalHealthAcademicAnalysisRequest request) {
+    public MentalHealthAcademicAnalysisResponse updateAnalysis(Long id, MentalHealthAcademicAnalysisRequest request) {
+        return mapper.toResponse(updateAnalysisEntity(id, request));
+    }
+
+    private MentalHealthAcademicAnalysis updateAnalysisEntity(Long id, MentalHealthAcademicAnalysisRequest request) {
         MentalHealthAcademicAnalysis analysis = repository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Analysis not found: " + id));
         
@@ -202,8 +228,89 @@ public class MentalHealthAcademicAnalysisService {
         return repository.save(analysis);
     }
 
-    public MentalHealthAcademicAnalysis getAnalysisById(Long id) {
-        return repository.findById(id).orElse(null);
+    @Transactional(readOnly = true)
+    public MentalHealthAcademicAnalysisResponse getAnalysisById(Long id) {
+        return repository.findById(id).map(mapper::toResponse).orElse(null);
+    }
+
+    // Built from real, counselor-entered data (correlationScore/correlationStrength/
+    // impactLevel on each analysis record) — not a fabricated "AI" result. The frontend's
+    // CorrelationAnalysisResult type uses a smaller, unsigned strength/impact vocabulary
+    // than the backend enums, so those are mapped down rather than passed through raw.
+    @Transactional(readOnly = true)
+    public java.util.Map<String, Object> getCorrelationAnalysis(Long clientId) {
+        List<MentalHealthAcademicAnalysis> history = repository.findByClientIdOrderByCreatedAtDesc(clientId);
+        java.util.Map<String, Object> result = new java.util.LinkedHashMap<>();
+
+        if (history.isEmpty()) {
+            result.put("correlationScore", 0);
+            result.put("strength", "NONE");
+            result.put("impactLevel", "NONE");
+            result.put("interpretation", "Not enough analysis history yet to compute a correlation.");
+            result.put("dataPoints", List.of());
+            return result;
+        }
+
+        MentalHealthAcademicAnalysis latest = history.get(0);
+        String strength = mapCorrelationStrength(latest.getCorrelationStrength());
+        String impact = mapImpactLevel(latest.getImpactLevel());
+
+        result.put("correlationScore", latest.getCorrelationScore());
+        result.put("strength", strength);
+        result.put("impactLevel", impact);
+        result.put("interpretation", buildCorrelationInterpretation(latest, strength));
+
+        List<MentalHealthAcademicAnalysis> chronological = new java.util.ArrayList<>(history);
+        java.util.Collections.reverse(chronological);
+        List<java.util.Map<String, Object>> dataPoints = chronological.stream()
+                .map(a -> {
+                    java.util.Map<String, Object> point = new java.util.LinkedHashMap<>();
+                    point.put("date", a.getAnalysisDate() != null ? a.getAnalysisDate().toString() : null);
+                    point.put("label", a.getAnalysisDate() != null ? a.getAnalysisDate().toString() : null);
+                    point.put("value", a.getCorrelationScore());
+                    point.put("x", a.getOverallMentalHealthScore());
+                    point.put("y", a.getCurrentGpa());
+                    return point;
+                })
+                .toList();
+        result.put("dataPoints", dataPoints);
+
+        return result;
+    }
+
+    private String mapCorrelationStrength(MentalHealthAcademicAnalysis.CorrelationStrength strength) {
+        if (strength == null) return "NONE";
+        return switch (strength) {
+            case NONE -> "NONE";
+            case WEAK_POSITIVE, WEAK_NEGATIVE -> "WEAK";
+            case MODERATE_POSITIVE, MODERATE_NEGATIVE -> "MODERATE";
+            case STRONG_POSITIVE, STRONG_NEGATIVE -> "STRONG";
+        };
+    }
+
+    private String mapImpactLevel(MentalHealthAcademicAnalysis.ImpactLevel impactLevel) {
+        if (impactLevel == null) return "NONE";
+        return switch (impactLevel) {
+            case NONE -> "NONE";
+            case MILD -> "MINIMAL";
+            case MODERATE -> "MODERATE";
+            case SEVERE -> "SIGNIFICANT";
+            case CRITICAL -> "SEVERE";
+        };
+    }
+
+    private String buildCorrelationInterpretation(MentalHealthAcademicAnalysis latest, String strength) {
+        boolean negative = latest.getCorrelationStrength() != null
+                && latest.getCorrelationStrength().name().endsWith("_NEGATIVE");
+        String direction = negative
+                ? "worsening mental health indicators tend to coincide with lower academic performance"
+                : "mental health and academic performance are moving together";
+        return switch (strength) {
+            case "STRONG" -> "Strong correlation detected — " + direction + ".";
+            case "MODERATE" -> "Moderate correlation detected — " + direction + ".";
+            case "WEAK" -> "A weak correlation was detected between mental health and academic performance.";
+            default -> "No meaningful correlation detected between mental health and academic performance.";
+        };
     }
 
     @Transactional

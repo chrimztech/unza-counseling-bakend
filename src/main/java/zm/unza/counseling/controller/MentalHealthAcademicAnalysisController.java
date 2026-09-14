@@ -14,12 +14,9 @@ import org.springframework.web.bind.annotation.RestController;
 import zm.unza.counseling.dto.MentalHealthAcademicDtos.MentalHealthAcademicAnalysisRequest;
 import zm.unza.counseling.dto.MentalHealthAcademicDtos.MentalHealthAcademicAnalysisResponse;
 import zm.unza.counseling.dto.response.ApiResponse;
-import zm.unza.counseling.entity.MentalHealthAcademicAnalysis;
-import zm.unza.counseling.mapper.MentalHealthAcademicMapper;
 import zm.unza.counseling.service.MentalHealthAcademicAnalysisService;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping({"/api/v1/analysis","/api/analysis","/v1/analysis","/analysis"})
@@ -27,50 +24,41 @@ import java.util.stream.Collectors;
 public class MentalHealthAcademicAnalysisController {
 
     private final MentalHealthAcademicAnalysisService service;
-    private final MentalHealthAcademicMapper mapper;
 
     @GetMapping("/high-risk")
     @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
     public ResponseEntity<ApiResponse<List<MentalHealthAcademicAnalysisResponse>>> getHighRiskAnalyses() {
-        List<MentalHealthAcademicAnalysisResponse> response = service.getHighRiskAnalyses().stream()
-                .map(mapper::toResponse)
-                .collect(Collectors.toList());
-        return ResponseEntity.ok(ApiResponse.success(response));
+        return ResponseEntity.ok(ApiResponse.success(service.getHighRiskAnalyses()));
     }
 
     @GetMapping("/urgent")
     @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
     public ResponseEntity<ApiResponse<List<MentalHealthAcademicAnalysisResponse>>> getUrgentInterventions() {
-        List<MentalHealthAcademicAnalysisResponse> response = service.getUrgentInterventions().stream()
-                .map(mapper::toResponse)
-                .collect(Collectors.toList());
-        return ResponseEntity.ok(ApiResponse.success(response));
+        return ResponseEntity.ok(ApiResponse.success(service.getUrgentInterventions()));
     }
 
     @GetMapping("/client/{clientId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'CLIENT', 'STUDENT')")
     public ResponseEntity<ApiResponse<List<MentalHealthAcademicAnalysisResponse>>> getAnalysesByClient(@PathVariable Long clientId) {
-        List<MentalHealthAcademicAnalysisResponse> response = service.getAnalysesByClient(clientId).stream()
-                .map(mapper::toResponse)
-                .collect(Collectors.toList());
-        return ResponseEntity.ok(ApiResponse.success(response));
+        return ResponseEntity.ok(ApiResponse.success(service.getAnalysesByClient(clientId)));
     }
 
     @GetMapping("/client/{clientId}/latest")
     @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'CLIENT', 'STUDENT')")
     public ResponseEntity<ApiResponse<MentalHealthAcademicAnalysisResponse>> getLatestAnalysisForClient(@PathVariable Long clientId) {
-        MentalHealthAcademicAnalysis analysis = service.getLatestAnalysisForClient(clientId);
-        if (analysis == null) {
-            return ResponseEntity.ok(ApiResponse.success(null));
-        }
-        MentalHealthAcademicAnalysisResponse response = mapper.toResponse(analysis);
-        return ResponseEntity.ok(ApiResponse.success(response));
+        return ResponseEntity.ok(ApiResponse.success(service.getLatestAnalysisForClient(clientId)));
     }
 
     @GetMapping("/client/{clientId}/trend")
     @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
-    public ResponseEntity<ApiResponse<?>> getAnalysisTrendForClient(@PathVariable Long clientId) {
+    public ResponseEntity<ApiResponse<List<MentalHealthAcademicAnalysisResponse>>> getAnalysisTrendForClient(@PathVariable Long clientId) {
         return ResponseEntity.ok(ApiResponse.success(service.getAnalysisTrendForClient(clientId)));
+    }
+
+    @GetMapping("/client/{clientId}/correlation")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
+    public ResponseEntity<ApiResponse<java.util.Map<String, Object>>> getCorrelationAnalysis(@PathVariable Long clientId) {
+        return ResponseEntity.ok(ApiResponse.success(service.getCorrelationAnalysis(clientId)));
     }
 
     // Dashboard endpoints
@@ -93,28 +81,19 @@ public class MentalHealthAcademicAnalysisController {
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
     public ResponseEntity<ApiResponse<MentalHealthAcademicAnalysisResponse>> createAnalysis(@RequestBody MentalHealthAcademicAnalysisRequest request) {
-        MentalHealthAcademicAnalysis analysis = service.createAnalysis(request);
-        MentalHealthAcademicAnalysisResponse response = mapper.toResponse(analysis);
-        return ResponseEntity.ok(ApiResponse.success(response));
+        return ResponseEntity.ok(ApiResponse.success(service.createAnalysis(request)));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
     public ResponseEntity<ApiResponse<MentalHealthAcademicAnalysisResponse>> updateAnalysis(@PathVariable Long id, @RequestBody MentalHealthAcademicAnalysisRequest request) {
-        MentalHealthAcademicAnalysis analysis = service.updateAnalysis(id, request);
-        MentalHealthAcademicAnalysisResponse response = mapper.toResponse(analysis);
-        return ResponseEntity.ok(ApiResponse.success(response));
+        return ResponseEntity.ok(ApiResponse.success(service.updateAnalysis(id, request)));
     }
 
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'CLIENT', 'STUDENT')")
     public ResponseEntity<ApiResponse<MentalHealthAcademicAnalysisResponse>> getAnalysisById(@PathVariable Long id) {
-        MentalHealthAcademicAnalysis analysis = service.getAnalysisById(id);
-        if (analysis == null) {
-            return ResponseEntity.ok(ApiResponse.success(null));
-        }
-        MentalHealthAcademicAnalysisResponse response = mapper.toResponse(analysis);
-        return ResponseEntity.ok(ApiResponse.success(response));
+        return ResponseEntity.ok(ApiResponse.success(service.getAnalysisById(id)));
     }
 
     @DeleteMapping("/{id}")

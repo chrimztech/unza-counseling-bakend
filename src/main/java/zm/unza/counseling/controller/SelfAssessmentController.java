@@ -66,4 +66,12 @@ public class SelfAssessmentController {
     public ResponseEntity<ApiResponse<?>> getSelfAssessmentTrend(@PathVariable Long clientId) {
         return ResponseEntity.ok(ApiResponse.success(selfAssessmentService.getSelfAssessmentTrend(clientId)));
     }
+
+    // Must come after the more specific /client... mappings above so those aren't
+    // shadowed by this catch-all /{id}.
+    @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('STUDENT', 'CLIENT', 'COUNSELOR', 'ADMIN')")
+    public ResponseEntity<ApiResponse<SavedSelfAssessmentDto>> getAssessmentById(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.success(selfAssessmentService.getAssessmentDtoById(id)));
+    }
 }

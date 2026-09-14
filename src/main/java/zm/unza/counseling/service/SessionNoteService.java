@@ -22,10 +22,16 @@ public class SessionNoteService {
     private final SessionNoteRepository sessionNoteRepository;
     private final SessionRepository sessionRepository;
 
+    // Without this, SessionNoteDto.from() touching note.getSession().getStudent()/getCounselor()
+    // (lazy associations) after the repository call returns throws LazyInitializationException,
+    // since open-in-view is disabled and each repository call otherwise gets its own short
+    // transaction that's already closed by the time the DTO mapping runs.
+    @Transactional(readOnly = true)
     public Page<SessionNoteDto> getAllNotes(Pageable pageable) {
         return sessionNoteRepository.findAll(pageable).map(SessionNoteDto::from);
     }
 
+    @Transactional(readOnly = true)
     public List<SessionNoteDto> getNotesBySession(Long sessionId) {
         return sessionNoteRepository.findBySessionId(sessionId).stream()
                 .map(SessionNoteDto::from)

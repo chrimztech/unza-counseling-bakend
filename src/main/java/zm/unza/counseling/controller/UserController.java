@@ -210,6 +210,18 @@ public class UserController {
         return ResponseEntity.ok(ApiResponse.success(updatedUser, "Profile updated successfully"));
     }
 
+    // Self-service password change — any authenticated user changing their OWN password,
+    // with current-password verification. Distinct from PUT /{id}/password below, which is
+    // an admin-only reset that doesn't check the existing password.
+    @PutMapping("/profile/password")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'STUDENT', 'CLIENT')")
+    public ResponseEntity<ApiResponse<String>> changeOwnPassword(@RequestBody Map<String, String> payload) {
+        String currentPassword = payload.get("currentPassword");
+        String newPassword = payload.get("newPassword");
+        userService.changeOwnPassword(currentPassword, newPassword);
+        return ResponseEntity.ok(ApiResponse.success("Password changed successfully"));
+    }
+
     @PutMapping("/{id}/password")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<String>> changeUserPassword(

@@ -60,6 +60,10 @@ public class SelfAssessmentService {
                 .orElseThrow(() -> new ResourceNotFoundException("Assessment not found with id: " + id));
     }
 
+    public SavedSelfAssessmentDto getAssessmentDtoById(Long id) {
+        return toDto(getAssessmentById(id));
+    }
+
     @Transactional
     public SavedSelfAssessmentDto submitAssessment(AssessmentSubmissionRequest request, User submittingUser) {
         Long userId = resolveSubmittingUserId(request, submittingUser);

@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import zm.unza.counseling.dto.response.CrisisAlertResponse;
 import zm.unza.counseling.entity.CrisisAlert;
@@ -19,10 +20,17 @@ import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.NoSuchElementException;
 
+// Class-level readOnly transaction keeps the Hibernate session open long enough for
+// CrisisAlertResponse.from() to touch the lazy client/reviewedBy associations — without
+// it (and with open-in-view: false), that throws LazyInitializationException -> 500 for
+// any alert that actually has a client or reviewer set, since each repository call gets
+// its own transaction that closes before the mapping code runs. Write methods below
+// override this with a read-write @Transactional.
 @RestController
 @RequestMapping("/crisis-alerts")
 @RequiredArgsConstructor
 @PreAuthorize("hasAnyRole('COUNSELOR','ADMIN','SUPER_ADMIN')")
+@Transactional(readOnly = true)
 public class CrisisAlertController {
 
     private final CrisisAlertRepository crisisAlertRepository;
@@ -58,6 +66,7 @@ public class CrisisAlertController {
                         .orElseThrow(() -> new NoSuchElementException("Alert not found")));
     }
 
+    @Transactional
     @PatchMapping("/{id}/acknowledge")
     public CrisisAlertResponse acknowledge(
             @PathVariable Long id,
@@ -76,6 +85,7 @@ public class CrisisAlertController {
         return CrisisAlertResponse.from(crisisAlertRepository.save(alert));
     }
 
+    @Transactional
     @PatchMapping("/{id}/resolve")
     public CrisisAlertResponse resolve(
             @PathVariable Long id,
@@ -94,6 +104,7 @@ public class CrisisAlertController {
         return CrisisAlertResponse.from(crisisAlertRepository.save(alert));
     }
 
+    @Transactional
     @PatchMapping("/{id}/false-positive")
     public CrisisAlertResponse markFalsePositive(
             @PathVariable Long id,

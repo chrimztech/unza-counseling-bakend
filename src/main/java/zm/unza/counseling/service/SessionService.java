@@ -32,10 +32,16 @@ public class SessionService {
     private final ClientIdentityService clientIdentityService;
     private final NotificationService notificationService;
 
+    // @Transactional(readOnly = true) on these three: SessionDto.from() unconditionally
+    // dereferences session.getStudent()/getCounselor() (FetchType.LAZY, non-null in
+    // practice) — with open-in-view disabled, that throws LazyInitializationException
+    // once the repository call's own transaction has already closed.
+    @Transactional(readOnly = true)
     public Page<SessionDto> getAllSessions(Pageable pageable) {
         return sessionRepository.findAll(pageable).map(SessionDto::from);
     }
 
+    @Transactional(readOnly = true)
     public SessionDto getSessionById(Long id) {
         return sessionRepository.findById(id)
                 .map(SessionDto::from)
@@ -238,6 +244,7 @@ public class SessionService {
         sessionRepository.delete(session);
     }
     
+    @Transactional(readOnly = true)
     public Page<SessionDto> getSessionsByClient(Long clientId, Pageable pageable) {
         return sessionRepository.findByStudentId(clientId, pageable).map(SessionDto::from);
     }

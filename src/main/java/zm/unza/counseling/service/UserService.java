@@ -264,6 +264,19 @@ public class UserService {
         userRepository.save(user);
     }
 
+    // Self-service password change for the currently authenticated user — distinct from
+    // changeUserPassword() above, which is admin-only and doesn't verify the caller knows
+    // the existing password. This one does, since anyone can call it on their own account.
+    @Transactional
+    public void changeOwnPassword(String currentPassword, String newPassword) {
+        User currentUser = getCurrentUserProfile();
+        if (!passwordEncoder.matches(currentPassword, currentUser.getPassword())) {
+            throw new ValidationException("Current password is incorrect");
+        }
+        currentUser.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(currentUser);
+    }
+
     public byte[] exportUsers(String format) {
         // TODO: Implement export logic for CSV/Excel
         return new byte[0];

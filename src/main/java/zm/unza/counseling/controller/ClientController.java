@@ -18,6 +18,7 @@ import zm.unza.counseling.dto.response.ApiResponse;
 import zm.unza.counseling.dto.response.ClientResponse;
 import zm.unza.counseling.entity.Client;
 import zm.unza.counseling.service.ClientService;
+import zm.unza.counseling.service.UserService;
 
 import java.util.Map;
 
@@ -27,8 +28,9 @@ import java.util.Map;
 @Tag(name = "Clients", description = "Client management endpoints")
 @SecurityRequirement(name = "bearer-jwt")
 public class ClientController {
-    
+
     private final ClientService clientService;
+    private final UserService userService;
 
     /**
      * Create a new client with optional automatic case creation
@@ -108,6 +110,22 @@ public class ClientController {
                         "highRiskClients", highRiskCount
                 )
         ));
+    }
+
+    // Hard delete by default (matches UserController's DELETE /{id}, since Client is a
+    // User row) — UserService.deleteUser() still refuses the request with a clear list of
+    // blockers if the client has any protected clinical/audit records (appointments,
+    // sessions, self-assessments, case files, etc.), so this can't silently destroy real
+    // counseling history. Pass ?permanent=false to deactivate instead of deleting.
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Delete a client (permanently by default; pass permanent=false to deactivate instead)")
+    public ResponseEntity<ApiResponse<String>> deleteClient(
+            @PathVariable String id,
+            @RequestParam(defaultValue = "true") boolean permanent) {
+        userService.deleteUser(Long.parseLong(id), permanent);
+        String message = permanent ? "Client permanently deleted successfully" : "Client deactivated successfully";
+        return ResponseEntity.ok(ApiResponse.success(message));
     }
 
     @PutMapping("/{id}/risk-level")

@@ -49,6 +49,11 @@ public class ClientIntakeFormService {
         return ClientIntakeFormResponse.fromEntity(clientIntakeFormRepository.save(form));
     }
 
+    // @Transactional(readOnly = true) on these three: ClientIntakeFormResponse.fromEntity()
+    // touches form.getClient()/getCaseEntity()/getCounselor() properties beyond just the id,
+    // which are FetchType.LAZY — with open-in-view disabled, that throws
+    // LazyInitializationException once the repository call's own transaction has closed.
+    @Transactional(readOnly = true)
     public ClientIntakeFormResponse getByClientId(Long clientId) {
         ClientIntakeForm form = clientIntakeFormRepository.findByClientId(clientId)
                 .orElseThrow(() -> new ResourceNotFoundException(
@@ -57,6 +62,7 @@ public class ClientIntakeFormService {
         return ClientIntakeFormResponse.fromEntity(form);
     }
 
+    @Transactional(readOnly = true)
     public ClientIntakeFormResponse getById(Long id) {
         ClientIntakeForm form = clientIntakeFormRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(
@@ -65,6 +71,7 @@ public class ClientIntakeFormService {
         return ClientIntakeFormResponse.fromEntity(form);
     }
 
+    @Transactional(readOnly = true)
     public ClientIntakeFormResponse getByCaseId(Long caseId) {
         Case caseEntity = getCase(caseId);
         ClientIntakeForm form = clientIntakeFormRepository.findByCaseEntity(caseEntity)

@@ -152,7 +152,12 @@ public class ConsentFormServiceImpl implements ConsentFormService {
         return userConsentRepository.existsByUserAndConsentForm(user, latestForm);
     }
 
+    // @Transactional(readOnly = true): mapToUserConsentResponse() unconditionally
+    // dereferences userConsent.getUser()/getConsentForm() (FetchType.LAZY) — with
+    // open-in-view disabled, that throws LazyInitializationException once the
+    // repository call's own transaction has already closed.
     @Override
+    @Transactional(readOnly = true)
     public List<UserConsentResponse> getUserConsentHistory(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
