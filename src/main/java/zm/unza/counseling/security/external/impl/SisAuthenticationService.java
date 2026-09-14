@@ -599,8 +599,11 @@ public class SisAuthenticationService implements ExternalAuthenticationService {
         user.setFirstName(resolvedFirstName != null && !resolvedFirstName.isEmpty() ? resolvedFirstName : "Student");
         user.setLastName(resolvedLastName != null && !resolvedLastName.isEmpty() ? resolvedLastName : username);
         
-        // Set student ID
-        user.setStudentId(studentId != null ? studentId : "");
+        // Set student ID — if the SIS response didn't expose it under any of the known
+        // field names, fall back to the resolved username, which is itself the SIS
+        // student_id/computer_no when available or otherwise the login identifier the
+        // student typed (which for students is their student number).
+        user.setStudentId(studentId != null && !studentId.isEmpty() ? studentId : username);
         
         // Extract phone number (SIS uses phone_number field)
         String phone = getJsonText(userNode, "phone_number");

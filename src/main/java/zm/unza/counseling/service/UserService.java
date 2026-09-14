@@ -14,38 +14,20 @@ import org.springframework.transaction.annotation.Transactional;
 import zm.unza.counseling.dto.request.RegisterRequest;
 import zm.unza.counseling.entity.Role;
 import zm.unza.counseling.entity.User;
-import zm.unza.counseling.entity.Client;
-import zm.unza.counseling.entity.Counselor;
 import zm.unza.counseling.exception.ResourceNotFoundException;
 import zm.unza.counseling.exception.ValidationException;
-import zm.unza.counseling.repository.AcademicPerformanceRepository;
-import zm.unza.counseling.repository.AcademicQualificationRepository;
-import zm.unza.counseling.repository.AppointmentRepository;
-import zm.unza.counseling.repository.CaseAssignmentRepository;
-import zm.unza.counseling.repository.CaseRepository;
 import zm.unza.counseling.repository.ChatMessageRepository;
-import zm.unza.counseling.repository.ClientIntakeFormRepository;
-import zm.unza.counseling.repository.ClientRepository;
-import zm.unza.counseling.repository.CounselorRepository;
-import zm.unza.counseling.repository.GoalRepository;
 import zm.unza.counseling.repository.KeyboardShortcutRepository;
-import zm.unza.counseling.repository.MentalHealthAcademicAnalysisRepository;
 import zm.unza.counseling.repository.MessageRepository;
 import zm.unza.counseling.repository.NotificationRepository;
-import zm.unza.counseling.repository.PersonalDataFormRepository;
-import zm.unza.counseling.repository.ReportRepository;
 import zm.unza.counseling.repository.RoleRepository;
 import zm.unza.counseling.security.AuthenticationSource;
-import zm.unza.counseling.repository.RiskAssessmentRepository;
-import zm.unza.counseling.repository.SelfAssessmentRepository;
-import zm.unza.counseling.repository.SessionRepository;
 import zm.unza.counseling.repository.UserBookmarkRepository;
 import zm.unza.counseling.repository.UserConsentRepository;
 import zm.unza.counseling.repository.UserDashboardConfigRepository;
 import zm.unza.counseling.repository.UserFeedbackRepository;
 import zm.unza.counseling.repository.UserRepository;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -66,21 +48,6 @@ public class UserService {
     private final UserFeedbackRepository userFeedbackRepository;
     private final UserConsentRepository userConsentRepository;
     private final MessageRepository messageRepository;
-    private final ClientRepository clientRepository;
-    private final CounselorRepository counselorRepository;
-    private final CaseRepository caseRepository;
-    private final AppointmentRepository appointmentRepository;
-    private final SessionRepository sessionRepository;
-    private final CaseAssignmentRepository caseAssignmentRepository;
-    private final ClientIntakeFormRepository clientIntakeFormRepository;
-    private final PersonalDataFormRepository personalDataFormRepository;
-    private final ReportRepository reportRepository;
-    private final SelfAssessmentRepository selfAssessmentRepository;
-    private final GoalRepository goalRepository;
-    private final AcademicPerformanceRepository academicPerformanceRepository;
-    private final AcademicQualificationRepository academicQualificationRepository;
-    private final RiskAssessmentRepository riskAssessmentRepository;
-    private final MentalHealthAcademicAnalysisRepository mentalHealthAcademicAnalysisRepository;
 
     @PersistenceContext
     private EntityManager em;
@@ -292,104 +259,86 @@ public class UserService {
     private void permanentlyDeleteUser(User user) {
         guardAgainstSelfRemoval(user);
         guardAgainstRemovingLastAdministrator(user);
-        ensureUserCanBePermanentlyDeleted(user);
+        cascadeDeleteClinicalRecords(user.getId());
         deleteUserOwnedArtifacts(user);
         userRepository.delete(user);
     }
 
-    private void ensureUserCanBePermanentlyDeleted(User user) {
-        List<String> blockers = new ArrayList<>();
-        Long userId = user.getId();
+    // Permanently and irreversibly removes every clinical/audit record this user is
+    // linked to (as student, client, or counselor) before the user row itself is
+    // deleted, in FK-dependency order (children before parents) so no constraint is
+    // violated. There is no soft option here — deactivateUserInternal() is the
+    // reversible alternative for callers who want to preserve this history.
+    private void cascadeDeleteClinicalRecords(Long userId) {
+        // mental_health_academic_analysis references academic_performance, self_assessments
+        // and risk_assessments, so it must go first.
+        em.createNativeQuery(
+                "DELETE FROM mental_health_academic_analysis WHERE client_id = :id OR analyzed_by = :id")
+                .setParameter("id", userId).executeUpdate();
 
-        if (appointmentRepository.countAllByStudentId(userId) > 0) {
-            blockers.add("student appointment history");
-        }
-        if (sessionRepository.countByStudentId(userId) > 0) {
-            blockers.add("student session records");
-        }
-        if (selfAssessmentRepository.countBySubmittedByUserId(userId) > 0) {
-            blockers.add("self-assessment history");
-        }
-        if (caseAssignmentRepository.existsByAssignedBy(user)) {
-            blockers.add("case assignment audit history");
-        }
+        // Session element-collection child tables (Hibernate-managed, no DB-level cascade).
+        em.createNativeQuery(
+                "DELETE FROM session_tags WHERE session_id IN " +
+                        "(SELECT id FROM sessions WHERE student_id = :id OR client_id = :id OR counselor_id = :id)")
+                .setParameter("id", userId).executeUpdate();
+        em.createNativeQuery(
+                "DELETE FROM session_attachments WHERE session_id IN " +
+                        "(SELECT id FROM sessions WHERE student_id = :id OR client_id = :id OR counselor_id = :id)")
+                .setParameter("id", userId).executeUpdate();
 
-        Optional<Client> clientRecord = clientRepository.findById(userId);
-        if (clientRecord.isPresent()) {
-            Client client = clientRecord.get();
-            if (caseRepository.countByClient(client) > 0) {
-                blockers.add("case files");
-            }
-            if (appointmentRepository.countAllByClientId(userId) > 0) {
-                blockers.add("client-linked appointments");
-            }
-            if (sessionRepository.countByClientId(userId) > 0) {
-                blockers.add("client counseling sessions");
-            }
-            if (clientIntakeFormRepository.existsByClientId(userId)) {
-                blockers.add("client intake forms");
-            }
-            if (personalDataFormRepository.existsByClientId(userId)) {
-                blockers.add("personal data forms");
-            }
-            if (goalRepository.countByClientId(userId) > 0) {
-                blockers.add("goal records");
-            }
-            if (academicPerformanceRepository.countByClientId(userId) > 0) {
-                blockers.add("academic performance records");
-            }
-            if (academicQualificationRepository.countByClientId(userId) > 0) {
-                blockers.add("academic qualification records");
-            }
-            if (riskAssessmentRepository.countByClientId(userId) > 0) {
-                blockers.add("risk assessments");
-            }
-            if (mentalHealthAcademicAnalysisRepository.countByClientId(userId) > 0) {
-                blockers.add("mental health analyses");
-            }
-            if (reportRepository.existsByClientId(userId)) {
-                blockers.add("generated reports");
-            }
-        }
+        // Sessions reference appointments, so they must be removed before appointments.
+        em.createNativeQuery(
+                "DELETE FROM sessions WHERE student_id = :id OR client_id = :id OR counselor_id = :id")
+                .setParameter("id", userId).executeUpdate();
 
-        Optional<Counselor> counselorRecord = counselorRepository.findById(userId);
-        if (counselorRecord.isPresent()) {
-            Counselor counselor = counselorRecord.get();
-            if (caseRepository.existsByCounselor(counselor)) {
-                blockers.add("assigned case files");
-            }
-            if (appointmentRepository.countAllByCounselorId(userId) > 0) {
-                blockers.add("counselor appointment history");
-            }
-            if (sessionRepository.countByCounselorId(userId) > 0) {
-                blockers.add("counselor session records");
-            }
-            if (caseAssignmentRepository.existsByAssignedTo(counselor)) {
-                blockers.add("case assignment history");
-            }
-            if (clientIntakeFormRepository.existsByCounselor(counselor)) {
-                blockers.add("counselor-authored intake forms");
-            }
-            if (reportRepository.existsByCounselorId(userId)) {
-                blockers.add("generated reports");
-            }
-        }
+        // Case assignments reference cases, so clear them (both by participant and by
+        // owning case) before the cases themselves are deleted further down.
+        em.createNativeQuery(
+                "DELETE FROM case_assignments WHERE assigned_by = :id OR assigned_to = :id " +
+                        "OR case_id IN (SELECT id FROM cases WHERE client_id = :id OR counselor_id = :id)")
+                .setParameter("id", userId).executeUpdate();
 
-        if (!blockers.isEmpty()) {
-            throw new ValidationException(
-                    "Permanent delete is blocked because this user still has protected records: "
-                            + String.join(", ", blockers)
-                            + ". Deactivate the user instead to preserve clinical and audit history."
-            );
-        }
+        // Intake/personal-data forms reference cases too; their own element-collection
+        // child tables (form_previous_counselling, reasons_*, etc.) cascade at the DB level.
+        em.createNativeQuery(
+                "DELETE FROM client_intake_forms WHERE client_id = :id OR counselor_id = :id " +
+                        "OR case_id IN (SELECT id FROM cases WHERE client_id = :id OR counselor_id = :id)")
+                .setParameter("id", userId).executeUpdate();
+        em.createNativeQuery(
+                "DELETE FROM personal_data_forms WHERE client_id = :id " +
+                        "OR case_id IN (SELECT id FROM cases WHERE client_id = :id OR counselor_id = :id)")
+                .setParameter("id", userId).executeUpdate();
+
+        // Appointments reference cases, so they must go before cases too.
+        em.createNativeQuery(
+                "DELETE FROM appointments WHERE student_id = :id OR client_id = :id OR counselor_id = :id " +
+                        "OR case_id IN (SELECT id FROM cases WHERE client_id = :id OR counselor_id = :id)")
+                .setParameter("id", userId).executeUpdate();
+
+        em.createNativeQuery("DELETE FROM risk_assessments WHERE client_id = :id OR assessor_id = :id")
+                .setParameter("id", userId).executeUpdate();
+        em.createNativeQuery("DELETE FROM reports WHERE client_id = :id OR counselor_id = :id")
+                .setParameter("id", userId).executeUpdate();
+        em.createNativeQuery("DELETE FROM goals WHERE client_id = :id")
+                .setParameter("id", userId).executeUpdate();
+        em.createNativeQuery("DELETE FROM academic_performance WHERE client_id = :id")
+                .setParameter("id", userId).executeUpdate();
+        em.createNativeQuery("DELETE FROM academic_qualifications WHERE client_id = :id")
+                .setParameter("id", userId).executeUpdate();
+        em.createNativeQuery("DELETE FROM self_assessments WHERE submitted_by_user_id = :id OR client_id = :id")
+                .setParameter("id", userId).executeUpdate();
+
+        // Cases are now safe to remove — every table that referenced them has been cleared.
+        em.createNativeQuery("DELETE FROM cases WHERE client_id = :id OR counselor_id = :id")
+                .setParameter("id", userId).executeUpdate();
     }
 
     private void deleteUserOwnedArtifacts(User user) {
         Long userId = user.getId();
 
-        // At this point ensureUserCanBePermanentlyDeleted has already verified that
-        // the user has no protected clinical/audit records. Only delete direct
-        // user-owned artifacts and legacy profile rows here.
+        // cascadeDeleteClinicalRecords has already removed every clinical/audit record
+        // this user was linked to. Only direct user-owned artifacts and legacy profile
+        // rows remain to clean up here.
         deleteByUserIdIfTableExists("notifications", "recipient_id", userId);
         deleteByUserIdIfTableExists("chat_messages", "user_id", userId);
         deleteByUserIdIfTableExists("user_dashboard_config", "user_id", userId);
