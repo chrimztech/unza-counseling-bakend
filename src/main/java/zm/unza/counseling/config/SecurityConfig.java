@@ -107,7 +107,10 @@ public class SecurityConfig {
                  // 🔓 Public headline stats (login screen stat cards — no session yet)
                  .requestMatchers(
                          "/api/public/stats",
-                         "/public/stats"
+                         "/public/stats",
+                         // Crisis contacts shown on the login screen (super-admin-entered, public by intent)
+                         "/api/public/support-contacts",
+                         "/public/support-contacts"
                  ).permitAll()
 
                 // NOTE: previously there was a "public counselor availability" permitAll rule
