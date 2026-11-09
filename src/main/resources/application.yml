@@ -156,6 +156,13 @@ app:
   cross-system:
     api-key: ${CROSS_SYSTEM_API_KEY:}
 
+  # AI providers (OpenAI, Anthropic, Groq, xAI, Gemini, ...) are configured at runtime by a
+  # super admin under Admin -> AI Providers; their API keys are AES-GCM encrypted in the DB with
+  # this key. Set AI_ENCRYPTION_KEY in production (any long random string). If unset, a key is
+  # derived from JWT_SECRET — rotating JWT_SECRET would then require re-entering provider keys.
+  ai:
+    encryption-key: ${AI_ENCRYPTION_KEY:}
+
 # External API Configuration
   external-api:
     connection-timeout: ${EXTERNAL_API_CONNECTION_TIMEOUT:10000}
