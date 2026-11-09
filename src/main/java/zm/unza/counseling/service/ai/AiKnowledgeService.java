@@ -109,9 +109,18 @@ public class AiKnowledgeService {
      * System prompt for one wellness-chat turn. {@code previousUserMessage} helps retrieval on
      * short follow-ups ("yes", "what should I do?") that carry no topic of their own.
      */
-    // Not readOnly: the first call after deploy creates the settings row.
     @Transactional
     public WellnessPrompt buildWellnessSystemPrompt(String message, String previousUserMessage) {
+        return buildWellnessSystemPrompt(message, previousUserMessage, null);
+    }
+
+    /**
+     * @param personalContext optional "about the person you are talking to" section (long-term
+     *                        memory + their own records), from AiStudentMemoryService
+     */
+    // Not readOnly: the first call after deploy creates the settings row.
+    @Transactional
+    public WellnessPrompt buildWellnessSystemPrompt(String message, String previousUserMessage, String personalContext) {
         AiAssistantSettings settings = settings();
         StringBuilder sb = new StringBuilder(BASE_PROMPT);
 
@@ -161,6 +170,9 @@ public class AiKnowledgeService {
             sb.append("\n## Additional instructions from the Counselling Centre\n")
               .append(settings.getAdditionalInstructions().strip()).append('\n');
         }
+        if (notBlank(personalContext)) {
+            sb.append('\n').append(personalContext.strip()).append('\n');
+        }
         return new WellnessPrompt(sb.toString(), examples);
     }
 
@@ -185,6 +197,8 @@ public class AiKnowledgeService {
     public AiAssistantSettings updateSettings(Map<String, Object> body, String actor) {
         AiAssistantSettings s = settings();
         if (body.containsKey("knowledgeEnabled")) s.setKnowledgeEnabled(Boolean.TRUE.equals(body.get("knowledgeEnabled")));
+        if (body.containsKey("memoryEnabled")) s.setMemoryEnabled(Boolean.TRUE.equals(body.get("memoryEnabled")));
+        if (body.containsKey("recordsEnabled")) s.setRecordsEnabled(Boolean.TRUE.equals(body.get("recordsEnabled")));
         if (body.containsKey("useAiDrafts")) {
             s.setUseAiDrafts(Boolean.TRUE.equals(body.get("useAiDrafts")));
             invalidate();

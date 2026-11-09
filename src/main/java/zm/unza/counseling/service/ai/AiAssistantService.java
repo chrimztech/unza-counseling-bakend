@@ -5,8 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import zm.unza.counseling.entity.ChatMessage;
-import zm.unza.counseling.repository.ChatMessageRepository;
+import zm.unza.counseling.entity.User;
 
 import java.util.*;
 import java.util.regex.Pattern;
@@ -19,9 +18,6 @@ import java.util.regex.Pattern;
 @Service
 @RequiredArgsConstructor
 public class AiAssistantService {
-
-    /** How many previous exchanges (user+assistant pairs) are sent as conversation context. */
-    private static final int HISTORY_EXCHANGES = 10;
 
     private static final List<Pattern> CRISIS_PATTERNS = List.of(
             Pattern.compile("suicid", Pattern.CASE_INSENSITIVE),
@@ -46,9 +42,9 @@ public class AiAssistantService {
             """;
 
     private final AiGatewayService gateway;
-    private final ChatMessageRepository chatMessageRepository;
     private final ObjectMapper mapper;
     private final AiKnowledgeService knowledge;
+    private final AiStudentMemoryService memory;
 
     public boolean isAvailable() {
         return gateway.isAvailable();
@@ -60,16 +56,17 @@ public class AiAssistantService {
     }
 
     /**
-     * Wellness chat reply with the user's recent history in this session as context, grounded in
-     * the counsellor-written scenarios most similar to what the student said.
+     * Wellness chat reply. Context: the long-term memory summary and the person's own records
+     * (via {@link AiStudentMemoryService}), every not-yet-summarised exchange verbatim, and the
+     * counsellor-written scenarios most similar to what they said.
      */
-    public AiResult wellnessReply(Long userId, String sessionId, String message, boolean crisisDetected) {
-        List<AiMessage> convo = new ArrayList<>(recentHistory(userId, sessionId));
+    public AiResult wellnessReply(User user, String message, boolean crisisDetected) {
+        List<AiMessage> convo = new ArrayList<>(memory.verbatimHistory(user.getId()));
         String previousUser = null;
         for (int i = convo.size() - 1; i >= 0; i--) {
             if ("user".equals(convo.get(i).role())) { previousUser = convo.get(i).content(); break; }
         }
-        String systemPrompt = knowledge.buildWellnessSystemPrompt(message, previousUser).systemPrompt();
+        String systemPrompt = knowledge.buildWellnessSystemPrompt(message, previousUser, memory.personalContext(user)).systemPrompt();
         String userTurn = message;
         if (crisisDetected) {
             // Belt and braces: the system prompt already covers this, but make it explicit for this turn.
@@ -122,21 +119,6 @@ public class AiAssistantService {
         }
         out.put("provider", r.providerName());
         out.put("model", r.model());
-        return out;
-    }
-
-    private List<AiMessage> recentHistory(Long userId, String sessionId) {
-        List<ChatMessage> rows = chatMessageRepository.findByUserIdOrderByCreatedAtDesc(userId);
-        List<ChatMessage> recent = rows.stream()
-                .filter(m -> Objects.equals(sessionId, m.getSessionId()))
-                .limit(HISTORY_EXCHANGES)
-                .toList();
-        List<AiMessage> out = new ArrayList<>();
-        for (int i = recent.size() - 1; i >= 0; i--) {            // oldest first
-            ChatMessage m = recent.get(i);
-            if (m.getMessage() != null && !m.getMessage().isBlank()) out.add(AiMessage.user(m.getMessage()));
-            if (m.getResponse() != null && !m.getResponse().isBlank()) out.add(AiMessage.assistant(m.getResponse()));
-        }
         return out;
     }
 

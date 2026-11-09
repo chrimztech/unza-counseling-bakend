@@ -14,6 +14,7 @@ import zm.unza.counseling.service.CrisisDetectionService;
 import zm.unza.counseling.service.UserService;
 import zm.unza.counseling.service.ai.AiAssistantService;
 import zm.unza.counseling.service.ai.AiCrisisEscalationService;
+import zm.unza.counseling.service.ai.AiStudentMemoryService;
 import zm.unza.counseling.service.ai.AiResult;
 import zm.unza.counseling.service.ai.AiUnavailableException;
 
@@ -38,6 +39,7 @@ public class ChatController {
     private final UserService userService;
     private final AiAssistantService assistant;
     private final AiCrisisEscalationService crisisEscalation;
+    private final AiStudentMemoryService studentMemory;
 
     /**
      * Resolve the authenticated caller's user id. Derived from the SecurityContext/Principal
@@ -101,7 +103,7 @@ public class ChatController {
         try {
             AiResult r = sessionNotes
                     ? assistant.sessionNoteFromText(message)
-                    : assistant.wellnessReply(userId, sessionId, message, crisis);
+                    : assistant.wellnessReply(currentUser, message, crisis);
             reply = r.content();
             provider = r.providerName();
             model = r.model();
@@ -126,6 +128,8 @@ public class ChatController {
             if (saved.getCreatedAt() != null) createdAt = saved.getCreatedAt();
             // Raise a CrisisAlert + notify counselors, even if the AI itself was offline.
             if (crisis) crisisEscalation.escalate(currentUser, savedId, crisisResult);
+            // Fold older exchanges into long-term memory in the background (no effect on this reply).
+            if (aiAvailable) studentMemory.maybeFoldAsync(userId);
         }
 
         Map<String, Object> body = new LinkedHashMap<>();
@@ -146,8 +150,11 @@ public class ChatController {
 
     @DeleteMapping("/history/{userId}")
     public ResponseEntity<ApiResponse> clearHistory(@PathVariable Long userId, Authentication authentication) {
-        chatMessageRepository.deleteByUserId(currentUserId(authentication));
-        return ResponseEntity.ok(ApiResponse.success(null, "History cleared"));
+        Long uid = currentUserId(authentication);
+        chatMessageRepository.deleteByUserId(uid);
+        // Clearing history also clears what the assistant remembers about the person.
+        studentMemory.forget(uid);
+        return ResponseEntity.ok(ApiResponse.success(null, "History and AI memory cleared"));
     }
 
     private static boolean isStaff(Authentication auth) {

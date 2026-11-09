@@ -29,6 +29,17 @@ public class AiAssistantSettings {
     @Column(name = "examples_per_reply", nullable = false)
     private Integer examplesPerReply = 3;
 
+    /** Long-term memory: summarise older conversations so the assistant remembers them. Null means true. */
+    @Column(name = "memory_enabled")
+    private Boolean memoryEnabled = true;
+
+    /**
+     * Let the assistant see the user's own records (self-assessment scores, upcoming appointments,
+     * latest wellness analysis status). Counsellor session notes are never included. Null means true.
+     */
+    @Column(name = "records_enabled")
+    private Boolean recordsEnabled = true;
+
     /** Whether AI-drafted responses not yet reviewed by a counsellor are used as examples. Null means true. */
     @Column(name = "use_ai_drafts")
     private Boolean useAiDrafts = true;
