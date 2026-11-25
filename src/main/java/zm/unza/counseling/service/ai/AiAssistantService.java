@@ -126,9 +126,10 @@ public class AiAssistantService {
         steps.add(step("guidance", "Applied UNZA counselling guidance and safety rules",
                 "Kept to supportive, non-judgemental advice, pointed to real UNZA services, and didn't diagnose.", "done"));
 
+        // Deliberately no provider/model/timing here: students don't need vendor details
+        // (admins see those under AI Providers).
         steps.add(step("reply", "Wrote this reply",
-                "Using " + result.providerName() + " (" + result.model() + ") in "
-                        + String.format(Locale.ROOT, "%.1f", result.latencyMs() / 1000.0) + "s.", "done"));
+                "Brought it all together into a reply written for you, in plain and supportive language.", "done"));
         return steps;
     }
 
