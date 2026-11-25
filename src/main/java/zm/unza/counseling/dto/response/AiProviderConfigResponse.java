@@ -24,6 +24,7 @@ public class AiProviderConfigResponse {
     private Double temperature;
     private Integer maxTokens;
     private Integer timeoutSeconds;
+    private boolean thinkingEnabled;
     private boolean enabled;
     @JsonProperty("isDefault")
     private boolean isDefault;
@@ -53,6 +54,7 @@ public class AiProviderConfigResponse {
                 .temperature(c.getTemperature())
                 .maxTokens(c.getMaxTokens())
                 .timeoutSeconds(c.getTimeoutSeconds())
+                .thinkingEnabled(Boolean.TRUE.equals(c.getThinkingEnabled()))
                 .enabled(Boolean.TRUE.equals(c.getEnabled()))
                 .isDefault(Boolean.TRUE.equals(c.getIsDefault()))
                 .priority(c.getPriority())

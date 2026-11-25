@@ -57,6 +57,14 @@ public class AiProviderConfig {
     @Column(name = "timeout_seconds")
     private Integer timeoutSeconds = 60;
 
+    /**
+     * Provider-side reasoning ("thinking") for models that support switching it (DeepSeek V4).
+     * Off by default: it is slower, costs more, and its hidden reasoning counts against max
+     * tokens, which can leave a short chat reply empty. Null means off.
+     */
+    @Column(name = "thinking_enabled")
+    private Boolean thinkingEnabled = false;
+
     @Column(nullable = false)
     private Boolean enabled = true;
 

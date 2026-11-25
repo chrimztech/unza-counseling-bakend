@@ -9,6 +9,7 @@ import zm.unza.counseling.dto.response.ApiResponse;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import zm.unza.counseling.service.UserService;
+import zm.unza.counseling.service.ai.AiAnalyticsService;
 import zm.unza.counseling.service.ai.AiAssistantService;
 import zm.unza.counseling.service.ai.AiInsightsService;
 import zm.unza.counseling.service.ai.AiUnavailableException;
@@ -29,6 +30,7 @@ public class AiFeaturesController {
 
     private final AiAssistantService assistant;
     private final AiInsightsService insights;
+    private final AiAnalyticsService analytics;
     private final UserService userService;
 
     /**
@@ -56,6 +58,24 @@ public class AiFeaturesController {
         Long id = clientId != null && clientId.matches("\\d+") ? Long.valueOf(clientId) : null;
         String context = body == null ? null : Objects.toString(body.get("context"), null);
         return ResponseEntity.ok(insights.recommendResources(id, context));
+    }
+
+    /** Wellbeing trends from real self-assessments (Sentiment Analysis screen). Dates are yyyy-MM-dd. */
+    @GetMapping("/sentiment-trends")
+    public ResponseEntity<?> sentimentTrends(@RequestParam(required = false) Long counselorId,
+                                             @RequestParam(required = false) String startDate,
+                                             @RequestParam(required = false) String endDate) {
+        java.time.LocalDate end = endDate == null || endDate.isBlank() ? java.time.LocalDate.now() : java.time.LocalDate.parse(endDate.substring(0, 10));
+        java.time.LocalDate start = startDate == null || startDate.isBlank() ? end.minusDays(30) : java.time.LocalDate.parse(startDate.substring(0, 10));
+        if (start.isAfter(end)) { java.time.LocalDate t = start; start = end; end = t; }
+        if (start.isBefore(end.minusYears(2))) start = end.minusYears(2);
+        return ResponseEntity.ok(analytics.sentimentTrends(counselorId, start, end));
+    }
+
+    /** Appointment-demand forecast, dropout risk and high-risk list from real records (Predictive Analytics). */
+    @GetMapping("/predictive")
+    public ResponseEntity<?> predictive(@RequestParam(defaultValue = "4") int weeksAhead) {
+        return ResponseEntity.ok(analytics.predictive(weeksAhead));
     }
 
     @PostMapping("/session-notes/{clientId}")

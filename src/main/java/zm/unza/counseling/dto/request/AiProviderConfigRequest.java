@@ -46,6 +46,9 @@ public class AiProviderConfigRequest {
 
     private Boolean isDefault;
 
+    /** DeepSeek V4 "thinking" mode; ignored by providers that don't support switching it. */
+    private Boolean thinkingEnabled;
+
     @Min(0)
     @Max(10000)
     private Integer priority;

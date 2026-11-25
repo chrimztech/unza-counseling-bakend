@@ -84,6 +84,11 @@ public class LlmClient {
         // most other OpenAI-compatible vendors still only understand max_tokens.
         body.put(cfg.getProviderType() == AiProviderType.OPENAI ? "max_completion_tokens" : "max_tokens", maxTokens);
         if (cfg.getTemperature() != null) body.put("temperature", cfg.getTemperature());
+        if (cfg.getProviderType() == AiProviderType.DEEPSEEK) {
+            // DeepSeek V4 thinks by default (effort "high"); for short supportive replies that is slow,
+            // costlier and can exhaust max_tokens before any visible answer. Always state it explicitly.
+            body.putObject("thinking").put("type", Boolean.TRUE.equals(cfg.getThinkingEnabled()) ? "enabled" : "disabled");
+        }
 
         HttpRequest.Builder req = HttpRequest.newBuilder(URI.create(baseUrl + "/chat/completions"))
                 .timeout(timeout)
@@ -95,10 +100,14 @@ public class LlmClient {
         }
 
         JsonNode resp = send(req.build());
-        String text = resp.path("choices").path(0).path("message").path("content").asText("");
+        JsonNode message = resp.path("choices").path(0).path("message");
+        String text = message.path("content").asText("");
         if (text.isBlank()) {
             String reason = resp.path("choices").path(0).path("finish_reason").asText("unknown");
-            throw new LlmException("Provider returned an empty reply (finish_reason=" + reason + ")");
+            boolean reasoned = !message.path("reasoning_content").asText("").isBlank();
+            throw new LlmException("Provider returned an empty reply (finish_reason=" + reason + ")"
+                    + (reasoned ? " — the model used its token budget on hidden reasoning; turn thinking mode off "
+                    + "or raise Max tokens for this provider" : ""));
         }
         return text.trim();
     }
@@ -163,10 +172,31 @@ public class LlmClient {
         }
     }
 
+    /** Statuses every provider uses for brief overload / rate limiting — worth one quick retry. */
+    private static final java.util.Set<Integer> TRANSIENT = java.util.Set.of(429, 500, 502, 503, 504, 529);
+
     private JsonNode send(HttpRequest request) throws LlmException {
-        HttpResponse<String> resp;
+        HttpResponse<String> resp = sendOnce(request);
+        if (TRANSIENT.contains(resp.statusCode())) {
+            // Honour a short Retry-After if given, otherwise wait 1.5s; one retry only, so a real
+            // outage still falls through to the next provider quickly.
+            long waitMs = resp.headers().firstValue("retry-after")
+                    .map(v -> { try { return (long) (Double.parseDouble(v) * 1000); } catch (NumberFormatException e) { return 1500L; } })
+                    .filter(ms -> ms > 0 && ms <= 5000).orElse(1500L);
+            try {
+                Thread.sleep(waitMs);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new LlmException("Request interrupted");
+            }
+            resp = sendOnce(request);
+        }
+        return parse(resp);
+    }
+
+    private HttpResponse<String> sendOnce(HttpRequest request) throws LlmException {
         try {
-            resp = http.send(request, HttpResponse.BodyHandlers.ofString());
+            return http.send(request, HttpResponse.BodyHandlers.ofString());
         } catch (java.net.http.HttpTimeoutException e) {
             throw new LlmException("Request to provider timed out");
         } catch (java.io.IOException e) {
@@ -175,6 +205,9 @@ public class LlmClient {
             Thread.currentThread().interrupt();
             throw new LlmException("Request interrupted");
         }
+    }
+
+    private JsonNode parse(HttpResponse<String> resp) throws LlmException {
 
         JsonNode json;
         try {
@@ -192,7 +225,14 @@ public class LlmClient {
                 if (detail == null) detail = json.path("message").asText(null);
             }
             if (detail == null) detail = truncate(resp.body(), 300);
-            throw new LlmException("HTTP " + resp.statusCode() + ": " + truncate(detail, 500));
+            String hint = switch (resp.statusCode()) {
+                case 401, 403 -> " — check the API key (wrong, revoked or lacking permission)";
+                case 402 -> " — the provider account has no credit/balance left; top it up";
+                case 404 -> " — the model or URL wasn't found; use Fetch models to pick a current model";
+                case 429 -> " — rate limit or quota reached; wait, raise the limit, or add a fallback provider";
+                default -> "";
+            };
+            throw new LlmException("HTTP " + resp.statusCode() + ": " + truncate(detail, 500) + hint);
         }
         if (json == null) throw new LlmException("Provider returned a non-JSON response");
         return json;

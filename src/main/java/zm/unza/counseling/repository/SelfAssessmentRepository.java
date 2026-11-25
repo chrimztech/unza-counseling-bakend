@@ -24,4 +24,9 @@ public interface SelfAssessmentRepository extends JpaRepository<SelfAssessment, 
     Optional<SelfAssessment> findTopBySubmittedByUserIdOrderByAssessmentDateDesc(Long submittedByUserId);
 
     long countBySubmittedByUserId(Long submittedByUserId);
+
+    /** Assessments in a date range (assessment date, falling back to creation time), oldest first. */
+    @Query("SELECT s FROM SelfAssessment s WHERE COALESCE(s.assessmentDate, s.createdAt) BETWEEN :from AND :to "
+         + "ORDER BY COALESCE(s.assessmentDate, s.createdAt)")
+    List<SelfAssessment> findInRange(@Param("from") java.time.LocalDateTime from, @Param("to") java.time.LocalDateTime to);
 }

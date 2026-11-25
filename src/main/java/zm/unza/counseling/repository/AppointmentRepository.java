@@ -230,4 +230,8 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
     @Modifying
     @Query(value = "DELETE FROM appointments WHERE counselor_id = :counselorId", nativeQuery = true)
     void deleteAllByCounselorId(@Param("counselorId") Long counselorId);
+
+    /** Non-deleted appointments in a date range, for demand forecasting and attendance analytics. */
+    @Query("SELECT a FROM Appointment a WHERE a.deletedAt IS NULL AND a.appointmentDate BETWEEN :from AND :to")
+    List<Appointment> findActiveInRange(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
 }

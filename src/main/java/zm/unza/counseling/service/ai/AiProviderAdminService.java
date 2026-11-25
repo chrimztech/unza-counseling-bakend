@@ -148,6 +148,7 @@ public class AiProviderAdminService {
         if (req.getEnabled() != null) cfg.setEnabled(req.getEnabled());
         if (req.getIsDefault() != null) cfg.setIsDefault(req.getIsDefault());
         if (req.getPriority() != null) cfg.setPriority(req.getPriority());
+        if (req.getThinkingEnabled() != null) cfg.setThinkingEnabled(req.getThinkingEnabled());
 
         if (Boolean.TRUE.equals(req.getClearApiKey())) {
             cfg.setEncryptedApiKey(null);

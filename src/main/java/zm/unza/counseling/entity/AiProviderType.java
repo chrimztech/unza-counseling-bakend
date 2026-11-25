@@ -25,8 +25,10 @@ public enum AiProviderType {
             List.of("gemini-2.5-flash", "gemini-2.5-pro")),
     MISTRAL("Mistral AI", ApiStyle.OPENAI_COMPATIBLE, "https://api.mistral.ai/v1", true,
             List.of("mistral-small-latest", "mistral-large-latest")),
-    DEEPSEEK("DeepSeek", ApiStyle.OPENAI_COMPATIBLE, "https://api.deepseek.com/v1", true,
-            List.of("deepseek-chat")),
+    // deepseek-chat / deepseek-reasoner were retired on 2026-07-24; V4 models default to
+    // "thinking" mode, which LlmClient switches off unless the provider enables it.
+    DEEPSEEK("DeepSeek", ApiStyle.OPENAI_COMPATIBLE, "https://api.deepseek.com", true,
+            List.of("deepseek-flash", "deepseek-v4-pro")),
     OPENROUTER("OpenRouter", ApiStyle.OPENAI_COMPATIBLE, "https://openrouter.ai/api/v1", true,
             List.of("openrouter/auto")),
     OLLAMA("Ollama (self-hosted)", ApiStyle.OPENAI_COMPATIBLE, "http://localhost:11434/v1", false,
