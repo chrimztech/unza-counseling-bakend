@@ -14,6 +14,12 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> 
 
     /** Messages not yet folded into the user's memory summary, oldest first. */
     List<ChatMessage> findByUserIdAndIdGreaterThanOrderByIdAsc(Long userId, Long afterId);
+
+    /** One conversation's unsummarised messages, oldest first (the verbatim context for that chat). */
+    List<ChatMessage> findByUserIdAndSessionIdAndIdGreaterThanOrderByIdAsc(Long userId, String sessionId, Long afterId);
+
+    @Transactional
+    long deleteByUserIdAndSessionId(Long userId, String sessionId);
     @Transactional
     void deleteByUserId(Long userId);
 }

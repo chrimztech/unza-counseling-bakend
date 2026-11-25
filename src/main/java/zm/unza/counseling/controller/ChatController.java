@@ -62,8 +62,12 @@ public class ChatController {
      * what both the web and Flutter chat screens read.
      */
     @GetMapping("/history/{userId}")
-    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getChatHistory(@PathVariable Long userId, Authentication authentication) {
-        List<ChatMessage> rows = new ArrayList<>(chatMessageRepository.findByUserIdOrderByCreatedAtDesc(currentUserId(authentication)));
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getChatHistory(@PathVariable Long userId,
+                                                                               @RequestParam(required = false) String sessionId,
+                                                                               Authentication authentication) {
+        String sid = cleanSessionId(sessionId);
+        List<ChatMessage> rows = new ArrayList<>(chatMessageRepository.findByUserIdOrderByCreatedAtDesc(currentUserId(authentication))
+                .stream().filter(m -> sid == null || sid.equals(m.getSessionId() == null ? "default" : m.getSessionId())).toList());
         Collections.reverse(rows);
         List<Map<String, Object>> out = new ArrayList<>();
         for (ChatMessage m : rows) {
@@ -77,12 +81,54 @@ public class ChatController {
         return ResponseEntity.ok(ApiResponse.success(out));
     }
 
+    /**
+     * The caller's conversations, newest first: id, a title (start of the first message), last
+     * activity and message count — for the "Previous chats" list.
+     */
+    @GetMapping("/sessions")
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> sessions(Authentication authentication) {
+        List<ChatMessage> rows = chatMessageRepository.findByUserIdOrderByCreatedAtDesc(currentUserId(authentication));
+        Map<String, List<ChatMessage>> bySession = new LinkedHashMap<>();
+        for (ChatMessage m : rows) {
+            bySession.computeIfAbsent(m.getSessionId() == null ? "default" : m.getSessionId(), k -> new ArrayList<>()).add(m);
+        }
+        List<Map<String, Object>> out = new ArrayList<>();
+        bySession.forEach((sid, list) -> {   // list is newest-first
+            ChatMessage first = list.get(list.size() - 1);
+            String title = first.getMessage() == null ? "Conversation" : first.getMessage().strip().replaceAll("\\s+", " ");
+            if (title.length() > 60) title = title.substring(0, 57) + "…";
+            Map<String, Object> s = new LinkedHashMap<>();
+            s.put("sessionId", sid);
+            s.put("title", title);
+            s.put("lastActivity", list.get(0).getCreatedAt());
+            s.put("messageCount", list.size());
+            out.add(s);
+        });
+        return ResponseEntity.ok(ApiResponse.success(out));
+    }
+
+    /** Deletes one of the caller's conversations (see AiStudentMemoryService#deleteConversation). */
+    @DeleteMapping("/sessions/{sessionId}")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> deleteSession(@PathVariable String sessionId, Authentication authentication) {
+        String sid = cleanSessionId(sessionId);
+        if (sid == null) return ResponseEntity.badRequest().body(ApiResponse.error("Invalid conversation id"));
+        long deleted = studentMemory.deleteConversation(currentUserId(authentication), sid);
+        return ResponseEntity.ok(ApiResponse.success(Map.of("deleted", deleted), "Conversation deleted"));
+    }
+
+    /** Conversation ids come from clients: keep them short and to a safe character set. */
+    private static String cleanSessionId(String raw) {
+        if (raw == null || raw.isBlank()) return null;
+        String s = raw.trim();
+        return s.length() <= 64 && s.matches("[A-Za-z0-9_-]+") ? s : null;
+    }
+
     @PostMapping("/message")
     public ResponseEntity<ApiResponse<Map<String, Object>>> sendMessage(@RequestBody Map<String, Object> request, Authentication authentication) {
         User currentUser = userService.getUserByEmail(authentication.getName());
         Long userId = currentUser.getId();
         String message = Objects.toString(request.get("message"), "").trim();
-        String sessionId = Objects.toString(request.getOrDefault("sessionId", "default"), "default");
+        String sessionId = Optional.ofNullable(cleanSessionId(Objects.toString(request.get("sessionId"), null))).orElse("default");
         String context = Objects.toString(request.get("context"), "");
 
         if (message.isEmpty()) {
@@ -106,7 +152,7 @@ public class ChatController {
             if (sessionNotes) {
                 r = assistant.sessionNoteFromText(message);
             } else {
-                AiAssistantService.WellnessReply w = assistant.wellnessReply(currentUser, message, crisis);
+                AiAssistantService.WellnessReply w = assistant.wellnessReply(currentUser, sessionId, message, crisis);
                 r = w.result();
                 trace = w.trace();
             }

@@ -71,8 +71,8 @@ public class AiAssistantService {
     /** The reply plus a step-by-step account of how it was produced (for the "How I worked this out" panel). */
     public record WellnessReply(AiResult result, List<Map<String, Object>> trace) {}
 
-    public WellnessReply wellnessReply(User user, String message, boolean crisisDetected) {
-        List<AiMessage> convo = new ArrayList<>(memory.verbatimHistory(user.getId()));
+    public WellnessReply wellnessReply(User user, String sessionId, String message, boolean crisisDetected) {
+        List<AiMessage> convo = new ArrayList<>(memory.verbatimHistory(user.getId(), sessionId));
         int verbatimTurns = convo.size();
         String previousUser = null;
         for (int i = convo.size() - 1; i >= 0; i--) {

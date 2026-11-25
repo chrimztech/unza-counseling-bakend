@@ -52,16 +52,29 @@ public class AiStudentMemoryService {
 
     // ===================================================================== conversation history
 
-    /** Verbatim turns to send: everything not yet summarised (or the last 10 if memory is off). */
+    /** Verbatim turns for all chats (kept for callers without a conversation id). */
     @Transactional(readOnly = true)
     public List<AiMessage> verbatimHistory(Long userId) {
+        return verbatimHistory(userId, null);
+    }
+
+    /**
+     * Verbatim turns to send for one conversation ({@code sessionId}; null = all chats): its
+     * messages not yet summarised, or its last 10 if memory is off. Other chats reach the model
+     * only through the long-term memory summary — like starting a new chat in other AI tools.
+     */
+    @Transactional(readOnly = true)
+    public List<AiMessage> verbatimHistory(Long userId, String sessionId) {
         List<ChatMessage> rows;
         if (memoryEnabled()) {
             long after = memoryRepository.findById(userId).map(AiUserMemory::getSummarizedThroughId).orElse(0L);
-            rows = chatMessageRepository.findByUserIdAndIdGreaterThanOrderByIdAsc(userId, after);
+            rows = sessionId == null
+                    ? chatMessageRepository.findByUserIdAndIdGreaterThanOrderByIdAsc(userId, after)
+                    : chatMessageRepository.findByUserIdAndSessionIdAndIdGreaterThanOrderByIdAsc(userId, sessionId, after);
             if (rows.size() > VERBATIM_HARD_CAP) rows = rows.subList(rows.size() - VERBATIM_HARD_CAP, rows.size());
         } else {
-            List<ChatMessage> desc = chatMessageRepository.findByUserIdOrderByCreatedAtDesc(userId);
+            List<ChatMessage> desc = chatMessageRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
+                    .filter(m -> sessionId == null || sessionId.equals(m.getSessionId())).toList();
             rows = new ArrayList<>(desc.subList(0, Math.min(VERBATIM_KEEP, desc.size())));
             Collections.reverse(rows);
         }
@@ -281,6 +294,21 @@ public class AiStudentMemoryService {
     @Transactional
     public void forget(Long userId) {
         memoryRepository.deleteById(userId);
+    }
+
+    /**
+     * Deletes one conversation. If any of its messages were already folded into the memory summary,
+     * the summary is dropped too (it can't be partially "un-summarised"); the remaining chats are
+     * then re-summarised from scratch as the person keeps chatting.
+     */
+    @Transactional
+    public long deleteConversation(Long userId, String sessionId) {
+        long summarizedThrough = memoryRepository.findById(userId).map(AiUserMemory::getSummarizedThroughId).orElse(0L);
+        boolean wasSummarised = chatMessageRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
+                .anyMatch(m -> sessionId.equals(m.getSessionId()) && m.getId() != null && m.getId() <= summarizedThrough);
+        long deleted = chatMessageRepository.deleteByUserIdAndSessionId(userId, sessionId);
+        if (wasSummarised) memoryRepository.deleteById(userId);
+        return deleted;
     }
 
     // ===================================================================== helpers
