@@ -28,7 +28,15 @@ public class AiAssistantService {
             Pattern.compile("(want|wish) (to|i could) die", Pattern.CASE_INSENSITIVE),
             Pattern.compile("can'?t go on", Pattern.CASE_INSENSITIVE),
             Pattern.compile("no reason to live", Pattern.CASE_INSENSITIVE),
-            Pattern.compile("better off dead", Pattern.CASE_INSENSITIVE)
+            Pattern.compile("better off dead", Pattern.CASE_INSENSITIVE),
+            // Indirect expressions of suicidal thinking (the wording students most often use).
+            Pattern.compile("better off without me", Pattern.CASE_INSENSITIVE),
+            Pattern.compile("(no ?one|nobody) (would|will) (miss|care|notice)", Pattern.CASE_INSENSITIVE),
+            Pattern.compile("(don'?t|do not|no longer) want to (be here|live|exist|wake up|be alive)", Pattern.CASE_INSENSITIVE),
+            Pattern.compile("(tired|sick) of (living|being alive|life)", Pattern.CASE_INSENSITIVE),
+            Pattern.compile("wish i (was|were) (dead|never born)|wish i had never been born", Pattern.CASE_INSENSITIVE),
+            Pattern.compile("(take|swallow|took) all (my|the|of my) (pills|tablets|medication)", Pattern.CASE_INSENSITIVE),
+            Pattern.compile("(disappear|go to sleep) (forever|and never wake)", Pattern.CASE_INSENSITIVE)
     );
 
     // The wellness system prompt is assembled per turn by AiKnowledgeService (base rules + campus

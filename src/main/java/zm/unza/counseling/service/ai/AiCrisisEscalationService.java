@@ -34,15 +34,30 @@ public class AiCrisisEscalationService {
     private final NotificationService notificationService;
     private final SecurityAlertService securityAlertService;
 
-    /** Combined detection: the shared keyword scanner plus the AI chat's extra phrase patterns. */
+    /**
+     * HIGH-severity phrases from the shared scanner that indicate danger to the person. The others
+     * on that list ("depression", "anxiety attack", "alcohol", "useless", "trauma"…) are the normal
+     * subject of a wellness conversation: the assistant handles them, and alerting every counsellor
+     * each time a student names them would bury the real emergencies.
+     */
+    private static final Set<String> CHAT_ALERT_HIGH = Set.of(
+            "abuse", "abusing me", "being abused", "domestic violence", "beaten", "hitting me",
+            "can't go on", "cannot go on", "can not go on", "give up on life", "end it all");
+
+    /**
+     * Detection for the AI chat: every CRITICAL phrase from the shared scanner, the danger-related
+     * HIGH phrases above, and the chat's own suicide/self-harm patterns.
+     */
     public CrisisDetectionService.CrisisResult scan(String message) {
         CrisisDetectionService.CrisisResult shared = crisisDetectionService.scan(message);
-        if (shared.isCrisis()) return shared;
+        if (shared.severity() == CrisisDetectionService.Severity.CRITICAL) return shared;
+        List<String> danger = shared.triggeredKeywords().stream().filter(CHAT_ALERT_HIGH::contains).toList();
+        if (!danger.isEmpty()) return new CrisisDetectionService.CrisisResult(CrisisDetectionService.Severity.HIGH, danger);
         if (AiAssistantService.detectCrisis(message)) {
             return new CrisisDetectionService.CrisisResult(CrisisDetectionService.Severity.HIGH,
                     List.of("AI chat crisis phrase"));
         }
-        return shared;
+        return new CrisisDetectionService.CrisisResult(CrisisDetectionService.Severity.NONE, List.of());
     }
 
     /** Never throws — the student's chat reply must not fail because escalation did. */

@@ -28,20 +28,38 @@ public class CrisisDetectionService {
         "no reason to live", "life is not worth", "better off dead",
         "kill him", "kill her", "kill them", "kill you",
         "harm someone", "hurt someone", "attack someone",
-        "bomb", "weapon", "gun", "knife to",
-        "rape", "sexual assault"
+        "bomb", "bombs", "weapon", "weapons", "gun", "guns", "knife to",
+        "rape", "raped", "sexual assault"
     );
 
     private static final List<String> HIGH_PHRASES = Arrays.asList(
         "abuse", "abusing me", "being abused",
         "domestic violence", "beaten", "hitting me",
-        "drug", "alcohol", "substance",
+        "drug", "drugs", "alcohol", "substance",
         "depression", "hopeless", "helpless", "worthless", "useless",
         "can't go on", "cannot go on", "can not go on",
         "no point", "give up on life", "end it all",
         "anxiety attack", "panic attack", "breakdown",
         "trauma", "ptsd"
     );
+
+    /**
+     * Whole-word match. Plain substring matching raised CRITICAL alerts for everyday words —
+     * "begun" (gun), "bombed my exam" (bomb), "grapes" (rape) — so each phrase must start and end
+     * at a word boundary. Inflections that should still match are listed explicitly ("drugs", "guns").
+     */
+    private static boolean containsPhrase(String lower, String phrase) {
+        int from = 0;
+        while (true) {
+            int i = lower.indexOf(phrase, from);
+            if (i < 0) return false;
+            int end = i + phrase.length();
+            boolean startOk = i == 0 || !Character.isLetterOrDigit(lower.charAt(i - 1));
+            boolean endOk = end == lower.length() || !Character.isLetterOrDigit(lower.charAt(end));
+            if (startOk && endOk) return true;
+            from = i + 1;
+        }
+    }
 
     /**
      * Scans one or more text fields and returns the highest severity found plus all triggered phrases.
@@ -52,10 +70,10 @@ public class CrisisDetectionService {
 
         for (String text : texts) {
             if (text == null || text.isBlank()) continue;
-            String lower = text.toLowerCase(Locale.ROOT);
+            String lower = text.toLowerCase(Locale.ROOT).replace('’', '\'');
 
             for (String phrase : CRITICAL_PHRASES) {
-                if (lower.contains(phrase) && !triggered.contains(phrase)) {
+                if (containsPhrase(lower, phrase) && !triggered.contains(phrase)) {
                     triggered.add(phrase);
                     highest = Severity.CRITICAL;
                 }
@@ -63,7 +81,7 @@ public class CrisisDetectionService {
 
             if (highest != Severity.CRITICAL) {
                 for (String phrase : HIGH_PHRASES) {
-                    if (lower.contains(phrase) && !triggered.contains(phrase)) {
+                    if (containsPhrase(lower, phrase) && !triggered.contains(phrase)) {
                         triggered.add(phrase);
                         if (highest == Severity.NONE) highest = Severity.HIGH;
                     }
