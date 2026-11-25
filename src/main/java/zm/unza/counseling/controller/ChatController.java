@@ -100,10 +100,16 @@ public class ChatController {
         boolean aiAvailable = true;
         String provider = null;
         String model = null;
+        List<Map<String, Object>> trace = null;
         try {
-            AiResult r = sessionNotes
-                    ? assistant.sessionNoteFromText(message)
-                    : assistant.wellnessReply(currentUser, message, crisis);
+            AiResult r;
+            if (sessionNotes) {
+                r = assistant.sessionNoteFromText(message);
+            } else {
+                AiAssistantService.WellnessReply w = assistant.wellnessReply(currentUser, message, crisis);
+                r = w.result();
+                trace = w.trace();
+            }
             reply = r.content();
             provider = r.providerName();
             model = r.model();
@@ -144,6 +150,8 @@ public class ChatController {
         body.put("aiAvailable", aiAvailable);
         body.put("provider", provider);
         body.put("model", model);
+        // Step-by-step account of how the reply was produced ("How I worked this out" panel).
+        body.put("trace", trace);
         body.put("timestamp", createdAt);
         return ResponseEntity.ok(ApiResponse.success(body, "Message sent"));
     }

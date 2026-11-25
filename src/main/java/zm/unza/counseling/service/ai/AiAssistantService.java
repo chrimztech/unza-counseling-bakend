@@ -68,13 +68,18 @@ public class AiAssistantService {
      * (via {@link AiStudentMemoryService}), every not-yet-summarised exchange verbatim, and the
      * counsellor-written scenarios most similar to what they said.
      */
-    public AiResult wellnessReply(User user, String message, boolean crisisDetected) {
+    /** The reply plus a step-by-step account of how it was produced (for the "How I worked this out" panel). */
+    public record WellnessReply(AiResult result, List<Map<String, Object>> trace) {}
+
+    public WellnessReply wellnessReply(User user, String message, boolean crisisDetected) {
         List<AiMessage> convo = new ArrayList<>(memory.verbatimHistory(user.getId()));
+        int verbatimTurns = convo.size();
         String previousUser = null;
         for (int i = convo.size() - 1; i >= 0; i--) {
             if ("user".equals(convo.get(i).role())) { previousUser = convo.get(i).content(); break; }
         }
-        String systemPrompt = knowledge.buildWellnessSystemPrompt(message, previousUser, memory.personalContext(user)).systemPrompt();
+        AiKnowledgeService.WellnessPrompt prompt =
+                knowledge.buildWellnessSystemPrompt(message, previousUser, memory.personalContext(user));
         String userTurn = message;
         if (crisisDetected) {
             // Belt and braces: the system prompt already covers this, but make it explicit for this turn.
@@ -82,7 +87,58 @@ public class AiAssistantService {
                     + "Prioritise the person's immediate safety in your reply.]";
         }
         convo.add(AiMessage.user(userTurn));
-        return gateway.chat(systemPrompt, convo);
+        AiResult result = gateway.chat(prompt.systemPrompt(), convo);
+        return new WellnessReply(result, buildTrace(user, verbatimTurns, prompt, crisisDetected, result));
+    }
+
+    /**
+     * A truthful, student-readable account of the steps taken for this reply. It names what was
+     * used (kinds of records, categories of counsellor scenarios, the model) but never values,
+     * scores or counsellor-written text.
+     */
+    private List<Map<String, Object>> buildTrace(User user, int verbatimTurns, AiKnowledgeService.WellnessPrompt prompt,
+                                                 boolean crisis, AiResult result) {
+        List<Map<String, Object>> steps = new ArrayList<>();
+        steps.add(step("safety", "Checked your message for safety concerns",
+                crisis ? "Signs that you may be going through something serious — a counsellor has been asked to reach out to you."
+                       : "Nothing urgent detected.", crisis ? "alert" : "done"));
+
+        Map<String, Object> info = memory.traceInfo(user, verbatimTurns);
+        String mem = (String) info.get("memory");
+        steps.add(step("memory", "Recalled our earlier conversations",
+                mem != null ? "Used " + mem + "." : "This is the start of our conversation.", mem != null ? "done" : "skipped"));
+
+        @SuppressWarnings("unchecked") List<String> records = (List<String>) info.getOrDefault("records", List.of());
+        String recordsNote = (String) info.get("recordsNote");
+        steps.add(step("records", "Looked at your wellbeing records",
+                recordsNote != null ? recordsNote : records.isEmpty() ? "No records yet." : String.join("; ", records) + ".",
+                recordsNote != null ? "skipped" : "done"));
+
+        List<String> categories = prompt.examples().stream()
+                .map(e -> e.scenario().getProblemCategory()).filter(Objects::nonNull).distinct().toList();
+        int n = prompt.examples().size();
+        steps.add(step("knowledge", "Compared with situations UNZA counsellors have handled",
+                n == 0 ? "No close match, so I used the Counselling Centre's general guidance."
+                       : "Found " + n + " similar situation" + (n == 1 ? "" : "s")
+                         + (categories.isEmpty() ? "" : " (" + String.join(", ", categories) + ")")
+                         + " to guide my tone and suggestions.", n == 0 ? "skipped" : "done"));
+
+        steps.add(step("guidance", "Applied UNZA counselling guidance and safety rules",
+                "Kept to supportive, non-judgemental advice, pointed to real UNZA services, and didn't diagnose.", "done"));
+
+        steps.add(step("reply", "Wrote this reply",
+                "Using " + result.providerName() + " (" + result.model() + ") in "
+                        + String.format(Locale.ROOT, "%.1f", result.latencyMs() / 1000.0) + "s.", "done"));
+        return steps;
+    }
+
+    private static Map<String, Object> step(String key, String title, String detail, String status) {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("key", key);
+        m.put("title", title);
+        m.put("detail", detail);
+        m.put("status", status);   // done | skipped | alert
+        return m;
     }
 
     /** Free-text session-note draft (used by the mobile "AI Session Notes" screen). */

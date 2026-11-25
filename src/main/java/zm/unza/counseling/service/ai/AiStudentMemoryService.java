@@ -112,6 +112,43 @@ public class AiStudentMemoryService {
         }
     }
 
+    /**
+     * What the assistant drew on for this person, phrased for the person themselves (shown in the
+     * chat's "How I worked this out" panel). Names the kinds of data used, never their values.
+     */
+    @Transactional(readOnly = true)
+    public Map<String, Object> traceInfo(User user, int verbatimTurns) {
+        Map<String, Object> out = new LinkedHashMap<>();
+        AiAssistantSettings settings = settings();
+        Optional<AiUserMemory> mem = Boolean.FALSE.equals(settings.getMemoryEnabled())
+                ? Optional.empty() : memoryRepository.findById(user.getId()).filter(m -> notBlank(m.getSummary()));
+        int exchanges = verbatimTurns / 2;
+        String memory = exchanges == 0 && mem.isEmpty() ? null
+                : (exchanges > 0 ? exchanges + " earlier message" + (exchanges == 1 ? "" : "s") + " in our conversation" : "")
+                + (mem.isPresent() ? (exchanges > 0 ? ", plus " : "") + "notes from " + mem.get().getSummarizedCount() + " older exchanges" : "");
+        out.put("memory", memory);
+
+        List<String> records = new ArrayList<>();
+        if (Boolean.FALSE.equals(settings.getRecordsEnabled())) {
+            out.put("recordsNote", "Not used (turned off by the Counselling Centre)");
+        } else if (user.isAnonymous()) {
+            out.put("recordsNote", "Not used — you're chatting anonymously");
+        } else {
+            selfAssessmentRepository.findTopBySubmittedByUserIdOrderByAssessmentDateDesc(user.getId()).ifPresent(a -> {
+                LocalDateTime when = a.getAssessmentDate() != null ? a.getAssessmentDate() : a.getCreatedAt();
+                records.add("Your latest wellbeing check-in" + (when != null ? " (" + DAY.format(when) + ")" : ""));
+            });
+            int upcoming = appointmentRepository.findUpcomingByStudent(user, LocalDateTime.now()).size();
+            records.add(upcoming > 0 ? upcoming + " upcoming appointment" + (upcoming == 1 ? "" : "s") : "Whether you have an appointment booked");
+            if (notBlank(user.getStudentId()) && clientRepository.findByStudentId(user.getStudentId())
+                    .map(c -> !analysisRepository.findByClientIdOrderByCreatedAtDesc(c.getId()).isEmpty()).orElse(false)) {
+                records.add("Your latest wellness review");
+            }
+        }
+        out.put("records", records);
+        return out;
+    }
+
     private String records(User user) {
         StringBuilder sb = new StringBuilder();
         if (notBlank(user.getFirstName())) sb.append("- First name: ").append(user.getFirstName().trim()).append('\n');
