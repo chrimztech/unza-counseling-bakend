@@ -2,6 +2,12 @@ server:
   port: ${SERVER_PORT:8080}
   servlet:
     context-path: ${SERVER_CONTEXT_PATH:/api}
+    # Declare charset=UTF-8 on responses: some clients (Flutter's http package) otherwise
+    # decode JSON as Latin-1 and garble non-ASCII text such as dashes in AI replies.
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force-response: true
   compression:
     enabled: true
     mime-types: text/html,text/xml,text/plain,text/css,text/javascript,application/javascript,application/json

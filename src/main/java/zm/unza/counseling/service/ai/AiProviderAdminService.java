@@ -134,7 +134,7 @@ public class AiProviderAdminService {
     private void apply(AiProviderConfig cfg, AiProviderConfigRequest req) {
         cfg.setName(req.getName().trim());
         cfg.setProviderType(req.getProviderType());
-        cfg.setBaseUrl(isBlank(req.getBaseUrl()) ? null : req.getBaseUrl().trim());
+        cfg.setBaseUrl(normaliseBaseUrl(req.getBaseUrl()));
         if (cfg.getProviderType() == AiProviderType.CUSTOM && cfg.getBaseUrl() == null) {
             throw new ValidationException("A base URL is required for a custom provider");
         }
@@ -160,6 +160,18 @@ public class AiProviderAdminService {
         }
         // A disabled provider can't be the one tried first.
         if (Boolean.FALSE.equals(cfg.getEnabled())) cfg.setIsDefault(false);
+    }
+
+    /**
+     * Accepts what people actually paste: a full endpoint copied from sample code
+     * (".../v1/chat/completions", ".../v1/messages", ".../models") is trimmed back to the base URL
+     * the client appends paths to. Blank means "use the provider's default".
+     */
+    static String normaliseBaseUrl(String raw) {
+        if (isBlank(raw)) return null;
+        String url = raw.trim().replaceAll("/+$", "");
+        url = url.replaceAll("(?i)/(chat/completions|completions|messages|models|embeddings)$", "");
+        return url.isEmpty() ? null : url;
     }
 
     private void promoteNextDefault() {
