@@ -147,6 +147,9 @@ public class ChatController {
         String provider = null;
         String model = null;
         List<Map<String, Object>> trace = null;
+        Integer matched = null;
+        Integer attempt = null;
+        long started = System.currentTimeMillis();
         try {
             AiResult r;
             if (sessionNotes) {
@@ -155,7 +158,9 @@ public class ChatController {
                 AiAssistantService.WellnessReply w = assistant.wellnessReply(currentUser, sessionId, message, crisis);
                 r = w.result();
                 trace = w.trace();
+                matched = w.matchedScenarios();
             }
+            attempt = r.attempt();
             reply = r.content();
             provider = r.providerName();
             model = r.model();
@@ -164,6 +169,7 @@ public class ChatController {
             aiAvailable = false;
             reply = sessionNotes ? "AI note drafting is unavailable right now. Please try again later." : AI_OFFLINE_REPLY;
         }
+        long replyMs = System.currentTimeMillis() - started;
 
         Long savedId = null;
         LocalDateTime createdAt = LocalDateTime.now();
@@ -175,11 +181,17 @@ public class ChatController {
             chatMessage.setMessage(message);
             chatMessage.setResponse(reply);
             chatMessage.setIsFromUser(true);
+            chatMessage.setReplyMs(replyMs);
+            chatMessage.setMatchedScenarios(matched);
+            chatMessage.setCrisisLevel(crisisResult == null ? "NONE" : crisisResult.severity().name());
+            chatMessage.setAiAnswered(aiAvailable);
+            chatMessage.setProviderAttempt(attempt);
+            chatMessage.setProviderName(provider);
             ChatMessage saved = chatMessageRepository.save(chatMessage);
             savedId = saved.getId();
             if (saved.getCreatedAt() != null) createdAt = saved.getCreatedAt();
             // Raise a CrisisAlert + notify counselors, even if the AI itself was offline.
-            if (crisis) crisisEscalation.escalate(currentUser, savedId, crisisResult);
+            if (crisis) crisisEscalation.escalate(currentUser, savedId, crisisResult, message);
             // Fold older exchanges into long-term memory in the background (no effect on this reply).
             if (aiAvailable) studentMemory.maybeFoldAsync(userId);
         }

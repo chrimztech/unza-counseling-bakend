@@ -15,6 +15,8 @@ public interface CrisisAlertRepository extends JpaRepository<CrisisAlert, Long> 
 
     Page<CrisisAlert> findAllByOrderByCreatedAtDesc(Pageable pageable);
 
+    List<CrisisAlert> findByCreatedAtGreaterThanEqual(java.time.LocalDateTime since);
+
     long countByStatus(CrisisAlert.AlertStatus status);
 
     @Query("SELECT ca FROM CrisisAlert ca WHERE ca.client.id = :clientId ORDER BY ca.createdAt DESC")

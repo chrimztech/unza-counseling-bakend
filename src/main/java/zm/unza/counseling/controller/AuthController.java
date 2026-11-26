@@ -69,7 +69,7 @@ public class AuthController {
         try {
             AuthResponse response = multiSourceAuthService.register(request);
             return ResponseEntity.ok(response);
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException | zm.unza.counseling.exception.ValidationException e) {
             return ResponseEntity.badRequest()  .body(Map.of("error", e.getMessage()));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)

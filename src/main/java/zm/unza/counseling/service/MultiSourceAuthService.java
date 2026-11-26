@@ -153,6 +153,12 @@ public class MultiSourceAuthService {
             } catch (IllegalArgumentException e) {
                 throw new ValidationException("Invalid role specified");
             }
+            // This endpoint is public (permitAll), so it must never mint staff accounts: before this
+            // check anyone could POST {"role":"ROLE_SUPER_ADMIN"} and receive a super-admin token.
+            // Counsellors and admins are created by an administrator through /users.
+            if (roleEnum != Role.ERole.ROLE_STUDENT && roleEnum != Role.ERole.ROLE_CLIENT) {
+                throw new ValidationException("Staff accounts are created by an administrator");
+            }
         }
 
         if (roleEnum == Role.ERole.ROLE_ADMIN) {

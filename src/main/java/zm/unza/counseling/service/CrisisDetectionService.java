@@ -61,6 +61,41 @@ public class CrisisDetectionService {
         }
     }
 
+    /** One phrase-list hit, with its position in the original text. */
+    public record PhraseHit(int start, int end, String phrase, Severity severity) {}
+
+    /**
+     * Every phrase-list hit in the text with its position (for counsellor explanations). Lowercases
+     * character by character so positions line up with the original text.
+     */
+    public List<PhraseHit> findPhrases(String text) {
+        List<PhraseHit> hits = new ArrayList<>();
+        if (text == null || text.isBlank()) return hits;
+        char[] chars = text.toCharArray();
+        for (int i = 0; i < chars.length; i++) {
+            chars[i] = chars[i] == '’' ? '\'' : Character.toLowerCase(chars[i]);
+        }
+        String lower = new String(chars);
+        addHits(lower, CRITICAL_PHRASES, Severity.CRITICAL, hits);
+        addHits(lower, HIGH_PHRASES, Severity.HIGH, hits);
+        return hits;
+    }
+
+    private static void addHits(String lower, List<String> phrases, Severity severity, List<PhraseHit> out) {
+        for (String phrase : phrases) {
+            int from = 0;
+            while (true) {
+                int i = lower.indexOf(phrase, from);
+                if (i < 0) break;
+                int end = i + phrase.length();
+                boolean startOk = i == 0 || !Character.isLetterOrDigit(lower.charAt(i - 1));
+                boolean endOk = end == lower.length() || !Character.isLetterOrDigit(lower.charAt(end));
+                if (startOk && endOk) out.add(new PhraseHit(i, end, phrase, severity));
+                from = i + 1;
+            }
+        }
+    }
+
     /**
      * Scans one or more text fields and returns the highest severity found plus all triggered phrases.
      */

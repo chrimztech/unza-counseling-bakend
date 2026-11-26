@@ -33,6 +33,10 @@ public class CrisisAlert {
     @Column(name = "triggered_keywords", length = 1000)
     private String triggeredKeywords;
 
+    /** Copy of the flagged text, kept with the alert so review still works if the source is deleted. */
+    @Column(name = "source_excerpt", columnDefinition = "TEXT")
+    private String sourceExcerpt;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private AlertStatus status = AlertStatus.PENDING;
@@ -68,6 +72,21 @@ public class CrisisAlert {
     public void setSeverity(Severity severity) { this.severity = severity; }
     public String getTriggeredKeywords() { return triggeredKeywords; }
     public void setTriggeredKeywords(String triggeredKeywords) { this.triggeredKeywords = triggeredKeywords; }
+    public String getSourceExcerpt() { return sourceExcerpt; }
+    public void setSourceExcerpt(String sourceExcerpt) { this.sourceExcerpt = sourceExcerpt; }
+
+    /** Joins the flagged fields and caps the length stored on the alert. */
+    public static String excerpt(String... parts) {
+        StringBuilder sb = new StringBuilder();
+        for (String p : parts) {
+            if (p == null || p.isBlank()) continue;
+            if (sb.length() > 0) sb.append("\n\n");
+            sb.append(p.strip());
+        }
+        if (sb.length() == 0) return null;
+        return sb.length() > 4000 ? sb.substring(0, 4000) : sb.toString();
+    }
+
     public AlertStatus getStatus() { return status; }
     public void setStatus(AlertStatus status) { this.status = status; }
     public String getCounselorNotes() { return counselorNotes; }

@@ -47,7 +47,7 @@ public class AiGatewayService {
                 String text = llmClient.complete(cfg, key, systemPrompt, messages, maxTokens);
                 long latency = System.currentTimeMillis() - start;
                 repository.recordSuccess(cfg.getId(), LocalDateTime.now());
-                return new AiResult(text, cfg.getId(), cfg.getName(), cfg.getModel(), latency);
+                return new AiResult(text, cfg.getId(), cfg.getName(), cfg.getModel(), latency, failures.size() + 1);
             } catch (LlmClient.LlmException | IllegalStateException e) {
                 String msg = e.getMessage();
                 log.warn("AI provider '{}' ({}) failed, trying next: {}", cfg.getName(), cfg.getProviderType(), msg);

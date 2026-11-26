@@ -85,6 +85,7 @@ public class MessageService {
                 alert.setSeverity(crisis.severity() == CrisisDetectionService.Severity.CRITICAL
                         ? CrisisAlert.Severity.CRITICAL : CrisisAlert.Severity.HIGH);
                 alert.setTriggeredKeywords(String.join(", ", crisis.triggeredKeywords()));
+                alert.setSourceExcerpt(CrisisAlert.excerpt(request.getSubject(), request.getContent()));
                 crisisAlertRepository.save(alert);
 
                 // Escalate CRITICAL-severity crisis detections to Security as well (HIGH is left

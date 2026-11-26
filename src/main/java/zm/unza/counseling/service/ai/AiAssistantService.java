@@ -69,7 +69,26 @@ public class AiAssistantService {
      * counsellor-written scenarios most similar to what they said.
      */
     /** The reply plus a step-by-step account of how it was produced (for the "How I worked this out" panel). */
-    public record WellnessReply(AiResult result, List<Map<String, Object>> trace) {}
+    public record WellnessReply(AiResult result, List<Map<String, Object>> trace, int matchedScenarios) {}
+
+    /** One crisis-pattern hit in a message: where it is and whether it is indirect wording. */
+    public record PatternHit(int start, int end, String text, boolean indirect) {}
+
+    /** Index in CRISIS_PATTERNS where the indirect-wording patterns begin. */
+    private static final int FIRST_INDIRECT_PATTERN = 9;
+
+    /** Every crisis-pattern match in the text, with positions (for counsellor explanations). */
+    public static List<PatternHit> crisisPatternHits(String text) {
+        List<PatternHit> hits = new ArrayList<>();
+        if (text == null) return hits;
+        for (int i = 0; i < CRISIS_PATTERNS.size(); i++) {
+            var m = CRISIS_PATTERNS.get(i).matcher(text);
+            while (m.find()) {
+                if (m.end() > m.start()) hits.add(new PatternHit(m.start(), m.end(), m.group(), i >= FIRST_INDIRECT_PATTERN));
+            }
+        }
+        return hits;
+    }
 
     public WellnessReply wellnessReply(User user, String sessionId, String message, boolean crisisDetected) {
         List<AiMessage> convo = new ArrayList<>(memory.verbatimHistory(user.getId(), sessionId));
@@ -88,7 +107,8 @@ public class AiAssistantService {
         }
         convo.add(AiMessage.user(userTurn));
         AiResult result = gateway.chat(prompt.systemPrompt(), convo);
-        return new WellnessReply(result, buildTrace(user, verbatimTurns, prompt, crisisDetected, result));
+        return new WellnessReply(result, buildTrace(user, verbatimTurns, prompt, crisisDetected, result),
+                prompt.examples().size());
     }
 
     /**

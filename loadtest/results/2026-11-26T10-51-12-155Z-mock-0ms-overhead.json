@@ -1,0 +1,63 @@
+{
+  "label": "mock-0ms-overhead",
+  "base": "http://127.0.0.1:8080/api",
+  "msgsPerUser": 5,
+  "at": "2026-11-26T10:51:12.157Z",
+  "summary": [
+    {
+      "users": 1,
+      "requests": 5,
+      "ok": 5,
+      "errors": 0,
+      "p50": 44,
+      "p95": 52,
+      "max": 52,
+      "mean": 42,
+      "throughputPerMin": 1433
+    },
+    {
+      "users": 5,
+      "requests": 25,
+      "ok": 25,
+      "errors": 0,
+      "p50": 42,
+      "p95": 51,
+      "max": 51,
+      "mean": 42,
+      "throughputPerMin": 6683
+    },
+    {
+      "users": 10,
+      "requests": 50,
+      "ok": 50,
+      "errors": 0,
+      "p50": 80,
+      "p95": 114,
+      "max": 545,
+      "mean": 89,
+      "throughputPerMin": 3758
+    },
+    {
+      "users": 20,
+      "requests": 100,
+      "ok": 100,
+      "errors": 0,
+      "p50": 160,
+      "p95": 272,
+      "max": 406,
+      "mean": 176,
+      "throughputPerMin": 5810
+    },
+    {
+      "users": 50,
+      "requests": 250,
+      "ok": 250,
+      "errors": 0,
+      "p50": 477,
+      "p95": 844,
+      "max": 1106,
+      "mean": 489,
+      "throughputPerMin": 5557
+    }
+  ]
+}

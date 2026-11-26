@@ -53,15 +53,29 @@ public class AiCrisisEscalationService {
         if (shared.severity() == CrisisDetectionService.Severity.CRITICAL) return shared;
         List<String> danger = shared.triggeredKeywords().stream().filter(CHAT_ALERT_HIGH::contains).toList();
         if (!danger.isEmpty()) return new CrisisDetectionService.CrisisResult(CrisisDetectionService.Severity.HIGH, danger);
-        if (AiAssistantService.detectCrisis(message)) {
-            return new CrisisDetectionService.CrisisResult(CrisisDetectionService.Severity.HIGH,
-                    List.of("AI chat crisis phrase"));
+        List<String> patternWords = AiAssistantService.crisisPatternHits(message).stream()
+                .map(h -> h.text().toLowerCase(Locale.ROOT).strip()).distinct().toList();
+        if (!patternWords.isEmpty()) {
+            return new CrisisDetectionService.CrisisResult(CrisisDetectionService.Severity.HIGH, patternWords);
         }
         return new CrisisDetectionService.CrisisResult(CrisisDetectionService.Severity.NONE, List.of());
     }
 
+    /** Whether a HIGH phrase from the shared list raises an alert when it appears in the AI chat. */
+    public static boolean isChatAlertPhrase(String phrase) {
+        return CHAT_ALERT_HIGH.contains(phrase);
+    }
+
     /** Never throws — the student's chat reply must not fail because escalation did. */
     public void escalate(User user, Long chatMessageId, CrisisDetectionService.CrisisResult crisis) {
+        escalate(user, chatMessageId, crisis, null);
+    }
+
+    /**
+     * As above, keeping a copy of the flagged message on the alert so the counsellor can still see
+     * what was written if the student later clears their chat history.
+     */
+    public void escalate(User user, Long chatMessageId, CrisisDetectionService.CrisisResult crisis, String messageText) {
         if (user == null || crisis == null || !crisis.isCrisis()) return;
         try {
             LocalDateTime cutoff = LocalDateTime.now().minusHours(DEDUPE_HOURS);
@@ -84,6 +98,7 @@ public class AiCrisisEscalationService {
             alert.setClient(user);
             alert.setSeverity(critical ? CrisisAlert.Severity.CRITICAL : CrisisAlert.Severity.HIGH);
             alert.setTriggeredKeywords("[AI wellness chat] " + String.join(", ", crisis.triggeredKeywords()));
+            alert.setSourceExcerpt(CrisisAlert.excerpt(messageText));
             crisisAlertRepository.save(alert);
 
             if (critical) {

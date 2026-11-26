@@ -41,3 +41,4 @@ application-local.yml
 BOOT-INF/
 app.pid
 *.save
+local-dev/

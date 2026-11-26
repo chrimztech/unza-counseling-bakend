@@ -1495,6 +1495,7 @@ public class AppointmentServiceImpl implements AppointmentService {
             alert.setSeverity(result.severity() == CrisisDetectionService.Severity.CRITICAL
                     ? CrisisAlert.Severity.CRITICAL : CrisisAlert.Severity.HIGH);
             alert.setTriggeredKeywords(String.join(", ", result.triggeredKeywords()));
+            alert.setSourceExcerpt(CrisisAlert.excerpt(title, description, presentingConcern));
             crisisAlertRepository.save(alert);
 
             // Escalate CRITICAL-severity crisis detections to Security as well (HIGH is left

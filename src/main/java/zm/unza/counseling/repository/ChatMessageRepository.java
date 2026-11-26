@@ -18,6 +18,9 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> 
     /** One conversation's unsummarised messages, oldest first (the verbatim context for that chat). */
     List<ChatMessage> findByUserIdAndSessionIdAndIdGreaterThanOrderByIdAsc(Long userId, String sessionId, Long afterId);
 
+    /** Every AI chat exchange since the given time (admin oversight metrics). */
+    List<ChatMessage> findByCreatedAtGreaterThanEqual(java.time.LocalDateTime since);
+
     @Transactional
     long deleteByUserIdAndSessionId(Long userId, String sessionId);
     @Transactional
